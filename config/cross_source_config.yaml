@@ -1,0 +1,39 @@
+# ============================================================================
+# Cross-source validation thresholds (Rule 45)
+# ============================================================================
+# Soglie massime di discrepanza accettabile tra sorgenti diverse per la stessa
+# metrica. Superata la soglia: quality_score ridotto + badge UI ⚠️.
+#
+# Status: stub configurazione. CrossSourceValidator sarà implementato nella
+# fase 7.1B successiva (settimane 5-6 della roadmap).
+# ============================================================================
+
+price:
+  max_pct_diff: 0.005       # 0.5% — prezzo deve essere quasi identico
+  min_sources: 2
+  quality_penalty_factor: 2.0
+
+pe_ratio:
+  max_pct_diff: 0.10        # 10% — P/E può variare per timing diverso
+  min_sources: 2
+  quality_penalty_factor: 1.5
+
+market_cap:
+  max_pct_diff: 0.05        # 5%
+  min_sources: 2
+  quality_penalty_factor: 1.5
+
+eps_ttm:
+  max_pct_diff: 0.08        # 8% — possibili differenze GAAP/non-GAAP
+  min_sources: 2
+  quality_penalty_factor: 1.5
+
+dividend_yield:
+  max_pct_diff: 0.10        # 10%
+  min_sources: 2
+  quality_penalty_factor: 1.0
+
+revenue_ttm:
+  max_pct_diff: 0.05        # 5%
+  min_sources: 2
+  quality_penalty_factor: 1.0

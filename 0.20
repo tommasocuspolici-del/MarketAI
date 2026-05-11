@@ -1,0 +1,18 @@
+Requirement already satisfied: pandera in .\.venv\Lib\site-packages (0.18.3)
+Collecting pandera
+  Downloading pandera-0.31.1-py3-none-any.whl.metadata (10 kB)
+Requirement already satisfied: packaging>=20.0 in .\.venv\Lib\site-packages (from pandera) (26.2)
+Requirement already satisfied: pydantic in .\.venv\Lib\site-packages (from pandera) (2.9.2)
+Requirement already satisfied: typeguard in .\.venv\Lib\site-packages (from pandera) (4.5.1)
+Requirement already satisfied: typing_extensions in .\.venv\Lib\site-packages (from pandera) (4.15.0)
+Requirement already satisfied: typing_inspect>=0.6.0 in .\.venv\Lib\site-packages (from pandera) (0.9.0)
+Requirement already satisfied: mypy-extensions>=0.3.0 in .\.venv\Lib\site-packages (from typing_inspect>=0.6.0->pandera) (1.1.0)
+Requirement already satisfied: annotated-types>=0.6.0 in .\.venv\Lib\site-packages (from pydantic->pandera) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.4 in .\.venv\Lib\site-packages (from pydantic->pandera) (2.23.4)
+Downloading pandera-0.31.1-py3-none-any.whl (386 kB)
+Installing collected packages: pandera
+  Attempting uninstall: pandera
+    Found existing installation: pandera 0.18.3
+    Uninstalling pandera-0.18.3:
+      Successfully uninstalled pandera-0.18.3
+Successfully installed pandera-0.31.1

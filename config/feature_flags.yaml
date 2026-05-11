@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# FEATURE FLAGS — Regola 29
+# ═══════════════════════════════════════════════════════════════════════════
+# Tutte le funzionalità sperimentali o costose sono gestite qui.
+# Default sicuro = false. Abilitare esplicitamente solo quando necessario.
+#
+# Uso nel codice:
+#   from shared.feature_flags import is_enabled, require_enabled
+#   if is_enabled("realtime_websocket"):
+#       ...
+#   require_enabled("pytorch_forecasting")  # lancia FeatureDisabledError se off
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── Fonti dati costose ──────────────────────────────────────────────────
+edgar_bulk_download: false        # Download SEC EDGAR bulk (lento, eseguire manualmente)
+realtime_websocket: false          # WebSocket Finnhub per prezzi live (consuma rate limit)
+alpha_vantage_premium: false       # Usa tier premium Alpha Vantage (richiede API key paid)
+
+# ─── Modelli costosi in RAM/CPU ──────────────────────────────────────────
+pytorch_forecasting: false         # Modelli DL: richiedono GPU/molta RAM
+prophet_forecasting: true          # Prophet: leggero, può essere attivo
+arima_auto: true                   # pmdarima auto ARIMA: moderato
+hmm_regime_detection: true         # HMM: leggero, regime labelling
+
+# ─── Analisi avanzata ────────────────────────────────────────────────────
+advanced_correlation: true         # DCC-GARCH + HMM
+granger_causality: true            # Test di causalità tra asset
+stress_forward_looking: true       # Scenari sintetici forward-looking (Regola 24)
+
+# ─── LLM ─────────────────────────────────────────────────────────────────
+ollama_narrative: false            # LLM locale: richiede Ollama installato
+
+# ─── Personal Layer ──────────────────────────────────────────────────────
+personal_tax_report: true          # Calcolo fiscale IT
+personal_etoro_import: true        # Import XLSX eToro
+auto_rebalancing_alerts: true      # Alert ribilanciamento portafoglio
+wealth_monte_carlo: true           # Simulazione Monte Carlo patrimonio
+retirement_simulator: true         # Simulatore FIRE/pensione
+
+# ─── Notifiche & Alert ───────────────────────────────────────────────────
+desktop_notifications: true        # plyer: notifiche desktop nativo
+alert_deduplication: true          # Dedup alert per N ore
+
+# ─── Operazioni ──────────────────────────────────────────────────────────
+auto_backup_daily: true            # Backup giornaliero automatico ore 02:00
+auto_retention_cleanup: true       # Pulizia dati oltre retention mensile
+health_monitoring: true            # HealthChecker attivo
+
+# ─── Sperimentale (NON abilitare in produzione) ──────────────────────────
+experimental_pytorch_lstm: false
+experimental_graph_embeddings: false

@@ -1,0 +1,60 @@
+# ============================================================================
+# Watched tickers — universo dei tickers monitorati dallo scheduler (v7.1.1)
+# ============================================================================
+# Aggiungere ticker QUI: il codice del fetcher non va piu' modificato.
+# Categorie organizzate per uso (Macro, equity, futures, FX, crypto, ...).
+# Roadmap unificata: Settimana 0 — Fondazione.
+# ============================================================================
+
+equity_indices:
+  - { ticker: "SPY",    exchange: "NYSE",   label: "S&P 500 ETF" }
+  - { ticker: "QQQ",    exchange: "NYSE",   label: "NASDAQ ETF" }
+  - { ticker: "IWM",    exchange: "NYSE",   label: "Russell 2000 ETF" }
+  - { ticker: "VGK",    exchange: "NYSE",   label: "Europe ETF" }
+  - { ticker: "EEM",    exchange: "NYSE",   label: "Emerging Markets ETF" }
+
+volatility:
+  - { ticker: "^VIX",   exchange: "NYSE",   label: "VIX 1M" }
+  - { ticker: "^VXV",   exchange: "NYSE",   label: "VIX 3M" }
+  - { ticker: "^SKEW",  exchange: "NYSE",   label: "CBOE Skew Index" }
+
+# ETF proxy compatibili con free tier
+commodity_etf:
+  - { ticker: "GLD",    exchange: "NYSE",   label: "Gold" }
+  - { ticker: "SLV",    exchange: "NYSE",   label: "Silver" }
+  - { ticker: "USO",    exchange: "NYSE",   label: "WTI Oil" }
+  - { ticker: "UNG",    exchange: "NYSE",   label: "Natural Gas" }
+  - { ticker: "CPER",   exchange: "NYSE",   label: "Copper" }
+  - { ticker: "WEAT",   exchange: "NYSE",   label: "Wheat" }
+
+# Continuous futures contracts via yfinance
+commodity_futures:
+  - { ticker: "CL=F",   exchange: "NYMEX", label: "WTI Crude Futures" }
+  - { ticker: "GC=F",   exchange: "COMEX", label: "Gold Futures" }
+  - { ticker: "ES=F",   exchange: "CME",   label: "S&P 500 Futures" }
+  - { ticker: "ZC=F",   exchange: "CBOT",  label: "Corn Futures" }
+  - { ticker: "ZW=F",   exchange: "CBOT",  label: "Wheat Futures" }
+
+bonds_rates:
+  - { ticker: "TLT",    exchange: "NYSE",   label: "20Y Treasury ETF" }
+  - { ticker: "IEF",    exchange: "NYSE",   label: "7-10Y Treasury ETF" }
+  - { ticker: "HYG",    exchange: "NYSE",   label: "High Yield Bond ETF" }
+  - { ticker: "LQD",    exchange: "NYSE",   label: "Investment Grade ETF" }
+
+forex:
+  - { ticker: "EURUSD=X", exchange: "FOREX", label: "EUR/USD" }
+  - { ticker: "GBPUSD=X", exchange: "FOREX", label: "GBP/USD" }
+  - { ticker: "JPYUSD=X", exchange: "FOREX", label: "JPY/USD" }
+  - { ticker: "AUDUSD=X", exchange: "FOREX", label: "AUD/USD" }
+
+crypto:
+  - { ticker: "BTC-USD", exchange: "CRYPTO", label: "Bitcoin" }
+  - { ticker: "ETH-USD", exchange: "CRYPTO", label: "Ethereum" }
+
+# Equity individuali per E/K2 fondamentali
+individual_equity:
+  - { ticker: "AAPL",   exchange: "NASDAQ", label: "Apple" }
+  - { ticker: "MSFT",   exchange: "NASDAQ", label: "Microsoft" }
+  - { ticker: "GOOGL",  exchange: "NASDAQ", label: "Alphabet" }
+  - { ticker: "TSLA",   exchange: "NASDAQ", label: "Tesla" }
+  - { ticker: "NVDA",   exchange: "NASDAQ", label: "NVIDIA" }

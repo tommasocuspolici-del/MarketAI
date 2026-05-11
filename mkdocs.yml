@@ -1,0 +1,74 @@
+site_name: Market Analysis AI · v6.0
+site_description: Professional dual-layer analytics + personal finance platform
+site_author: Market AI Team
+copyright: "© 2026 Market AI · MIT License"
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quickstart (5 min): getting-started/quickstart.md
+      - Setup from Zero: getting-started/setup.md
+      - Configuration: getting-started/configuration.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Engine Layer: architecture/engine.md
+      - Personal Layer: architecture/personal.md
+      - Bridge & Contracts: architecture/bridge.md
+      - Data Layer (DuckDB + SQLite): architecture/data-layer.md
+      - Observability: architecture/observability.md
+  - Reference:
+      - Conventions (32 rules): reference/conventions.md
+      - Data Sources: reference/data-sources.md
+      - Feature Flags: reference/feature-flags.md
+      - Rate Limits: reference/rate-limits.md
+  - Guides:
+      - Backtesting: guides/backtesting.md
+      - Stress Testing: guides/stress-testing.md
+      - Deployment (Docker): guides/deployment.md
+  - Changelog: changelog.md
+
+plugins:
+  - search

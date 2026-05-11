@@ -1,0 +1,127 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DESIGN TOKENS — Single source of truth for all UI styling (Rule 20).
+# No component may hardcode colors, sizes, or fonts. Always reference these.
+# ═══════════════════════════════════════════════════════════════════════════
+
+colors:
+  # Background palette
+  bg_primary:    "#0E1117"
+  bg_secondary:  "#1A1F2E"
+  bg_card:       "#252B3D"
+  bg_overlay:    "#3A4254"
+
+  # Text palette
+  text_primary:    "#FAFAFA"
+  text_secondary:  "#B0B7C3"
+  text_muted:      "#6B7280"
+
+  # Brand & accents
+  accent_primary:    "#3B82F6"   # Blue 500
+  accent_secondary:  "#8B5CF6"   # Violet 500
+
+  # Semantic colors
+  positive:    "#10B981"   # Emerald 500 — gains
+  negative:    "#EF4444"   # Red 500    — losses
+  warning:     "#F59E0B"   # Amber 500
+  neutral:     "#6B7280"   # Gray 500
+
+  # System/health states
+  health_operational:  "#10B981"
+  health_degraded:     "#F59E0B"
+  health_down:         "#EF4444"
+
+  # Market regimes (HMM)
+  regime_bull:        "#10B981"
+  regime_transition:  "#F59E0B"
+  regime_bear:        "#EF4444"
+  regime_stress:      "#7F1D1D"
+
+  # Data quality (heatmap)
+  quality_excellent:  "#10B981"   # ≥ 0.9
+  quality_good:       "#84CC16"   # 0.7–0.9
+  quality_fair:       "#F59E0B"   # 0.5–0.7
+  quality_poor:       "#EF4444"   # < 0.5
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Typography
+# ═══════════════════════════════════════════════════════════════════════════
+typography:
+  font_family_base:  "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+  font_family_mono:  "JetBrains Mono, Menlo, Consolas, monospace"
+
+  font_size_xs:    "0.75rem"   # 12px
+  font_size_sm:    "0.875rem"  # 14px
+  font_size_base:  "1rem"      # 16px
+  font_size_lg:    "1.125rem"  # 18px
+  font_size_xl:    "1.25rem"   # 20px
+  font_size_2xl:   "1.5rem"    # 24px
+  font_size_3xl:   "1.875rem"  # 30px
+
+  font_weight_normal:    400
+  font_weight_medium:    500
+  font_weight_semibold:  600
+  font_weight_bold:      700
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Spacing
+# ═══════════════════════════════════════════════════════════════════════════
+spacing:
+  unit_xs:   "0.25rem"   # 4px
+  unit_sm:   "0.5rem"    # 8px
+  unit_md:   "1rem"      # 16px
+  unit_lg:   "1.5rem"    # 24px
+  unit_xl:   "2rem"      # 32px
+  unit_2xl:  "3rem"      # 48px
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Borders
+# ═══════════════════════════════════════════════════════════════════════════
+borders:
+  radius_sm:   "0.25rem"
+  radius_md:   "0.5rem"
+  radius_lg:   "0.75rem"
+  radius_xl:   "1rem"
+
+  width_thin:    "1px"
+  width_medium:  "2px"
+  width_thick:   "3px"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Plotly chart defaults (Plotly templates)
+# ═══════════════════════════════════════════════════════════════════════════
+plotly:
+  template:        "plotly_dark"
+  paper_bgcolor:   "#0E1117"
+  plot_bgcolor:    "#1A1F2E"
+  grid_color:      "#3A4254"
+  font_color:      "#FAFAFA"
+  font_family:     "Inter, sans-serif"
+
+  # Standard chart heights
+  height_sm:  300
+  height_md:  450
+  height_lg:  600
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Layout
+# ═══════════════════════════════════════════════════════════════════════════
+layout:
+  page_max_width:   "1600px"
+  sidebar_width:    "300px"
+  card_padding:     "1.5rem"
+
+  # Streamlit columns
+  cols_kpi_row:     7      # 7 KPI principali per E1_Market_Overview
+  cols_main_split:  [3, 1] # main / sidebar
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Format strings (currency, percent, etc.)
+# ═══════════════════════════════════════════════════════════════════════════
+formats:
+  currency_eur:    "€{value:,.2f}"
+  currency_usd:    "${value:,.2f}"
+  percent:         "{value:.2%}"
+  percent_signed:  "{value:+.2%}"
+  number_decimal:  "{value:,.2f}"
+  number_int:      "{value:,d}"
+  basis_points:    "{value:.0f} bp"

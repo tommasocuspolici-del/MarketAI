@@ -1,0 +1,43 @@
+# ============================================================================
+# Sanity rules — soglie SanityChecker (Rule 46)
+# ============================================================================
+# Le regole CRITICAL bloccano l'ingresso di un dato nel DB senza override.
+# Le regole WARN riducono il quality_score e mostrano un badge UI.
+#
+# Modifiche prendono effetto al prossimo restart dell'app.
+# ============================================================================
+
+price:
+  min_value: 0.0001         # Critico se ≤ 0.0001
+  max_value: 5000000        # Warn se > 5M (possibile ma raro)
+  max_daily_change_pct: 0.50  # Warn se variazione giornaliera > 50%
+
+volume:
+  min_value: 0              # Critico se < 0
+
+pe_ratio:
+  min_value: -500           # Critico se < -500
+  max_value: 5000           # Warn se > 5000
+  zero_as_unavailable: true # P/E = 0 → WARN (Finnhub usa 0 per N/A)
+
+market_cap:
+  min_value: 0              # Critico se < 0
+  min_plausible: 100000     # Warn se < 100K USD (micro-micro cap)
+
+dividend:
+  max_yield: 1.0            # Critico se dividendo > prezzo (yield > 100%)
+  max_yield_warn: 0.30      # Warn se yield > 30% (inusuale ma possibile)
+
+eps:
+  max_abs_value: 10000      # Warn se |EPS| > 10000
+
+macro:
+  unemployment_rate:
+    min_value: 0
+    max_value: 100
+  inflation_rate:
+    min_value: -10
+    max_value: 100
+  gdp_growth:
+    min_value: -50
+    max_value: 50

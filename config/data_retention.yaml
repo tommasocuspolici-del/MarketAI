@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA RETENTION POLICY — Regola 31
+# ═══════════════════════════════════════════════════════════════════════════
+# Script: scripts/duckdb_retention.py (esegue mensilmente alle 03:00)
+# Unità: anni
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── DuckDB (OLAP — dati di mercato) ─────────────────────────────────────
+duckdb:
+  prices_ohlcv: 20            # Prezzi storici: 20 anni
+  macro_series: 30            # Macro (FRED, ECB): 30 anni (serie lunghe)
+  fundamentals: 20            # Fondamentali SEC EDGAR: 20 anni
+  sentiment: 3                # Sentiment: 3 anni (deperibile velocemente)
+  data_quality_reports: 1     # Report qualità: 1 anno
+  backtest_results: 2         # Risultati backtest: 2 anni
+  stress_scenarios: 2         # Scenari stress test: 2 anni
+  correlations: 3             # Matrici correlazione: 3 anni
+
+# ─── SQLite (OLTP — dati personali) ──────────────────────────────────────
+sqlite:
+  positions_history: 10       # Storico posizioni eToro: 10 anni
+  cash_flow_entries: 10       # Entrate/uscite: 10 anni
+  wealth_snapshots: 10        # Snapshot patrimonio: 10 anni
+  alert_history_personal: 1   # Alert personali: 1 anno
+  alert_history_engine: 1     # Alert di mercato: 1 anno
+  # Tabelle PERMANENTI (non soggette a retention):
+  #   - investor_profiles
+  #   - financial_goals (se attivi)
+  #   - asset / liability correnti
+
+# ─── Backup files ────────────────────────────────────────────────────────
+backups:
+  retain_count: 10            # Ultimi 10 backup sempre conservati
+  retain_days: 30             # + tutti quelli degli ultimi 30 giorni

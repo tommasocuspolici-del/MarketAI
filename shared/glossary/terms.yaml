@@ -1,0 +1,398 @@
+# =============================================================================
+# MarketAI · Glossario Finanziario Centralizzato
+# =============================================================================
+# Regola 34 (GLOSSARY_FIRST): tutti i termini tecnici sono definiti qui UNA volta
+# sola. Le UI accedono via shared.glossary.lookup.GlossaryService.
+#
+# Schema di ogni termine:
+#   term:           sigla o termine breve (es. "VIX")
+#   full_name:      nome esteso (es. "CBOE Volatility Index")
+#   category:       index | indicator | metric | model | concept | macro | source
+#   description:    cosa rappresenta (1-3 frasi)
+#   interpretation: come si legge / soglie tipiche (opzionale)
+#   typical_range:  range valori tipici (opzionale)
+#   formula:        formula matematica (opzionale)
+#   unit:           unita' di misura (opzionale)
+# =============================================================================
+
+terms:
+  # ─────────────────────────────────────────────────────────────────────────
+  # INDICI DI MERCATO
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "SPX"
+    full_name: "S&P 500 Index"
+    category: "index"
+    description: "Indice delle 500 maggiori società USA per capitalizzazione, gestito da Standard & Poor's. È il benchmark de facto del mercato azionario statunitense."
+    interpretation: "Variazioni positive indicano crescita media delle large-cap USA; il livello assoluto è rappresentativo dello stato dell'economia USA."
+    typical_range: "Storicamente tra 100 (1980) e 6000+ (2025)"
+    unit: "punti"
+
+  - term: "S&P 500"
+    full_name: "S&P 500 Index"
+    category: "index"
+    description: "Vedi SPX."
+    synonyms: ["SPX"]
+
+  - term: "NDX"
+    full_name: "NASDAQ-100 Index"
+    category: "index"
+    description: "Le 100 società non-finanziarie più capitalizzate quotate al NASDAQ. Forte concentrazione tech (Apple, Microsoft, Google, Nvidia, ecc.)."
+    interpretation: "Più volatile dell'S&P 500 a causa del peso del settore tecnologico."
+    unit: "punti"
+
+  - term: "NASDAQ"
+    full_name: "NASDAQ Composite Index"
+    category: "index"
+    description: "Indice di tutte le ~3000 società quotate al NASDAQ, pesate per capitalizzazione. Heavy-tech."
+    unit: "punti"
+
+  - term: "DJIA"
+    full_name: "Dow Jones Industrial Average"
+    category: "index"
+    description: "30 blue-chip USA, pesato per prezzo (non capitalizzazione). Indice storico ma metodologicamente datato."
+    unit: "punti"
+
+  - term: "RUT"
+    full_name: "Russell 2000 Index"
+    category: "index"
+    description: "2000 small-cap USA. Misura la salute dell'economia 'Main Street' interna."
+    unit: "punti"
+
+  - term: "VIX"
+    full_name: "CBOE Volatility Index"
+    category: "index"
+    description: "Volatilità implicita attesa dell'S&P 500 a 30 giorni, derivata dai prezzi delle opzioni put e call. Spesso chiamato 'fear index'."
+    interpretation: "VIX < 20: mercato calmo. 20-30: cautela. > 30: stress significativo. > 40: panico."
+    typical_range: "10-80, mediana storica ~17"
+    unit: "%"
+
+  - term: "MOVE"
+    full_name: "Merrill Lynch Option Volatility Estimate Index"
+    category: "index"
+    description: "L'equivalente del VIX per il mercato Treasury USA. Misura la volatilità implicita dei tassi di interesse a 1 mese."
+    interpretation: "MOVE elevato segnala incertezza sui tassi futuri della Fed."
+
+  - term: "DXY"
+    full_name: "U.S. Dollar Index"
+    category: "index"
+    description: "Misura il valore del dollaro USA contro un paniere di 6 valute principali (EUR 57.6%, JPY 13.6%, GBP 11.9%, CAD 9.1%, SEK 4.2%, CHF 3.6%)."
+    interpretation: "DXY in salita = dollaro forte = pressione su asset USD-denominati e mercati emergenti."
+    typical_range: "70-120"
+
+  - term: "FTSE MIB"
+    full_name: "Financial Times Stock Exchange Milano Indice di Borsa"
+    category: "index"
+    description: "40 società italiane più capitalizzate quotate a Milano. Benchmark dell'azionario italiano."
+    unit: "punti"
+
+  - term: "EURO STOXX 50"
+    full_name: "EURO STOXX 50"
+    category: "index"
+    description: "50 blue-chip dell'Eurozona (esclude UK, Svizzera). Benchmark equity europeo."
+    unit: "punti"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # COMMODITIES
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "WTI"
+    full_name: "West Texas Intermediate Crude Oil"
+    category: "concept"
+    description: "Greggio di riferimento USA, scambiato sul NYMEX. Benchmark petrolifero per l'emisfero occidentale."
+    unit: "USD/barile"
+
+  - term: "Brent"
+    full_name: "Brent Crude Oil"
+    category: "concept"
+    description: "Greggio di riferimento europeo, scambiato sull'ICE. Benchmark globale (~2/3 del petrolio mondiale viene prezzato su Brent)."
+    unit: "USD/barile"
+
+  - term: "Gold"
+    full_name: "Spot Gold"
+    category: "concept"
+    description: "Prezzo dell'oro fisico spot. Bene rifugio classico e copertura contro inflazione/dollaro debole."
+    unit: "USD/oncia troy"
+
+  - term: "Silver"
+    full_name: "Spot Silver"
+    category: "concept"
+    description: "Argento fisico spot. Più volatile dell'oro perché ha forte componente di domanda industriale."
+    unit: "USD/oncia troy"
+
+  - term: "Nat Gas"
+    full_name: "Natural Gas (Henry Hub)"
+    category: "concept"
+    description: "Gas naturale al benchmark Henry Hub (Louisiana, USA). Highly volatile, sensibile a meteo e stoccaggi."
+    unit: "USD/MMBtu"
+
+  - term: "Copper"
+    full_name: "Copper Futures"
+    category: "concept"
+    description: "Rame futures (COMEX). Soprannominato 'Dr. Copper' perché considerato leading indicator dell'economia globale per l'uso industriale pervasivo."
+    unit: "USD/libbra"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # FOREX
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "EUR/USD"
+    full_name: "Euro / U.S. Dollar"
+    category: "concept"
+    description: "Tasso di cambio: quanti dollari USA si ottengono per 1 euro. La coppia FX più scambiata al mondo."
+    interpretation: "EUR/USD in salita = euro forte / dollaro debole."
+
+  - term: "USD/JPY"
+    full_name: "U.S. Dollar / Japanese Yen"
+    category: "concept"
+    description: "Quanti yen per 1 dollaro USA."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # METRICHE DI PERFORMANCE PORTAFOGLIO
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "TWR"
+    full_name: "Time-Weighted Return"
+    category: "metric"
+    description: "Rendimento del portafoglio che rimuove l'effetto dei depositi e prelievi. Standard CFA per misurare la qualità delle scelte di investimento, indipendentemente dal timing dei flussi di cassa."
+    interpretation: "Confrontabile direttamente con i benchmark (es. S&P 500). È la metrica giusta per giudicare l'abilità del gestore."
+    formula: "TWR = ∏(1 + r_i) - 1, dove r_i sono i rendimenti dei sottoperiodi tra cash flows"
+    unit: "%"
+
+  - term: "MWR"
+    full_name: "Money-Weighted Return"
+    category: "metric"
+    description: "Rendimento effettivo che include l'impatto dei tuoi versamenti e prelievi (è l'IRR del portafoglio). Risponde alla domanda 'quanto ho guadagnato io concretamente?'."
+    interpretation: "Sensibile al timing: comprare di più ai minimi alza l'MWR; comprare ai massimi lo abbassa."
+    formula: "MWR = IRR risolvendo: 0 = Σ CF_t / (1 + IRR)^t"
+    unit: "%"
+
+  - term: "Alpha"
+    full_name: "Jensen's Alpha"
+    category: "metric"
+    description: "Rendimento extra rispetto a quello atteso dato il rischio assunto, misurato vs un benchmark. È l'eccesso di rendimento NON spiegato dall'esposizione di mercato."
+    interpretation: "Alpha > 0 = sovraperformance risk-adjusted. Alpha < 0 = sottoperformance. Significatività verificata via t-statistic."
+    formula: "α = R_p − [R_f + β × (R_m − R_f)]"
+    unit: "%"
+
+  - term: "Sharpe"
+    full_name: "Sharpe Ratio"
+    category: "metric"
+    description: "Rendimento per unità di rischio totale assunto (Sharpe, 1966). Misura quanto efficientemente un portafoglio converte rischio in rendimento."
+    interpretation: "Sharpe < 0: peggio del risk-free. 0-1: subottimale. 1-2: buono. > 2: ottimo. > 3: eccezionale (raro)."
+    formula: "Sharpe = (R_p − R_f) / σ_p"
+    typical_range: "tipicamente -1 a +3"
+
+  - term: "Sortino"
+    full_name: "Sortino Ratio"
+    category: "metric"
+    description: "Come Sharpe ma usa solo la volatilità negativa (downside deviation). Penalizza solo le oscillazioni 'cattive', non quelle positive."
+    interpretation: "Tipicamente più alto del Sharpe per la stessa serie. Confronti hanno senso solo tra Sortino, non tra Sortino e Sharpe."
+    formula: "Sortino = (R_p − R_f) / σ_downside"
+
+  - term: "Calmar"
+    full_name: "Calmar Ratio"
+    category: "metric"
+    description: "Rendimento annualizzato diviso per il valore assoluto del Maximum Drawdown. Premia chi guadagna senza grandi cadute."
+    interpretation: "Calmar > 1 è buono; < 0.5 segnala rischio di drawdown elevato vs rendimento."
+    formula: "Calmar = CAGR / |MaxDD|"
+
+  - term: "Beta"
+    full_name: "Beta Coefficient"
+    category: "metric"
+    description: "Sensibilità del titolo/portafoglio ai movimenti del mercato di riferimento (CAPM). Misura il rischio sistematico."
+    interpretation: "β = 1: si muove come il mercato. β > 1: amplifica (più volatile). β < 1: smorza. β < 0: inversamente correlato."
+    formula: "β = Cov(R_p, R_m) / Var(R_m)"
+    typical_range: "tipicamente 0.5–1.5 per equity diversificato"
+
+  - term: "Beta vs S&P"
+    full_name: "Beta vs S&P 500"
+    category: "metric"
+    description: "Beta del portafoglio calcolato usando l'S&P 500 come mercato di riferimento. Vedi 'Beta'."
+    synonyms: ["Beta"]
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # METRICHE DI RISCHIO
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "VaR"
+    full_name: "Value at Risk"
+    category: "metric"
+    description: "Perdita massima attesa con un dato livello di confidenza in un orizzonte temporale fisso. Esempio: VaR 95% giornaliero = -4.2% significa che nel 95% dei giorni la perdita non supera il 4.2%."
+    interpretation: "Indica la 'soglia di tolleranza': nel restante 5% (5 giorni su 100) si possono avere perdite peggiori, ma il VaR non dice di quanto."
+    formula: "VaR_α = − inf{x : P(R ≤ x) ≥ 1 − α}"
+    warnings:
+      - "Non cattura la magnitudine delle perdite oltre la soglia: per quello serve il CVaR."
+
+  - term: "VaR 95%"
+    full_name: "Value at Risk (95% confidence)"
+    category: "metric"
+    description: "VaR al livello di confidenza del 95%. Vedi 'VaR'."
+    synonyms: ["VaR"]
+
+  - term: "CVaR"
+    full_name: "Conditional Value at Risk (Expected Shortfall)"
+    category: "metric"
+    description: "Perdita media attesa nei casi peggiori oltre il VaR. Risponde a: 'se finisco nel 5% peggiore, in media quanto perdo?'."
+    interpretation: "Più informativo del VaR puro perché cattura la severità delle code estreme. Sub-additivo (matematicamente coerente)."
+    synonyms: ["Expected Shortfall", "ES"]
+
+  - term: "CVaR 95%"
+    full_name: "Conditional VaR at 95% confidence"
+    category: "metric"
+    description: "CVaR al livello del 95%. Vedi 'CVaR'."
+    synonyms: ["CVaR"]
+
+  - term: "Max DD"
+    full_name: "Maximum Drawdown"
+    category: "metric"
+    description: "Massima perdita peak-to-trough nel periodo osservato, espressa come percentuale negativa. Non rappresenta una perdita 'realizzata' a meno di vendere al minimo."
+    interpretation: "MaxDD < -10%: stress moderato. < -20%: bear market. < -40%: crisi sistemica. È la metrica più dolorosa psicologicamente."
+    typical_range: "Equity globale ha avuto DD storici fino a -55% (2008)"
+
+  - term: "MaxDD"
+    full_name: "Maximum Drawdown"
+    category: "metric"
+    description: "Vedi 'Max DD'."
+    synonyms: ["Max DD"]
+
+  - term: "Volatility"
+    full_name: "Annualized Volatility"
+    category: "metric"
+    description: "Deviazione standard dei rendimenti, annualizzata. Misura quanto i rendimenti si scostano dalla loro media nel tempo."
+    interpretation: "Cash: ~0%. Bond developed: 3-7%. Equity globale: ~15-18%. Equity emerging: 20-30%. Crypto: 60%+."
+    formula: "σ_annual = σ_daily × √252"
+    unit: "%"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SENTIMENT
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "CNN F&G"
+    full_name: "CNN Fear & Greed Index"
+    category: "indicator"
+    description: "Composito 0-100 di 7 indicatori di sentiment USA (momentum, breadth, volatilità, junk bond demand, ecc.)."
+    interpretation: "0-25: paura estrema (storicamente buon entry point). 25-45: paura. 45-55: neutro. 55-75: avidità. 75-100: avidità estrema (segnale contrarian di vendita)."
+    typical_range: "0-100"
+
+  - term: "AAII"
+    full_name: "AAII Sentiment Survey"
+    category: "indicator"
+    description: "Sondaggio settimanale dell'American Association of Individual Investors: percentuale di investitori bullish, bearish, neutral. Indicatore contrarian: gli estremi suggeriscono il segnale opposto."
+    interpretation: "Bullish > 50% prolungato: cautela (euforia retail). Bearish > 50%: spesso vicino a minimi."
+
+  - term: "Crypto F&G"
+    full_name: "Crypto Fear & Greed Index (Alternative.me)"
+    category: "indicator"
+    description: "Composito 0-100 specifico per il mercato crypto, basato su volatilità BTC, momentum, social media, dominance, trends."
+
+  - term: "Put/Call"
+    full_name: "Put/Call Ratio"
+    category: "indicator"
+    description: "Rapporto tra volume di opzioni put e call sul CBOE. Indicatore contrarian: P/C alto = paura (potenziale buy)."
+    interpretation: "P/C > 1.0: sentiment bearish. < 0.7: bullish. Picchi sopra 1.5 spesso vicini a minimi di mercato."
+
+  - term: "COT"
+    full_name: "Commitments of Traders Report"
+    category: "indicator"
+    description: "Report settimanale CFTC sulle posizioni nette di hedger commerciali, large speculators e small traders sui futures. Mostra cosa fa lo 'smart money'."
+
+  - term: "Insider"
+    full_name: "Insider Trading Activity"
+    category: "indicator"
+    description: "Saldo netto degli acquisti/vendite di azioni della propria società da parte di dirigenti (Form 4 SEC). Acquisti insider = segnale positivo."
+
+  - term: "Short Int"
+    full_name: "Short Interest Ratio"
+    category: "indicator"
+    description: "Percentuale del flottante venduta allo scoperto. Short interest molto alto può preludere a short squeeze al rialzo."
+
+  - term: "Finnhub"
+    full_name: "Finnhub News Sentiment Score"
+    category: "indicator"
+    description: "Score aggregato del sentiment delle news per il ticker, calcolato da Finnhub via NLP sui titoli giornalistici. Da -1 (bearish) a +1 (bullish)."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # MACRO INDICATORS (FRED)
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "GDP YoY"
+    full_name: "Gross Domestic Product Year-over-Year Growth"
+    category: "macro"
+    description: "Crescita del PIL anno su anno. Misura aggregata della produzione di beni e servizi nell'economia."
+    interpretation: "GDP YoY > 2.5%: economia in espansione robusta. 0-2%: crescita debole. < 0% per 2+ trimestri: recessione tecnica."
+    unit: "%"
+
+  - term: "CPI YoY"
+    full_name: "Consumer Price Index Year-over-Year (Headline Inflation)"
+    category: "macro"
+    description: "Variazione anno su anno dell'indice dei prezzi al consumo. Misura l'inflazione sperimentata dal consumatore tipico."
+    interpretation: "Target Fed: ~2%. > 4%: inflazione elevata, pressione su tassi. < 0%: deflazione (rara, problematica)."
+    unit: "%"
+
+  - term: "Unemployment"
+    full_name: "Unemployment Rate (U-3)"
+    category: "macro"
+    description: "Percentuale della forza lavoro disoccupata e attivamente in cerca di lavoro (definizione U-3 BLS)."
+    interpretation: "USA full employment ~4-4.5%. > 6%: rallentamento. > 8%: recessione conclamata. Forte crescita = pressione salariale."
+    unit: "%"
+
+  - term: "Fed Funds Rate"
+    full_name: "Federal Funds Rate (Target)"
+    category: "macro"
+    description: "Tasso obiettivo della Federal Reserve per i prestiti overnight tra banche USA. Strumento principale di politica monetaria."
+    interpretation: "Tassi alti = politica restrittiva (frena inflazione e crescita). Tassi bassi = espansiva. La curva attesa si vede dai futures Fed funds."
+    unit: "%"
+
+  - term: "10Y Yield"
+    full_name: "10-Year U.S. Treasury Yield"
+    category: "macro"
+    description: "Rendimento del titolo di stato USA a 10 anni. Benchmark globale per il costo del denaro a lungo termine."
+    interpretation: "Salita del 10Y = aspettative di inflazione e/o crescita più alte; pressione su valutazioni equity (DCF). Inversione 2s10s storicamente segnale recessione."
+    unit: "%"
+
+  - term: "PCE"
+    full_name: "Personal Consumption Expenditures Price Index"
+    category: "macro"
+    description: "Indice di inflazione preferito dalla Federal Reserve. Più ampio del CPI (include sostituzioni di consumo)."
+    unit: "%"
+
+  - term: "NFP"
+    full_name: "Non-Farm Payrolls"
+    category: "macro"
+    description: "Variazione mensile dei posti di lavoro USA escluso settore agricolo. Pubblicato il primo venerdì del mese dal BLS. Market mover di alto impatto."
+
+  - term: "FRED"
+    full_name: "Federal Reserve Economic Data (St. Louis Fed)"
+    category: "source"
+    description: "Database della Fed di St. Louis con 800k+ serie macroeconomiche USA e mondo. API gratuita, no rate limit."
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # MODELLI / CONCEPTS
+  # ─────────────────────────────────────────────────────────────────────────
+  - term: "DCC-GARCH"
+    full_name: "Dynamic Conditional Correlation - GARCH"
+    category: "model"
+    description: "Modello (Engle, 2002) per stimare correlazioni dinamiche tra asset, condizionate alla volatilità che cambia nel tempo. Diversamente dalla correlazione semplice, riconosce che le correlazioni in mercati stressati possono essere molto diverse da quelle in mercati calmi."
+    warnings:
+      - "Computazionalmente costoso. La nostra implementazione 'lite' usa EWMA come proxy."
+
+  - term: "HMM"
+    full_name: "Hidden Markov Model"
+    category: "model"
+    description: "Modello probabilistico per identificare 'regimi nascosti' (stati di mercato come bull/bear/sideways) a partire dalle osservazioni di rendimenti e volatilità."
+
+  - term: "Monte Carlo"
+    full_name: "Monte Carlo Simulation"
+    category: "model"
+    description: "Tecnica di simulazione che genera migliaia di scenari aleatori per stimare la distribuzione di un risultato futuro. Utile per stress test, FIRE planning, VaR."
+
+  - term: "FIRE"
+    full_name: "Financial Independence, Retire Early"
+    category: "concept"
+    description: "Strategia che mira a accumulare capitale sufficiente da finanziare le proprie spese tramite il rendimento del patrimonio investito, anziché lavoro retribuito. Il capitale 'FIRE' è tipicamente ~25× le spese annue (regola del 4%)."
+    formula: "FIRE_target ≈ Expenses_annual × 25"
+
+  - term: "SWR"
+    full_name: "Safe Withdrawal Rate"
+    category: "concept"
+    description: "Tasso di prelievo annuale dal patrimonio investito considerato 'sicuro' per non esaurirlo nell'orizzonte di pensionamento. La regola classica del 4% (Bengen, 1994) si basa su 30 anni di pensione."
+
+  - term: "Sentiment Radar"
+    full_name: "Sentiment Composite Radar"
+    category: "concept"
+    description: "Visualizzazione polare che combina più indicatori di sentiment indipendenti su un singolo grafico. Ogni asse è una sorgente, il valore va da -1 (bearish) a +1 (bullish), normalizzato a 0-100 per leggibilità."
+    interpretation: "Pattern 'pieno' su tutti gli assi con valori alti (>75): mercato in euforia, rischio contrarian. Pattern 'vuoto' (<25): paura diffusa, possibili occasioni. Pattern misto: sentiment ambiguo."

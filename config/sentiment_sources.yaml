@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Sentiment sources configuration (Rule 26).
+#
+# Composite weights for the SentimentAggregator. Weights are renormalized
+# to sum=1 so absolute values don't matter, only relative.
+# ═══════════════════════════════════════════════════════════════════════════
+composite_weights:
+  cnn_fear_greed:      0.20    # Most established, broad market
+  aaii:                0.15    # American Association of Individual Investors
+  put_call_ratio:      0.15    # Options market positioning
+  cot_report:          0.12    # Commercials vs speculators
+  finnhub_news:        0.12    # News-based aggregated
+  insider_trading:     0.10    # Form 4 transactions
+  short_interest:      0.08    # Short squeeze / positioning
+  crypto_fear_greed:   0.08    # Only relevant when BTC > 5% of universe
+
+# Contrarian thresholds
+thresholds:
+  extreme_greed:    0.6        # composite >= → contrarian sell signal
+  extreme_fear:    -0.6        # composite <= → contrarian buy signal
+
+# Minimum sources for full confidence (Rule 26)
+min_sources_full_confidence: 3
+
+# Cache TTL for source signals (seconds)
+cache_ttl_seconds: 3600

@@ -1,0 +1,70 @@
+# ─── Secrets (Regola 15) ────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+secrets/
+.secrets.baseline
+
+# ─── Database files ─────────────────────────────────────────────
+db/*.duckdb
+db/*.duckdb.wal
+db/*.sqlite
+db/*.sqlite-journal
+db/*.sqlite-wal
+db/*.sqlite-shm
+
+# ─── Logs & runtime ─────────────────────────────────────────────
+logs/
+*.log
+data/backups/*.tar.gz
+data/cache/
+
+# ─── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ─── Poetry ─────────────────────────────────────────────────────
+# poetry.lock DEVE essere committato per riproducibilità build
+
+# ─── Virtual environments ───────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ─── Testing & coverage ─────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# ─── Type checking & linting ────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+
+# ─── IDE ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ─── Docker ─────────────────────────────────────────────────────
+.env.docker
+
+# ─── MkDocs ─────────────────────────────────────────────────────
+site/
+
+# ─── Streamlit ──────────────────────────────────────────────────
+.streamlit/secrets.toml

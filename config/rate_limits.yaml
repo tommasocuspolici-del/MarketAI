@@ -1,0 +1,96 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# RATE LIMITS CONFIGURATION — Regola 28
+# ═══════════════════════════════════════════════════════════════════════════
+# Ogni fetcher esterno dichiara qui il proprio budget rate limit.
+# Il RateLimitManager (shared/rate_limit_manager.py) è l'UNICO punto di
+# controllo. Nessun fetcher può bypassare il rate limiter.
+#
+# Campi:
+#   requests_per_minute:  int        — limite al minuto
+#   requests_per_day:     int | str  — int oppure "unlimited"
+#   burst_size:           int        — richieste burst consentite
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── FRED (Federal Reserve Economic Data) ────────────────────────────────
+# Free tier: ~120 req/min, no limite giornaliero
+fred:
+  requests_per_minute: 120
+  requests_per_day: unlimited
+  burst_size: 10
+
+# ─── Yahoo Finance (non ufficiale) ───────────────────────────────────────
+# Rate limit stimati: throttling gentile per evitare ban
+yahoo_finance:
+  requests_per_minute: 60
+  requests_per_day: 2000
+  burst_size: 5
+
+# ─── Finnhub ─────────────────────────────────────────────────────────────
+# Free tier: 60 req/min, 5000 req/day
+finnhub:
+  requests_per_minute: 60
+  requests_per_day: 5000
+  burst_size: 5
+
+# ─── Alpha Vantage ───────────────────────────────────────────────────────
+# Free tier MOLTO restrittivo: 5 req/min, 500 req/day
+# Usare SOLO come fallback, con cache aggressiva
+alpha_vantage:
+  requests_per_minute: 5
+  requests_per_day: 500
+  burst_size: 1
+
+# ─── SEC EDGAR ───────────────────────────────────────────────────────────
+# SEC richiede User-Agent corretto e throttle ≤ 10 req/sec
+# Impostiamo 10 req/min per sicurezza (molto sotto il limite SEC)
+sec_edgar:
+  requests_per_minute: 10
+  requests_per_day: unlimited
+  burst_size: 2
+
+# ─── ECB Data Portal ─────────────────────────────────────────────────────
+ecb:
+  requests_per_minute: 30
+  requests_per_day: unlimited
+  burst_size: 5
+
+# ─── Eurostat ────────────────────────────────────────────────────────────
+eurostat:
+  requests_per_minute: 30
+  requests_per_day: unlimited
+  burst_size: 5
+
+# ─── World Bank ──────────────────────────────────────────────────────────
+world_bank:
+  requests_per_minute: 30
+  requests_per_day: unlimited
+  burst_size: 5
+
+# ─── BLS (Bureau of Labor Statistics) ────────────────────────────────────
+# 500 req/day senza API key, 25 req/min; 500 → migliaia con API key
+bls:
+  requests_per_minute: 25
+  requests_per_day: 500
+  burst_size: 3
+
+# ─── IMF ─────────────────────────────────────────────────────────────────
+imf:
+  requests_per_minute: 10
+  requests_per_day: unlimited
+  burst_size: 2
+
+# ─── CoinGecko (crypto) ──────────────────────────────────────────────────
+# Free tier: ~30 req/min
+coingecko:
+  requests_per_minute: 30
+  requests_per_day: 10000
+  burst_size: 5
+
+# ─── eToro Public API ─────────────────────────────────────────────────────
+# Free tier: rate limit non documentato, ma i test mostrano ~60 req/min
+# stabili; usiamo soglia conservativa per non rischiare ban.
+etoro:
+  requests_per_minute: 60
+  requests_per_day: 5000
+  burst_size: 5
+

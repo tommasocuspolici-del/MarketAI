@@ -1,0 +1,74 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Alert rules — declarative rules evaluated by RuleEngine.
+#
+# Format:
+#   - id: unique_id
+#     type: <AlertType enum value>
+#     condition:
+#       field: <dotted path on context>
+#       op: <eq|ne|gt|ge|lt|le>
+#       value: <comparison value>
+#     severity: <info|warning|critical>
+#     message: <template, supports {value}>
+#     dedup_window_minutes: <minutes>
+# ═══════════════════════════════════════════════════════════════════════════
+rules:
+  - id: regime_stress
+    type: regime_change
+    condition:
+      field: regime.current_regime.label
+      op: eq
+      value: stress
+    severity: critical
+    message: "Market regime shifted to STRESS"
+    dedup_window_minutes: 60
+
+  - id: regime_bear
+    type: regime_change
+    condition:
+      field: regime.current_regime.label
+      op: eq
+      value: bear
+    severity: warning
+    message: "Market regime shifted to BEAR"
+    dedup_window_minutes: 240
+
+  - id: risk_score_extreme
+    type: risk_score_high
+    condition:
+      field: risk_score.score
+      op: ge
+      value: 75
+    severity: critical
+    message: "Composite risk score extreme: {value}"
+    dedup_window_minutes: 30
+
+  - id: risk_score_elevated
+    type: risk_score_high
+    condition:
+      field: risk_score.score
+      op: ge
+      value: 50
+    severity: warning
+    message: "Composite risk score elevated: {value}"
+    dedup_window_minutes: 60
+
+  - id: sentiment_extreme_greed
+    type: sentiment_extreme
+    condition:
+      field: sentiment.contrarian_signal
+      op: eq
+      value: extreme_greed
+    severity: warning
+    message: "Sentiment composite extreme greed — contrarian sell"
+    dedup_window_minutes: 360
+
+  - id: sentiment_extreme_fear
+    type: sentiment_extreme
+    condition:
+      field: sentiment.contrarian_signal
+      op: eq
+      value: extreme_fear
+    severity: warning
+    message: "Sentiment composite extreme fear — contrarian buy"
+    dedup_window_minutes: 360

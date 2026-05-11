@@ -1,0 +1,51 @@
+# ============================================================================
+# Serie FRED estese — input completo per MacroConvictionCalculator (v7.1.1)
+# ============================================================================
+# Roadmap unificata: 28 serie macro che coprono Settimana 0 + 25 migliorie.
+# Ogni modulo engine usa il subset che gli serve.
+# ============================================================================
+
+labour_market:                          # Miglioria #2: Claims + JOLTS
+  - { id: "ICSA",    label: "Initial Jobless Claims (weekly)",    freq: "weekly" }
+  - { id: "CCSA",    label: "Continued Claims (weekly)",          freq: "weekly" }
+  - { id: "JTSJOL",  label: "Job Openings (JOLTS monthly)",       freq: "monthly" }
+  - { id: "PAYEMS",  label: "Nonfarm Payrolls (monthly)",         freq: "monthly" }
+  - { id: "UNRATE",  label: "Unemployment Rate",                  freq: "monthly" }
+
+inflation:
+  - { id: "CPIAUCSL", label: "CPI Urban All Items YoY",           freq: "monthly" }
+  - { id: "CPILFESL", label: "CPI Core (ex food & energy)",       freq: "monthly" }
+  - { id: "T10YIE",   label: "10Y Breakeven Inflation (TIPS)",    freq: "daily" }
+  - { id: "PCEPI",    label: "PCE Price Index (Fed preferred)",   freq: "monthly" }
+
+rates_yield_curve:
+  - { id: "DGS3MO",   label: "3M Treasury",                        freq: "daily" }
+  - { id: "DGS2",     label: "2Y Treasury",                        freq: "daily" }
+  - { id: "DGS5",     label: "5Y Treasury",                        freq: "daily" }
+  - { id: "DGS10",    label: "10Y Treasury",                       freq: "daily" }
+  - { id: "DGS30",    label: "30Y Treasury",                       freq: "daily" }
+  - { id: "T10Y2Y",   label: "10Y-2Y Spread",                      freq: "daily" }
+  - { id: "T10Y3M",   label: "10Y-3M Spread (Estrella-Mishkin)",   freq: "daily" }
+  - { id: "FEDFUNDS", label: "Fed Funds Rate",                     freq: "monthly" }
+
+credit_spreads:                         # Miglioria #6: HY Spread
+  - { id: "BAMLH0A0HYM2", label: "ICE BofA HY OAS Spread",        freq: "daily" }
+  - { id: "BAMLC0A0CM",   label: "ICE BofA IG OAS Spread",         freq: "daily" }
+  - { id: "TEDRATE",       label: "TED Spread (LIBOR-TBill)",      freq: "daily" }
+
+liquidity:                              # Miglioria #15
+  - { id: "NFCI",    label: "Chicago Fed Financial Conditions",   freq: "weekly" }
+
+growth_activity:
+  - { id: "GDPC1",   label: "Real GDP QoQ annualizzato",          freq: "quarterly" }
+  - { id: "INDPRO",  label: "Industrial Production",               freq: "monthly" }
+  - { id: "RETAILSMNSA", label: "Retail Sales (NSA)",              freq: "monthly" }
+
+housing:                                # Miglioria #13
+  - { id: "HOUST",   label: "Housing Starts",                      freq: "monthly" }
+  - { id: "PERMIT",  label: "Building Permits",                    freq: "monthly" }
+  - { id: "CSUSHPINSA", label: "Case-Shiller Home Price Index",    freq: "monthly" }
+
+pmi_surveys:                            # Miglioria #12
+  - { id: "MANEMP",  label: "Manufacturing Employment",            freq: "monthly" }
+  - { id: "NAPM",    label: "ISM Manufacturing PMI (proxy)",       freq: "monthly" }

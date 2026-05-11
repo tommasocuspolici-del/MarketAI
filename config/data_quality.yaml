@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# DATA QUALITY CONFIGURATION — Regola 26
+# ═══════════════════════════════════════════════════════════════════════════
+# Pesi del quality_score, soglie di outlier/stale, max gap consentiti.
+# Tutti i valori in [0, 1] dove 1 = qualità perfetta.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── Pesi per il calcolo dello quality_score globale ─────────────────────
+# Il punteggio finale è una media ponderata di sotto-componenti, ognuno [0,1].
+# weights deve sommare a 1.0 (il loader normalizza se necessario).
+score_weights:
+  completeness: 0.35    # 1 - (gaps_count / total_expected)
+  outlier_purity: 0.30  # 1 - (outliers_count / total_rows)
+  freshness: 0.20       # 1 - (stale_days / max_acceptable_stale_days)
+  uniqueness: 0.15      # 1 - (duplicates_count / total_rows)
+
+# ─── Soglie per la rilevazione anomalie ──────────────────────────────────
+outlier_detection:
+  method: zscore               # zscore | iqr
+  zscore_threshold: 4.0        # Z-score > 4σ → outlier
+  iqr_multiplier: 3.0          # IQR fence: Q3 + 3×IQR (più permissiva di 1.5)
+  rolling_window: 30           # Finestra mobile per Z-score rolling
+
+# ─── Stale detection ─────────────────────────────────────────────────────
+stale_detection:
+  max_consecutive_same_value: 5      # > 5 valori identici consecutivi → stale
+  max_age_days: 5                    # Ultimo dato > 5 giorni → stale (per daily)
+
+# ─── Gap filling ─────────────────────────────────────────────────────────
+gap_filling:
+  method: ffill                 # ffill | linear | none
+  max_gap_days: 7               # Non riempie gap > 7 giorni consecutivi
+  preserve_weekends: true       # Daily prices: i weekend NON sono gap
+
+# ─── Soglie di accettazione (Regola 26) ──────────────────────────────────
+acceptance:
+  min_score_critical: 0.5       # < 0.5 → escludi da calcoli critici
+  min_score_backtest: 0.7       # < 0.7 → rifiuta backtest
+  warn_score: 0.8               # < 0.8 → emit warning

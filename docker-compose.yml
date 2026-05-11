@@ -1,0 +1,86 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Market Analysis AI — v6.0 — docker-compose
+# ═══════════════════════════════════════════════════════════════════════════
+# Servizi:
+#   · market_ai_app       — Dashboard engine (Streamlit, porta 8501)
+#   · market_ai_personal  — Dashboard personal (Streamlit, porta 8502)
+#   · market_ai_scheduler — APScheduler background
+#
+# Volumi persistenti:
+#   · ./db     → /app/db       (DuckDB + SQLite)
+#   · ./data   → /app/data     (backup + cache)
+#   · ./logs   → /app/logs
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  market_ai_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: market_ai_app
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      APP_ENV: production
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+      STREAMLIT_AUTH_ENABLED: "true"
+      # Secret montati via .env (docker-compose li legge automaticamente)
+    env_file:
+      - .env
+    volumes:
+      - ./db:/app/db
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  market_ai_personal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: market_ai_personal
+    restart: unless-stopped
+    ports:
+      - "8502:8502"
+    command: >
+      streamlit run presentation/dashboard_personal/app.py
+      --server.address=0.0.0.0
+      --server.port=8502
+    env_file:
+      - .env
+    volumes:
+      - ./db:/app/db
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      - market_ai_app
+
+  market_ai_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: market_ai_scheduler
+    restart: unless-stopped
+    command: ["python", "scripts/run_scheduler.py"]
+    env_file:
+      - .env
+    volumes:
+      - ./db:/app/db
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      - market_ai_app
+
+volumes:
+  db_data:
+  data_data:
+  logs_data:

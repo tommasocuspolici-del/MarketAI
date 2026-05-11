@@ -1,0 +1,56 @@
+# Secrets
+.env
+.env.local
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.hypothesis
+htmlcov
+.coverage
+.coverage.*
+
+# Virtual environments
+.venv
+venv
+env
+
+# Database & runtime
+db/*
+data/*
+logs/*
+!db/.gitkeep
+!data/.gitkeep
+!logs/.gitkeep
+
+# Testing
+tests/
+
+# Docs
+docs/
+site/
+
+# IDE
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Docker itself
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github
