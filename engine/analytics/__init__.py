@@ -1,36 +1,4 @@
-"""Engine analytics — sentiment, correlation, regime, pipeline."""
+"""engine.analytics.labour_market — Blocco B Labour Market Forecasting."""
 from __future__ import annotations
+__all__: list[str] = []
 
-from engine.analytics.correlation import (
-    CorrelationAnalyzer,
-    CorrelationReport,
-    LeadLagPair,
-    MarketRegime,
-    RegimeDetector,
-    RegimeReport,
-)
-from engine.analytics.pipeline import AnalysisPipeline, PipelineReport, RiskScore
-from engine.analytics.sentiment import (
-    CompositeSentiment,
-    SentimentAggregator,
-    SentimentSignal,
-    SentimentSource,
-)
-
-__version__ = "6.0.0"
-
-__all__ = [
-    "AnalysisPipeline",
-    "CompositeSentiment",
-    "CorrelationAnalyzer",
-    "CorrelationReport",
-    "LeadLagPair",
-    "MarketRegime",
-    "PipelineReport",
-    "RegimeDetector",
-    "RegimeReport",
-    "RiskScore",
-    "SentimentAggregator",
-    "SentimentSignal",
-    "SentimentSource",
-]

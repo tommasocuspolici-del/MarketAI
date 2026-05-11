@@ -1,14 +1,18 @@
-"""CompositeSignalAggregator — Settimana 8 Roadmap Unificata.
+"""CompositeSignalAggregator v2 — Blocco D Roadmap Analisi/Previsione.
 
 Aggrega tutti i segnali dell'engine in un unico score [-1, +1]
 con azione raccomandata e confidence.
 
-Pesi (da Roadmap Unificata §Settimana 8):
-  vix:         0.30
-  macro:       0.25
-  yield_curve: 0.20
-  credit:      0.15
-  claims:      0.10
+Pesi v2 (Blocco D — aggiornati per includere labour_market e surprise):
+  vix:            0.22   (era 0.30 — ridotto per far spazio)
+  macro:          0.20   (era 0.25)
+  yield_curve:    0.18   (era 0.20)
+  credit:         0.13   (era 0.15)
+  claims:         0.08   (era 0.10 — ora incorporato in labour)
+  labour_market:  0.12   ★ NUOVO — da LabourRegimeClassifier
+  surprise:       0.07   ★ NUOVO — da SurpriseSignalGenerator
+
+Somma pesi: 1.00 ✓
 
 Azione finale:
   composite > +0.3 → BUY  (HIGH se > 0.5)
@@ -34,18 +38,22 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
     from shared.db.macro_repo import MacroRepository
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"  # Blocco D: labour + surprise
 __all__ = ["CompositeSignalAggregator", "CompositeSignalOutput"]
 
 log = get_logger(__name__)
 
 _WEIGHTS: dict[str, float] = {
-    "vix":         0.30,
-    "macro":       0.25,
-    "yield_curve": 0.20,
-    "credit":      0.15,
-    "claims":      0.10,
+    "vix":           0.22,
+    "macro":         0.20,
+    "yield_curve":   0.18,
+    "credit":        0.13,
+    "claims":        0.08,
+    "labour_market": 0.12,   # ★ Blocco D: da LabourRegimeClassifier
+    "surprise":      0.07,   # ★ Blocco D: da SurpriseSignalGenerator
 }
+# Sanity check: pesi sommano a 1.0 (testato in test_composite_signal_v2.py)
+assert abs(sum(_WEIGHTS.values()) - 1.0) < 1e-9, "WEIGHTS must sum to 1.0"
 
 _BUY_THRESHOLD    =  0.30
 _REDUCE_THRESHOLD = -0.30
@@ -65,6 +73,8 @@ class CompositeSignalOutput:
         yield_curve_component: Contributo Yield Curve pesato.
         credit_component:   Contributo Credit pesato.
         claims_component:   Contributo Claims pesato.
+        labour_market_component: Contributo Labour Market (v2.0).
+        surprise_component: Contributo Economic Surprise (v2.0).
         components_used:    Lista componenti effettivamente disponibili.
         regime:             Regime HMM corrente (può essere None).
         credit_stress:      Livello stress credito.
@@ -80,8 +90,10 @@ class CompositeSignalOutput:
     macro_component:      float
     yield_curve_component:float
     credit_component:     float
-    claims_component:     float
-    components_used:      list[str]
+    claims_component:       float
+    labour_market_component: float           # ★ v2.0
+    surprise_component:      float           # ★ v2.0
+    components_used:         list[str]
     regime:               str | None
     credit_stress:        str | None
     claims_regime:        str | None
@@ -153,10 +165,20 @@ class CompositeSignalAggregator:
         if macro_comp is not None:
             components["macro"] = macro_comp
 
-        # ── 4. Regime HMM corrente ────────────────────────────────────────
+        # ── 4. Labour Market component (v2.0) ─────────────────────────────
+        labour_comp = self._read_labour_component()
+        if labour_comp is not None:
+            components["labour_market"] = labour_comp
+
+        # ── 5. Economic Surprise component (v2.0) ─────────────────────────
+        surprise_comp = self._read_surprise_component()
+        if surprise_comp is not None:
+            components["surprise"] = surprise_comp
+
+        # ── 6. Regime HMM corrente ────────────────────────────────────────
         meta["regime"] = self._read_current_regime()
 
-        # ── 5. Aggregazione pesata ────────────────────────────────────────
+        # ── 7. Aggregazione pesata ────────────────────────────────────────
         total_weight = sum(_WEIGHTS[k] for k in components if k in _WEIGHTS)
         if total_weight > 0:
             composite = float(
@@ -168,7 +190,7 @@ class CompositeSignalAggregator:
 
         composite = float(np.clip(composite, -1.0, 1.0))
 
-        # ── 6. Action e confidence ────────────────────────────────────────
+        # ── 8. Action e confidence ────────────────────────────────────────
         if composite >= _BUY_THRESHOLD:
             action = "BUY"
             confidence = "HIGH" if composite >= 0.50 else "MEDIUM"
@@ -185,11 +207,11 @@ class CompositeSignalAggregator:
         elif len(components) < 4 and confidence == "HIGH":
             confidence = "MEDIUM"
 
-        # ── 7. Breakdown JSON per UI ──────────────────────────────────────
+        # ── 9. Breakdown JSON per UI ──────────────────────────────────────
         breakdown = {k: round(v, 4) for k, v in components.items()}
         breakdown_json = json.dumps(breakdown)
 
-        # ── 8. Costruzione output ─────────────────────────────────────────
+        # ── 10. Costruzione output ─────────────────────────────────────────
         output = CompositeSignalOutput(
             computed_at=datetime.now(UTC),
             composite_score=composite,
@@ -200,6 +222,8 @@ class CompositeSignalAggregator:
             yield_curve_component=components.get("yield_curve", 0.0),
             credit_component=components.get("credit", 0.0),
             claims_component=components.get("claims", 0.0),
+            labour_market_component=components.get("labour_market", 0.0),
+            surprise_component=components.get("surprise", 0.0),
             components_used=list(components.keys()),
             regime=meta["regime"],
             credit_stress=meta["credit_stress"],
@@ -208,7 +232,7 @@ class CompositeSignalAggregator:
             breakdown_json=breakdown_json,
         )
 
-        # ── 9. Persist ────────────────────────────────────────────────────
+        # ── 11. Persist ────────────────────────────────────────────────────
         self._persist(output)
 
         log.info(
@@ -306,6 +330,40 @@ class CompositeSignalAggregator:
             return float(np.clip(result.macro_score, -1, 1))
         except Exception as exc:
             log.debug("composite.macro_calc_failed", error=str(exc)[:60])
+            return None
+
+    def _read_labour_component(self) -> float | None:
+        """Legge il composite_score da labour_regime (migration 009).
+
+        v2.0: usa il LabourRegimeClassifier score come componente.
+        """
+        try:
+            rows = self._db.query(
+                "SELECT composite_score FROM labour_regime "
+                "ORDER BY snapshot_date DESC LIMIT 1"
+            )
+            if not rows or rows[0][0] is None:
+                return None
+            return float(np.clip(rows[0][0], -1.0, 1.0))
+        except Exception as exc:
+            log.debug("composite.labour_read_failed", error=str(exc)[:60])
+            return None
+
+    def _read_surprise_component(self) -> float | None:
+        """Legge signal_value da surprise_signal (migration 010).
+
+        v2.0: Economic Surprise Engine segnale aggregato.
+        """
+        try:
+            rows = self._db.query(
+                "SELECT signal_value FROM surprise_signal "
+                "ORDER BY generated_at DESC LIMIT 1"
+            )
+            if not rows or rows[0][0] is None:
+                return None
+            return float(np.clip(rows[0][0], -1.0, 1.0))
+        except Exception as exc:
+            log.debug("composite.surprise_read_failed", error=str(exc)[:60])
             return None
 
     def _read_current_regime(self) -> str | None:
