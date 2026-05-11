@@ -29,6 +29,14 @@ Indicatori implementati:
 Regola 8: numpy per tutti i calcoli.
 Regola 9: schema Pandera su ogni input DataFrame.
 Regola 12: legge da PricesRepository, scrive su DuckDB.
+
+OTTIMIZZAZIONE v2.0 (Blocco A roadmap):
+  · _compute_obv: loop → np.sign + np.cumsum
+  · _compute_cmf: loop → np.convolve
+  · _compute_vwap: loop → np.convolve
+  · _rolling_mean: loop → np.convolve / window
+  · _rolling_zscore: loop → sliding_window_view batch
+  · Benchmark target: < 50ms su 5 anni dati (1260 barre)
 """
 from __future__ import annotations
 
@@ -48,7 +56,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
     from shared.db.prices_repo import PricesRepository
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"  # Blocco A: full vectorized
 log = structlog.get_logger(__name__)
 
 _MIN_BARS = 25  # minimo per calcoli su finestra 20gg
@@ -202,15 +210,10 @@ class VolumeAnalyzer:
 
     @staticmethod
     def _compute_obv(closes: np.ndarray, volumes: np.ndarray) -> np.ndarray:
-        obv = np.zeros(len(closes), dtype=np.float64)
-        for i in range(1, len(closes)):
-            if closes[i] > closes[i - 1]:
-                obv[i] = obv[i - 1] + volumes[i]
-            elif closes[i] < closes[i - 1]:
-                obv[i] = obv[i - 1] - volumes[i]
-            else:
-                obv[i] = obv[i - 1]
-        return obv
+        # OTTIMIZZAZIONE Blocco A: zero loop — cumsum vettorizzato (Regola 23)
+        # direction: +1 se close sale, -1 se scende, 0 invariato
+        direction = np.sign(np.diff(closes, prepend=closes[0]))
+        return np.cumsum(direction * volumes)
 
     @staticmethod
     def _compute_cmf(
@@ -218,24 +221,22 @@ class VolumeAnalyzer:
         lows:   np.ndarray, volumes: np.ndarray,
         window: int,
     ) -> np.ndarray:
-        """Chaikin Money Flow: pressione acquisto/vendita con volume."""
-        hl_range = highs - lows
-        # Money Flow Multiplier: [-1, 1]
-        mfm = np.where(
-            hl_range > 0,
-            ((closes - lows) - (highs - closes)) / hl_range,
-            np.float64(0.0),
-        )
-        mfv = mfm * volumes  # Money Flow Volume
+        """Chaikin Money Flow: pressione acquisto/vendita con volume.
 
-        cmf = np.zeros(len(closes), dtype=np.float64)
-        for i in range(window - 1, len(closes)):
-            vol_sum = np.sum(volumes[i - window + 1: i + 1])
-            cmf[i]  = (
-                np.sum(mfv[i - window + 1: i + 1]) / vol_sum
-                if vol_sum > 0 else np.float64(0.0)
-            )
-        return cmf
+        OTTIMIZZAZIONE Blocco A: loop sostituito con np.convolve (Regola 23).
+        Rolling sum = convoluzione con kernel di 1 — O(N) vs O(N*W) del loop.
+        """
+        hl_range = np.where(highs != lows, highs - lows, np.float64(1e-9))
+        mfm = ((closes - lows) - (highs - closes)) / hl_range
+        mfv = mfm * volumes
+
+        kernel   = np.ones(window, dtype=np.float64)
+        mfv_sum  = np.convolve(mfv, kernel, mode="full")[:len(mfv)]
+        vol_sum  = np.convolve(volumes, kernel, mode="full")[:len(volumes)]
+        vol_safe = np.where(vol_sum > 0, vol_sum, np.float64(1e-9))
+        cmf = mfv_sum / vol_safe
+        cmf[:window - 1] = np.float64(0.0)  # periodo non completo
+        return np.clip(cmf, -1.0, 1.0)
 
     @staticmethod
     def _compute_vwap(
@@ -243,34 +244,41 @@ class VolumeAnalyzer:
         lows:   np.ndarray, volumes: np.ndarray,
         window: int,
     ) -> np.ndarray:
-        """VWAP rolling su finestra mobile."""
+        """VWAP rolling su finestra mobile.
+
+        OTTIMIZZAZIONE Blocco A: loop sostituito con np.convolve (Regola 23).
+        """
         typical = (closes + highs + lows) / np.float64(3.0)
         tpv     = typical * volumes
 
-        vwap = np.zeros(len(closes), dtype=np.float64)
-        for i in range(window - 1, len(closes)):
-            vol_sum = np.sum(volumes[i - window + 1: i + 1])
-            vwap[i] = (
-                np.sum(tpv[i - window + 1: i + 1]) / vol_sum
-                if vol_sum > 0 else typical[i]
-            )
+        kernel   = np.ones(window, dtype=np.float64)
+        tpv_sum  = np.convolve(tpv, kernel, mode="full")[:len(tpv)]
+        vol_sum  = np.convolve(volumes, kernel, mode="full")[:len(volumes)]
+        vol_safe = np.where(vol_sum > 0, vol_sum, np.float64(1e-9))
+        vwap = tpv_sum / vol_safe
+        vwap[:window - 1] = np.nan  # periodo non completo
         return vwap
 
     @staticmethod
     def _rolling_mean(arr: np.ndarray, window: int) -> np.ndarray:
-        out = np.full(len(arr), np.nan, dtype=np.float64)
-        for i in range(window - 1, len(arr)):
-            out[i] = np.mean(arr[i - window + 1: i + 1])
+        # OTTIMIZZAZIONE Blocco A: convoluzione divide-per-window = rolling mean O(N)
+        kernel = np.ones(window, dtype=np.float64) / window
+        out = np.convolve(arr, kernel, mode="full")[:len(arr)]
+        out[:window - 1] = np.nan
         return out
 
     @staticmethod
     def _rolling_zscore(arr: np.ndarray, window: int) -> np.ndarray:
+        # OTTIMIZZAZIONE Blocco A: sliding_window_view + operazioni batch (Regola 23)
+        # Elimina il loop Python su ogni barra storica
         out = np.full(len(arr), np.float64(0.0), dtype=np.float64)
-        for i in range(window, len(arr)):
-            segment = arr[i - window: i]
-            mu  = np.mean(segment)
-            std = np.std(segment, ddof=1)
-            out[i] = (arr[i] - mu) / std if std > 0 else np.float64(0.0)
+        if len(arr) <= window:
+            return out
+        windows = np.lib.stride_tricks.sliding_window_view(arr, window)
+        mu  = windows.mean(axis=1)
+        std = windows.std(axis=1, ddof=1)
+        safe_std = np.where(std > 0, std, np.float64(1e-9))
+        out[window:] = (arr[window:] - mu[1:]) / safe_std[1:]
         return out
 
     def _load_ohlcv(self, ticker: str, exchange: str, limit: int) -> pd.DataFrame:

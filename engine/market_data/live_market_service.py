@@ -253,23 +253,44 @@ class LiveMarketService:
             return snapshot
 
         # Bulk download dei tickers per minimizzare chiamate HTTP.
-        tickers_yf = " ".join(d[1] for d in _KPI_DEFINITIONS)
+        # BUGFIX v7.2.2 (yfinance compat): yfinance 0.2.x+ usa MultiIndex (field, ticker)
+        # by default — rimosso group_by="ticker" (vecchia API) e auto_adjust=False.
+        # Aggiunti auto_adjust=True (nuovo default) e fallback per strutture diverse.
+        tickers_list = [d[1] for d in _KPI_DEFINITIONS]
+        data = None
         try:
             data = yf.download(
-                tickers=tickers_yf,
+                tickers=tickers_list,
                 period="5d",
                 interval="1d",
                 progress=False,
-                auto_adjust=False,
-                threads=True,
-                group_by="ticker",
+                auto_adjust=True,
+                multi_level_index=True,  # esplicito per yfinance >= 0.2.50
             )
+        except TypeError:
+            # Versioni precedenti non hanno multi_level_index param
+            try:
+                data = yf.download(
+                    tickers=" ".join(tickers_list),
+                    period="5d",
+                    interval="1d",
+                    progress=False,
+                    auto_adjust=True,
+                )
+            except (OSError, ValueError, KeyError) as exc:
+                data = None
+                log.warning("yfinance.download_failed", error=str(exc)[:120])
         except (OSError, ValueError, KeyError) as exc:
+            data = None
+            log.warning("yfinance.download_failed", error=str(exc)[:120])
+
+        if data is None or data.empty:
+            # Fallback globale: usa cache o segna tutto come non disponibile
             cached = self._read_cache_safe()
             if cached.kpis:
                 cached.is_stale = True
                 return cached
-            snapshot.kpis = self._build_unavailable_kpis(str(exc)[:120])
+            snapshot.kpis = self._build_unavailable_kpis("yfinance download failed")
             snapshot.n_errors = len(snapshot.kpis)
             return snapshot
 
@@ -286,6 +307,70 @@ class LiveMarketService:
                 snapshot.n_errors += 1
 
         return snapshot
+
+    def _get_ticker_frame(self, data: Any, yf_ticker: str) -> Any:
+        """Estrae il sotto-frame per un singolo ticker.
+
+        BUGFIX v7.2.2: gestisce tutte le varianti di struttura MultiIndex di yfinance:
+          · Nuova (>= 0.2.x): colonne (field, ticker) — usa xs(ticker, level=1)
+          · Vecchia (<= 0.1.x): colonne (ticker, field) — usa data[ticker]
+          · Singolo ticker: colonne piane — ritorna data com'è
+        """
+        import pandas as pd
+
+        if data is None or data.empty:
+            return None
+
+        if isinstance(data.columns, pd.MultiIndex):
+            lvl0 = data.columns.get_level_values(0).tolist()
+            lvl1 = data.columns.get_level_values(1).tolist()
+
+            # Nuovo formato: (field, ticker) → ticker in level 1
+            if yf_ticker in lvl1:
+                try:
+                    return data.xs(yf_ticker, axis=1, level=1)
+                except (KeyError, TypeError):
+                    pass
+
+            # Vecchio formato: (ticker, field) → ticker in level 0
+            if yf_ticker in lvl0:
+                try:
+                    return data[yf_ticker]
+                except (KeyError, TypeError):
+                    pass
+
+            return None
+
+        # DataFrame a colonne piane: caso singolo ticker o fallback
+        if "Close" in data.columns or "close" in data.columns:
+            return data
+
+        return None
+
+    def _fetch_fast_info_fallback(self, yf_ticker: str) -> tuple[float | None, float | None]:
+        """Fallback singolo ticker via yf.Ticker.fast_info.
+
+        BUGFIX v7.2.2: usato quando il bulk download fallisce o restituisce dati vuoti.
+        Più lento ma più affidabile per ticker individuali.
+
+        Returns:
+            (last_price, delta_pct) — entrambi None se il ticker non è disponibile.
+        """
+        try:
+            import yfinance as yf
+            t = yf.Ticker(yf_ticker)
+            fi = t.fast_info
+            price = getattr(fi, "last_price", None)
+            prev = getattr(fi, "previous_close", None)
+            if price is None or price != price:   # NaN check
+                return None, None
+            price_f = float(price)
+            delta: float | None = None
+            if prev is not None and float(prev) > 0:
+                delta = (price_f - float(prev)) / float(prev)
+            return price_f, delta
+        except Exception:  # noqa: BLE001
+            return None, None
 
     def _read_cache_safe(self) -> MarketSnapshot:
         """Snapshot copy della cache corrente per uso fuori dal lock."""
@@ -380,6 +465,18 @@ class LiveMarketService:
             )
 
         except SilentFailureError as exc:
+            # BUGFIX v7.2.2: fast_info fallback prima di usare cache scaduta
+            price_fb, delta_fb = self._fetch_fast_info_fallback(yf_ticker)
+            if price_fb is not None:
+                log.info("yfinance.fast_info_fallback_used", ticker=yf_ticker)
+                return MarketKpi(
+                    term=term,
+                    yf_ticker=yf_ticker,
+                    value=price_fb,
+                    delta_pct=delta_fb,
+                    currency=currency,
+                    format_spec=fmt,
+                )
             cached = self._lookup_cached(term)
             if cached is not None:
                 return MarketKpi(

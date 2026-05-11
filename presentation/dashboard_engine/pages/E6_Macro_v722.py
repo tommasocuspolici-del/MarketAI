@@ -21,7 +21,6 @@ costanti o YAML), Regola 20 (zero valori hardcoded UI), Regola 5
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from engine.market_data.fred_simple_client import (
@@ -73,21 +72,12 @@ _TRAFFIC_LIGHTS: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
-# BUGFIX v7.2.1 (Modifica 3): rimosso slots=True — causa UnserializableReturnValueError
-# con st.cache_data. Le dataclass con slots=True non sono picklabili in alcune versioni.
-# frozen=True mantiene la immutabilità necessaria.
-@dataclass(frozen=True)
-class _MacroRow:
-    """Riga della tabella macro (no magic dicts)."""
-
-    series_id: str
-    term: str
-    value: float | None
-    delta: float | None
-    unit: str
-    status: str            # emoji 🟢 🟡 🔴 ⚪
-    status_text: str
-    trend: str             # ↑ ↓ →
+# BUGFIX v7.2.2 (fix definitivo): _MacroRow convertita da dataclass a dict puro.
+# I dict sono SEMPRE picklabili da st.cache_data — nessuna dipendenza da slots/frozen.
+# La precedente fix v7.2.1 (rimozione slots=True) non era sufficiente su alcune
+# versioni di Streamlit dove frozen=True dataclass è ancora non serializzabile.
+# Chiavi dict: series_id, term, value, delta, unit, status, status_text, trend
+_MacroRow = dict  # type alias per leggibilità del codice
 
 
 # ─────────────────────────────────────────────────── helpers
@@ -147,7 +137,7 @@ def _fetch_one_series(client: FredSimpleClient, series_id: str) -> tuple[float |
     return latest_value, delta
 
 
-def _build_macro_rows() -> list[_MacroRow]:
+def _build_macro_rows() -> list[dict]:
     """Costruisce la lista di righe macro fetchando da FRED.
 
     Funzione separata da body_macro per testabilita': puo' essere chiamata
@@ -157,20 +147,20 @@ def _build_macro_rows() -> list[_MacroRow]:
     if not client.has_api_key:
         # Costruisci righe vuote per indicare "API non configurata"
         return [
-            _MacroRow(
-                series_id=sid,
-                term=meta["term"],
-                value=None,
-                delta=None,
-                unit=meta["unit"],
-                status="⚪",
-                status_text="FRED API key non configurata",
-                trend="—",
-            )
+            {
+                "series_id": sid,
+                "term": meta["term"],
+                "value": None,
+                "delta": None,
+                "unit": meta["unit"],
+                "status": "⚪",
+                "status_text": "FRED API key non configurata",
+                "trend": "—",
+            }
             for sid, meta in _FRED_SERIES_MAP.items()
         ]
 
-    rows: list[_MacroRow] = []
+    rows: list[dict] = []
     for sid, meta in _FRED_SERIES_MAP.items():
         try:
             value, delta = _fetch_one_series(client, sid)
@@ -179,41 +169,41 @@ def _build_macro_rows() -> list[_MacroRow]:
             value, delta = None, None
         if value is None:
             rows.append(
-                _MacroRow(
-                    series_id=sid,
-                    term=meta["term"],
-                    value=None,
-                    delta=None,
-                    unit=meta["unit"],
-                    status="⚪",
-                    status_text="Dato non disponibile",
-                    trend="—",
-                )
+                {
+                    "series_id": sid,
+                    "term": meta["term"],
+                    "value": None,
+                    "delta": None,
+                    "unit": meta["unit"],
+                    "status": "⚪",
+                    "status_text": "Dato non disponibile",
+                    "trend": "—",
+                }
             )
             continue
         status_emoji, status_text = _classify_traffic_light(sid, value)
         rows.append(
-            _MacroRow(
-                series_id=sid,
-                term=meta["term"],
-                value=value,
-                delta=delta,
-                unit=meta["unit"],
-                status=status_emoji,
-                status_text=status_text,
-                trend=_classify_trend(delta),
-            )
+            {
+                "series_id": sid,
+                "term": meta["term"],
+                "value": value,
+                "delta": delta,
+                "unit": meta["unit"],
+                "status": status_emoji,
+                "status_text": status_text,
+                "trend": _classify_trend(delta),
+            }
         )
     return rows
 
 
-def _cached_fetch_macro_rows() -> list[_MacroRow]:
+def _cached_fetch_macro_rows() -> list[dict]:
     """Wrapper con cache Streamlit (TTL 1h) attorno a _build_macro_rows."""
     try:
         import streamlit as st
 
         @st.cache_data(ttl=3600, show_spinner=False)
-        def _fn() -> list[_MacroRow]:
+        def _fn() -> list[dict]:
             return _build_macro_rows()
 
         return _fn()
@@ -244,7 +234,7 @@ def body_macro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     rows = _cached_fetch_macro_rows()
 
     # Stato vuoto: tutte le serie non disponibili → messaggio chiaro
-    all_missing = all(r.value is None for r in rows)
+    all_missing = all(r["value"] is None for r in rows)
     if all_missing:
         st.error(
             "❌ **Nessun dato FRED disponibile.** Possibili cause:\n\n"
@@ -258,23 +248,23 @@ def body_macro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     # Tabella riassuntiva
     table_rows: list[dict[str, str]] = []
     for r in rows:
-        if r.value is None:
+        if r["value"] is None:
             value_display = "N/D"
             delta_display = "—"
         else:
-            value_display = f"{r.value:.2f}{r.unit}"
+            value_display = f"{r["value"]:.2f}{r["unit"]}"
             delta_display = (
-                f"{r.delta:+.2f}{r.unit}" if r.delta is not None else "—"
+                f"{r["delta"]:+.2f}{r["unit"]}" if r["delta"] is not None else "—"
             )
         table_rows.append(
             {
-                "Indicatore": r.term,
-                "FRED Series": r.series_id,
+                "Indicatore": r["term"],
+                "FRED Series": r["series_id"],
                 "Valore": value_display,
                 "Δ vs precedente": delta_display,
-                "Trend": r.trend,
-                "Stato": r.status,
-                "Note": r.status_text,
+                "Trend": r["trend"],
+                "Stato": r["status"],
+                "Note": r["status_text"],
             }
         )
     st.dataframe(table_rows, use_container_width=True, hide_index=True)
@@ -284,13 +274,13 @@ def body_macro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     render_section_header("📚 Cosa significano questi indicatori?")
 
     for r in rows:
-        entry = glossary.get_or_stub(r.term)
-        if r.value is not None:
-            value_display = f"{r.value:.2f}{r.unit}"
+        entry = glossary.get_or_stub(r["term"])
+        if r["value"] is not None:
+            value_display = f"{r["value"]:.2f}{r["unit"]}"
         else:
             value_display = "N/D"
         with st.expander(
-            f"{r.status} **{entry.term}** · {entry.full_name} → {value_display}",
+            f"{r["status"]} **{entry.term}** · {entry.full_name} → {value_display}",
             expanded=False,
         ):
             st.markdown(f"**Cosa rappresenta:** {entry.description}")
@@ -298,7 +288,7 @@ def body_macro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
                 st.markdown(f"**Come si legge:** {entry.interpretation}")
             if entry.typical_range:
                 st.markdown(f"**Range tipico:** {entry.typical_range}")
-            st.caption(f"_Stato attuale: {r.status_text}_")
+            st.caption(f"_Stato attuale: {r["status_text"]}_")
 
     # Sezione Leading Indicators (statica, didattica — non sono dati live)
     st.divider()

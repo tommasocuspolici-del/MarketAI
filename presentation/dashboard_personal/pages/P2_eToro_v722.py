@@ -494,37 +494,63 @@ def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
         )
         st.dataframe(df_grouped, use_container_width=True, hide_index=True)
 
-        # Selezione per modifica/eliminazione — usa ticker (ID6) per univocità
-        st.markdown("#### ✏️ Modifica / Elimina posizione singola")
-        ticker_list = [f"{p.ticker} ({p.position_id[:6]})" for p in positions]
-        selected_label = st.selectbox(
-            "Seleziona posizione da modificare/eliminare",
-            options=["—"] + ticker_list,
-            key="position_selector",
-        )
-        if selected_label != "—":
-            idx = ticker_list.index(selected_label)
-            selected = positions[idx]
-            edit_col, delete_col = st.columns([3, 1])
-            with edit_col:
-                edited = render_position_form(selected, key="edit_position_form")
-                if edited is not None:
-                    save_position(edited)
-                    st.success(f"✅ Posizione {edited.ticker} aggiornata.")
-                    st.rerun()
-            with delete_col:
-                if st.button(
-                    "🗑️ Elimina posizione",
-                    type="secondary",
-                    key="delete_position_btn",
-                ):
-                    st.session_state["confirm_delete_position"] = selected.position_id
-                if st.session_state.get("confirm_delete_position") == selected.position_id:
-                    st.warning("⚠️ Sei sicuro?")
-                    if st.button("Conferma eliminazione", key="confirm_del"):
-                        delete_position(selected.position_id)
-                        del st.session_state["confirm_delete_position"]
-                        st.success("Posizione eliminata.")
+        # ── Gestione posizioni singole: elimina inline + modifica ──────────
+        # MODIFICA: pulsante 🗑️ inline per ogni posizione, senza selectbox
+        st.markdown("#### ✏️ Posizioni singole — Modifica / Elimina")
+        st.caption("Ogni riga ha un pulsante 🗑️ di eliminazione rapida. Clicca ✏️ per modificare.")
+
+        confirm_key = "confirm_delete_position"
+        edit_key = "editing_position_id"
+
+        for pos in positions:
+            display = _extract_display_name(pos)
+            label = f"{display} · {pos.direction} · qty {pos.quantity:.4f} · carico {pos.avg_cost:.2f}"
+            col_info, col_edit, col_del = st.columns([5, 1, 1])
+            with col_info:
+                st.markdown(
+                    f"<span style='font-size:0.85rem;opacity:0.8;'>"
+                    f"<b>{display}</b> &nbsp;|&nbsp; {pos.direction} &nbsp;|&nbsp; "
+                    f"qty {pos.quantity:.4f} &nbsp;|&nbsp; carico {pos.avg_cost:.2f} "
+                    f"&nbsp;|&nbsp; {pos.currency}</span>",
+                    unsafe_allow_html=True,
+                )
+            with col_edit:
+                if st.button("✏️", key=f"edit_{pos.position_id}", help=f"Modifica {display}"):
+                    st.session_state[edit_key] = pos.position_id
+            with col_del:
+                # Pulsante eliminazione rapida con conferma inline
+                if st.session_state.get(confirm_key) == pos.position_id:
+                    # Stato conferma: mostra ok/annulla
+                    c_ok, c_cancel = st.columns(2)
+                    with c_ok:
+                        if st.button("✅", key=f"del_ok_{pos.position_id}", help="Conferma"):
+                            delete_position(pos.position_id)
+                            del st.session_state[confirm_key]
+                            st.success(f"Eliminata: {display}")
+                            st.rerun()
+                    with c_cancel:
+                        if st.button("❌", key=f"del_cancel_{pos.position_id}", help="Annulla"):
+                            del st.session_state[confirm_key]
+                            st.rerun()
+                else:
+                    if st.button("🗑️", key=f"del_{pos.position_id}", help=f"Elimina {display}"):
+                        st.session_state[confirm_key] = pos.position_id
+                        st.rerun()
+
+        # Sezione modifica espandibile per la posizione selezionata
+        editing_id = st.session_state.get(edit_key)
+        if editing_id:
+            editing_pos = next((p for p in positions if p.position_id == editing_id), None)
+            if editing_pos:
+                with st.expander(f"✏️ Modifica: {_extract_display_name(editing_pos)}", expanded=True):
+                    edited = render_position_form(editing_pos, key="edit_position_form")
+                    if edited is not None:
+                        save_position(edited)
+                        del st.session_state[edit_key]
+                        st.success(f"✅ Posizione {edited.ticker} aggiornata.")
+                        st.rerun()
+                    if st.button("✖ Chiudi", key="close_edit_form"):
+                        del st.session_state[edit_key]
                         st.rerun()
 
     st.divider()
