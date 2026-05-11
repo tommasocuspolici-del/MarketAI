@@ -49,3 +49,52 @@ health_monitoring: true            # HealthChecker attivo
 # ─── Sperimentale (NON abilitare in produzione) ──────────────────────────
 experimental_pytorch_lstm: false
 experimental_graph_embeddings: false
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP UNIFICATA v1.0 — Flag aggiuntivi (Settimana 0, Giorno 2)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Scheduler jobs ──────────────────────────────────────────────────────
+market_data_refresh: true             # Job prezzi ogni 4h lun-ven
+analysis_pipeline_scheduled: true     # Job pipeline ogni 4h (dopo dati)
+sentiment_refresh_hourly: false       # Sentiment orario (costoso)
+
+# ─── Alpha Generation — Modulo VIX ───────────────────────────────────────
+vix_based_analysis: true              # VixSignalCalculator + StrategyComposer
+vix_vxv_ratio: true                   # Ratio VIX/VXV per term structure
+vix_futures_term_structure: false     # Richiede API futures dedicata
+
+# ─── Engine improvements — Migliorie attive ───────────────────────────────
+futures_analysis: true                # Miglioria #1: CL=F, GC=F via yfinance
+claims_inflation_cross: true          # Miglioria #2: ICSA + CPIAUCSL
+hy_credit_spread: true                # Miglioria #6: BAMLH0A0HYM2
+earnings_calendar: false              # Miglioria #5: Finnhub (costoso)
+cot_data: false                       # Miglioria #7: parser custom (fase 3)
+breadth_indicators: false             # Miglioria #8: 500 ticker (fase 3)
+regime_conditional_sizing: true       # HMM regime → VIX thresholds
+carry_trade_monitor: false            # Miglioria #10: fase 3
+
+# ─── Analytics avanzati — Fase 3 (disabilitati per default) ──────────────
+gdpnow_feed: false                    # Miglioria #20: Atlanta Fed JSON
+alpha_decay_monitor: false            # Miglioria #23: fase 3
+factor_model: false                   # Miglioria #17: Fama-French fase 3
+
+# ══════════════════════════════════════════════════════════════════════════
+# HIGH-IMPACT LOW-COMPLEXITY MODULES (da 2_HIGH_IMPACT_MODULES.md)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── High-Impact Low-Complexity ──────────────────────────────────────────
+volume_analysis: true              # OBV, CMF, VWAP, Amihud
+divergence_detection: true         # RSI/MACD divergenze
+cvar_fat_tail: true                # CVaR con t-Student
+risk_contribution: true            # Risk contribution per asset
+vol_surface_full: true             # VIX9D, VIX3M, VIX6M, SKEW
+real_yield_analysis: true          # Real yield → oro → equity
+tail_hedge_analysis: true          # Correlazione hedge in stress
+
+# ─── Rebalancing Engine ──────────────────────────────────────────────────
+rebalancing_engine: true           # Engine attivo
+rebalancing_method: "hrp"          # 'markowitz'|'hrp'|'risk_parity'|'equal_weight'
+rebalancing_tax_aware: true        # Considera l'impatto fiscale IT
+rebalancing_min_trade_eur: 50.0    # Non suggerire trade < 50 EUR
+rebalancing_threshold_pct: 5.0     # Ribilancia solo se drift > 5% dal target

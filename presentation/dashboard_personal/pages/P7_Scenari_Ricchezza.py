@@ -136,13 +136,29 @@ def body_scenari_ricchezza(tokens: DesignTokens) -> None:  # pragma: no cover
                 "tra -8% e +22%; in ~95% tra -23% e +37%."
             )
 
+        # ── Parametri da engine via bridge (Roadmap Sett. 8) ──────────
+        eq_return = 0.07
+        eq_vol    = 0.15
+        try:
+            from bridge.market_context_builder import build_market_context
+            mctx      = build_market_context()
+            eq_return = mctx.equity_expected_return
+            eq_vol    = mctx.equity_volatility
+            st.caption(
+                f"📡 Parametri engine: rendimento atteso {eq_return*100:.1f}% "
+                f"| volatilità {eq_vol*100:.1f}% "
+                f"| regime {mctx.current_regime} | VIX {mctx.vix:.1f}"
+            )
+        except Exception as _exc:
+            st.caption(f"⚠️ Parametri engine non disponibili, uso default: {_exc}")
+
         if st.button("🎲 Simula", type="primary"):
             sim = WealthSimulator()
             result = sim.simulate(
                 initial_wealth=initial,
                 monthly_savings=monthly,
-                annual_return_mean=0.07,
-                annual_return_std=0.15,
+                annual_return_mean=eq_return,
+                annual_return_std=eq_vol,
                 years=years,
                 n_simulations=int(n_sim),
                 seed=42,
