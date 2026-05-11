@@ -19,6 +19,15 @@ Esempio d'uso::
 
 Il rendering si adatta automaticamente al livello utente (Beginner /
 Intermediate / Expert) configurato in session_state['user_level'].
+
+BUGFIX v7.2.1 (Modifiche 1, 2, 5, 6):
+  - text_main: prima usava tokens.colors.text (campo inesistente) con fallback
+    a "#0f172a" (blu scurissimo, invisibile su sfondo scuro). Ora usa correttamente
+    tokens.colors.accent_primary (#3B82F6, stesso blu del nome indice), come
+    richiesto dall'utente — valore prezzi ben visibile e coerente con il label.
+  - primary: usa tokens.colors.accent_primary se disponibile (sempre), evitando
+    il double-getattr fragile che poteva rompersi.
+  - text_muted: usa tokens.colors.text_secondary (campo corretto dalla v6.0 theme).
 """
 from __future__ import annotations
 
@@ -30,7 +39,7 @@ from shared.glossary import GlossaryEntry, get_glossary
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.2.0"
+__version__ = "7.2.1"
 
 __all__ = [
     "MetricSpec",
@@ -97,6 +106,25 @@ def _format_delta(delta: float, *, as_pct: bool) -> tuple[str, str]:
     return text, color_hint
 
 
+def _resolve_color(tokens: Any, attr_name: str, fallback: str) -> str:
+    """Estrae un colore dai token in modo robusto, senza doppio getattr fragile.
+
+    Prima cerca tokens.colors.<attr_name>, poi tokens.<attr_name>, infine fallback.
+    Questo risolve il bug dove 'text' non esiste su Colors e il fallback era
+    '#0f172a' (invisibile su sfondo scuro).
+    """
+    colors = getattr(tokens, "colors", None)
+    if colors is not None:
+        val = getattr(colors, attr_name, None)
+        if val is not None:
+            return str(val)
+    # Secondo tentativo: attributo direttamente su tokens
+    val2 = getattr(tokens, attr_name, None)
+    if val2 is not None:
+        return str(val2)
+    return fallback
+
+
 def _build_card_html(
     *,
     tokens: Any,
@@ -109,18 +137,27 @@ def _build_card_html(
 ) -> str:
     """Costruisce HTML della card. Funzione pura, testabile.
 
+    v7.2.1 (fix colori): utilizza _resolve_color() per tutti i colori.
+    - 'primary' → accent_primary (#3B82F6): nome/label ticker
+    - 'value'   → accent_primary (#3B82F6): prezzo/valore (stesso blu del nome,
+                  come richiesto — sostituisce il precedente '#0f172a' invisibile)
+    - 'muted'   → text_secondary (#B0B7C3): unit, note, variazione N/D
+
     v7.2 (fix B4): se ``delta_unavailable=True`` mostra esplicitamente
-    "variazione N/D" invece di non mostrare nulla. Cosi' l'utente capisce
-    che e' un dato MANCANTE, non semplicemente "uguale a prima".
+    "variazione N/D" invece di non mostrare nulla.
     """
-    # Estrazione palette: tollera diverse strutture DesignTokens.
-    primary = getattr(getattr(tokens, "colors", tokens), "primary", "#3b82f6")
-    text_main = getattr(getattr(tokens, "colors", tokens), "text", "#0f172a")
-    text_muted = getattr(getattr(tokens, "colors", tokens), "text_secondary", "#64748b")
+    # BUGFIX v7.2.1: usa _resolve_color per evitare il fallback invisibile '#0f172a'.
+    # accent_primary (#3B82F6) è il blu usato per i nomi degli indici;
+    # usiamo lo stesso anche per il prezzo, come richiesto nelle Modifiche 1/2/5/6.
+    primary = _resolve_color(tokens, "accent_primary", "#3b82f6")
+    # BUGFIX v7.2.1: 'text' non esiste su Colors → era '#0f172a' (invisibile!).
+    # Ora usiamo accent_primary per il valore prezzo, coerente col nome indice.
+    text_main = _resolve_color(tokens, "accent_primary", "#3b82f6")
+    text_muted = _resolve_color(tokens, "text_secondary", "#64748b")
 
     color_map = {
-        "positive": getattr(getattr(tokens, "colors", tokens), "positive", "#16a34a"),
-        "negative": getattr(getattr(tokens, "colors", tokens), "negative", "#dc2626"),
+        "positive": _resolve_color(tokens, "positive", "#16a34a"),
+        "negative": _resolve_color(tokens, "negative", "#dc2626"),
         "neutral": text_muted,
     }
     delta_html = ""

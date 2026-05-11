@@ -73,7 +73,10 @@ _TRAFFIC_LIGHTS: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
+# BUGFIX v7.2.1 (Modifica 3): rimosso slots=True — causa UnserializableReturnValueError
+# con st.cache_data. Le dataclass con slots=True non sono picklabili in alcune versioni.
+# frozen=True mantiene la immutabilità necessaria.
+@dataclass(frozen=True)
 class _MacroRow:
     """Riga della tabella macro (no magic dicts)."""
 

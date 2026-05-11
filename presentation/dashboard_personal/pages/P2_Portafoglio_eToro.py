@@ -1,5 +1,14 @@
 # ruff: noqa: N999
-"""P2 — Portafoglio eToro (v7.1.1).
+"""P2 — Portafoglio eToro (v7.2.1).
+
+Bugfix v7.2.1 (Modifica 4):
+  - _render_positions_tab: posizioni raggruppate per ticker con aggregazione
+    (quantità totale, costo medio ponderato, valore di mercato, P/L).
+  - Rimossa colonna "Origine" dalla tabella posizioni.
+  - Aggiunto riepilogo portafoglio: valore totale investito, valore corrente,
+    P/L assoluto e percentuale.
+  - Prezzo corrente recuperato via yfinance per ticker standard (non #ID).
+  - Borsa mostrata solo se non è "ALTRO" (per import eToro non disponibile).
 
 Bugfix v7.1.1:
   - Aggiunto import via API ufficiale eToro (preferito) — sostituisce il
@@ -8,7 +17,7 @@ Bugfix v7.1.1:
     se l'API e' temporaneamente non raggiungibile.
 
 La pagina ha tre tab:
-  1. Posizioni — lista CRUD, manual entry form
+  1. Posizioni — vista raggruppata per ticker + CRUD
   2. Import — API eToro (preferito) + XLSX fallback
   3. Metriche — TWR/Sharpe/VaR ecc. ognuna con tooltip spiegato
 """
@@ -40,7 +49,7 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.1"
+__version__ = "7.2.1"
 
 __all__ = ["body_portafoglio_etoro"]
 
@@ -119,6 +128,14 @@ def _render_review_and_import(
             for _, row in edited.iterrows():
                 if pd.isna(row.get("ticker")) or pd.isna(row.get("quantity")):
                     continue
+                # MODIFICA 4: recupera raw_action dal DataFrame originale per
+                # salvarlo nelle note — utile per identificare posizioni #ID
+                raw_action = ""
+                if "raw_action" in df.columns:
+                    # Cerca la riga originale con stesso ticker+qty per il nome
+                    orig_match = df[df["ticker"] == row.get("ticker")]
+                    if not orig_match.empty:
+                        raw_action = str(orig_match.iloc[0].get("raw_action", ""))
                 try:
                     pos = PositionInput(
                         ticker=str(row["ticker"]),
@@ -137,7 +154,8 @@ def _render_review_and_import(
                         else pd.Timestamp.today().date(),
                         direction=str(row.get("direction") or "LONG"),
                         currency=str(row.get("currency") or "USD"),
-                        notes=f"source={result.source}",
+                        # MODIFICA 4: salva nome display in notes per mostrarlo nella tab Posizioni
+                        notes=f"source={result.source}" + (f";name={raw_action}" if raw_action else ""),
                         source="etoro_import",
                     )
                 except (ValueError, TypeError):
@@ -208,7 +226,7 @@ def _render_import_tab(st_module) -> None:  # pragma: no cover -- Streamlit
     # ─────────────────────────────────────────────────── XLSX tab
     with xlsx_tab:
         st.markdown(
-            "Usa questa modalita' se non hai ancora configurato l'API "
+            "Usa il file Account Statement (.xlsx) scaricato da eToro come backup, "
             "oppure come backup nel caso l'API sia momentaneamente "
             "irraggiungibile."
         )
@@ -277,8 +295,182 @@ La directory `.gitignore` del progetto lo esclude gia'.
         )
 
 
+def _extract_display_name(position: PositionInput) -> str:
+    """Estrae il nome display dalla posizione.
+
+    MODIFICA 4: i ticker come '#3040' sono instrument_id eToro (fallback quando
+    il lookup /instruments API fallisce). Il nome leggibile viene salvato nelle
+    note come 'name=<display_name>' durante l'import.
+    """
+    ticker = position.ticker
+    # Cerca nome salvato nelle note (formato: source=api;name=Bitcoin)
+    if position.notes and "name=" in position.notes:
+        for part in position.notes.split(";"):
+            if part.startswith("name="):
+                name = part[5:].strip()
+                if name:
+                    return name
+    # Fallback: mostra il ticker così com'è
+    return ticker
+
+
+def _get_current_price_yf(ticker: str) -> float | None:
+    """Recupera prezzo corrente da yfinance per ticker standard.
+
+    MODIFICA 4: usato per calcolare il valore corrente del portafoglio.
+    Restituisce None per ticker in formato '#ID' (non risolti da eToro API).
+    """
+    # Ticker in formato #ID non sono risolvibili via yfinance
+    if ticker.startswith("#") or ticker == "UNKNOWN":
+        return None
+    try:
+        import yfinance as yf  # type: ignore[import-untyped]
+        t = yf.Ticker(ticker)
+        info = t.fast_info  # fast_info è più veloce di .info
+        price = getattr(info, "last_price", None)
+        if price is None:
+            # Fallback su history per ticker che non hanno fast_info
+            hist = t.history(period="1d")
+            if not hist.empty:
+                price = float(hist["Close"].iloc[-1])
+        return float(price) if price is not None else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
+    """Raggruppa le posizioni per ticker e calcola aggregati.
+
+    MODIFICA 4: aggrega quantità, costo ponderato, valore corrente e P/L
+    per ogni ticker. I ticker '#ID' mantengono il nome leggibile dalle note.
+
+    Returns:
+        DataFrame con colonne: Ticker, Nome, Dir., Qta totale,
+        Costo medio, Investito (€/USD), Prezzo corrente, Valore corrente,
+        P/L (€/USD), P/L %.
+    """
+    if not positions:
+        return pd.DataFrame()
+
+    # Raggruppa per ticker
+    grouped: dict[str, dict] = {}
+    for pos in positions:
+        key = pos.ticker
+        display = _extract_display_name(pos)
+        if key not in grouped:
+            grouped[key] = {
+                "display_name": display,
+                "direction": pos.direction,
+                "currency": pos.currency,
+                "total_qty": 0.0,
+                "total_cost": 0.0,   # somma qty * avg_cost
+                "positions_list": [],
+            }
+        grouped[key]["total_qty"] += pos.quantity
+        grouped[key]["total_cost"] += pos.quantity * pos.avg_cost
+        grouped[key]["positions_list"].append(pos)
+
+    rows = []
+    for ticker, data in grouped.items():
+        total_qty = data["total_qty"]
+        total_cost = data["total_cost"]  # valore totale investito
+        # Costo medio ponderato
+        avg_cost_weighted = total_cost / total_qty if total_qty > 0 else 0.0
+        # Prezzo corrente: usa current_price salvato se disponibile, altrimenti yfinance
+        current_price = None
+        # Prima cerca in una delle posizioni
+        for p in data["positions_list"]:
+            if p.current_price is not None:
+                current_price = p.current_price
+                break
+        # Se non trovato, tenta yfinance
+        if current_price is None:
+            current_price = _get_current_price_yf(ticker)
+
+        current_value = (current_price * total_qty) if current_price is not None else None
+        pl_abs = (current_value - total_cost) if current_value is not None else None
+        pl_pct = (pl_abs / total_cost * 100.0) if (pl_abs is not None and total_cost > 0) else None
+
+        rows.append({
+            "Ticker": ticker,
+            "Nome": data["display_name"] if data["display_name"] != ticker else "—",
+            "Dir.": data["direction"],
+            "Qta totale": round(total_qty, 4),
+            "Costo medio": round(avg_cost_weighted, 2),
+            f"Investito ({data['currency']})": round(total_cost, 2),
+            "Prezzo corrente": round(current_price, 2) if current_price is not None else "N/D",
+            f"Valore corrente ({data['currency']})": round(current_value, 2) if current_value is not None else "N/D",
+            f"P/L ({data['currency']})": round(pl_abs, 2) if pl_abs is not None else "N/D",
+            "P/L %": f"{pl_pct:+.2f}%" if pl_pct is not None else "N/D",
+        })
+
+    return pd.DataFrame(rows)
+
+
+def _render_portfolio_totals(st_module, df_grouped: pd.DataFrame) -> None:  # pragma: no cover
+    """Mostra il riepilogo totale del portafoglio.
+
+    MODIFICA 4: mostra valore totale investito, valore corrente totale, P/L totale.
+    """
+    st = st_module
+
+    # Cerca colonne investimento e valore corrente (la valuta è dinamica nel nome)
+    invested_cols = [c for c in df_grouped.columns if c.startswith("Investito")]
+    value_cols = [c for c in df_grouped.columns if c.startswith("Valore corrente")]
+    pl_cols = [c for c in df_grouped.columns if c.startswith("P/L (")]
+
+    total_invested = 0.0
+    total_current = 0.0
+    has_current = False
+
+    for col in invested_cols:
+        vals = pd.to_numeric(df_grouped[col], errors="coerce")
+        total_invested += float(vals.sum())
+
+    for col in value_cols:
+        vals = pd.to_numeric(df_grouped[col], errors="coerce")
+        valid = vals.dropna()
+        if not valid.empty:
+            total_current += float(valid.sum())
+            has_current = True
+
+    total_pl = total_current - total_invested if has_current else None
+    total_pl_pct = (total_pl / total_invested * 100.0) if (total_pl is not None and total_invested > 0) else None
+
+    st.markdown("### 💰 Riepilogo portafoglio")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("💼 Totale investito", f"{total_invested:,.2f}")
+    with col2:
+        if has_current:
+            st.metric("📈 Valore corrente", f"{total_current:,.2f}")
+        else:
+            st.metric("📈 Valore corrente", "N/D")
+    with col3:
+        if total_pl is not None:
+            sign = "+" if total_pl >= 0 else ""
+            st.metric("💹 P/L assoluto", f"{sign}{total_pl:,.2f}")
+        else:
+            st.metric("💹 P/L assoluto", "N/D")
+    with col4:
+        if total_pl_pct is not None:
+            sign = "+" if total_pl_pct >= 0 else ""
+            st.metric("📊 P/L %", f"{sign}{total_pl_pct:.2f}%")
+        else:
+            st.metric("📊 P/L %", "N/D")
+    st.divider()
+
+
 def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
-    """Tab di gestione manuale posizioni (Rule 41)."""
+    """Tab di gestione posizioni con vista raggruppata per ticker.
+
+    MODIFICA 4:
+    - Posizioni raggruppate per ticker (non più riga per riga)
+    - Rimosse colonne: Borsa (sempre 'ALTRO' per import), Origine
+    - Aggiunti: Valore corrente, P/L assoluto, P/L % per ticker
+    - Aggiunto riepilogo totale portafoglio
+    - Il nome leggibile (es. 'Bitcoin') viene mostrato per i ticker '#ID'
+    """
     st = st_module
     render_section_header("💼 Posizioni in portafoglio")
 
@@ -289,20 +481,21 @@ def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
             "qui sotto, oppure importa da eToro nella tab dedicata."
         )
     else:
-        rows = [
-            {
-                "Ticker": p.ticker,
-                "Borsa": p.exchange,
-                "Dir.": p.direction,
-                "Qta": p.quantity,
-                "Carico": p.avg_cost,
-                "Valuta": p.currency,
-                "Data apertura": p.open_date.isoformat(),
-                "Origine": "📥 Import" if p.source == "etoro_import" else "✏️ Manuale",
-            }
-            for p in positions
-        ]
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        df_grouped = _build_grouped_portfolio(positions)
+
+        # Riepilogo totali portafoglio
+        _render_portfolio_totals(st, df_grouped)
+
+        st.caption(
+            "📋 Vista raggruppata per ticker · "
+            "I prezzi correnti sono recuperati via yfinance (possono essere "
+            "leggermente differiti). I ticker in formato '#ID' non sono "
+            "risolvibili automaticamente — usa l'Import per aggiornare i dati."
+        )
+        st.dataframe(df_grouped, use_container_width=True, hide_index=True)
+
+        # Selezione per modifica/eliminazione — usa ticker (ID6) per univocità
+        st.markdown("#### ✏️ Modifica / Elimina posizione singola")
         ticker_list = [f"{p.ticker} ({p.position_id[:6]})" for p in positions]
         selected_label = st.selectbox(
             "Seleziona posizione da modificare/eliminare",
@@ -335,6 +528,7 @@ def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
                         st.rerun()
 
     st.divider()
+    st.markdown("#### ➕ Aggiungi posizione manuale")
     new_pos = render_position_form(key="new_position_form")
     if new_pos is not None:
         save_position(new_pos)
@@ -394,7 +588,7 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
 
 
 def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    """Body Streamlit della pagina P2 (v7.1.1)."""
+    """Body Streamlit della pagina P2 (v7.2.1)."""
     try:
         import streamlit as st
     except ImportError:
