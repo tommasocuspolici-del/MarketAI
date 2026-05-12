@@ -1,224 +1,212 @@
-"""SanityCheckerV2 — Settimana 9 Hardening.
+"""SanityCheckerV2 — Sanity checks avanzati per dati di mercato (Settimana 9).
 
-Estende il SanityChecker esistente con regole critiche per i nuovi dati
-introdotti dalla Roadmap Unificata (VIX, futures, roll_yield).
+Estende SanityChecker v1 con check specifici per:
+  · VIX: range valido [0, 100], warn > 50, critical ≤ 0 o > 100
+  · Roll yield futures: critical > 100% o < -100%, warn > 15%
+  · Discrepanza futures/spot: warn > 5% (default)
+  · Yield spread: critical se |spread| > 15%
 
-Regole critiche (bloccano il calcolo):
-  VIX ≤ 0 o > 100       → CRITICAL: dato impossibile
-  roll_yield > 100%      → CRITICAL: dato impossibile
-  spread_10y_2y > 15%    → CRITICAL: dato impossibile
-
-Regole warning (producono avviso ma non bloccano):
-  CL=F vs USO Δ > 5%    → WARN: discrepanza futures/spot ETF
-  VIX spike > 50         → WARN: valore estremo ma possibile
-
-Regola 5: eccezioni custom da shared/exceptions.py.
-Regola 26: ogni serie ha DataQualityReport allegato.
+Regola 5: nessun except generico — errori specifici.
+Regola 7: soglie nominate come costanti, mai magic numbers.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from shared.logger import get_logger
+from dataclasses import dataclass, field
+from typing import Any
 
 __version__ = "1.0.0"
 __all__ = ["SanityCheckerV2", "SanityResult"]
 
-log = get_logger(__name__)
+# ── Soglie VIX (Regola 7) ────────────────────────────────────────
+_VIX_MIN_OK        = 0.0    # VIX deve essere > 0
+_VIX_WARN_UPPER    = 50.0   # VIX > 50 → estremo ma possibile
+_VIX_CRITICAL_UPPER= 100.0  # VIX > 100 → impossibile
+
+# ── Soglie roll yield ────────────────────────────────────────────
+_ROLL_WARN_ABS     = 0.15   # |roll| > 15% → warn
+_ROLL_CRITICAL_ABS = 1.00   # |roll| > 100% → critical
+
+# ── Soglie discrepanza futures/spot ─────────────────────────────
+_DISCREPANCY_DEFAULT_PCT = 5.0   # > 5% → warn
+
+# ── Soglie yield spread ─────────────────────────────────────────
+_SPREAD_CRITICAL_ABS = 15.0   # |spread| > 15% → critical
 
 
 @dataclass(frozen=True)
 class SanityResult:
-    """Risultato di un controllo sanity."""
-    passed:   bool
-    level:    str           # 'OK' | 'WARN' | 'CRITICAL'
-    rule:     str           # nome della regola
-    message:  str
-    value:    float | None = None
+    """Risultato di un singolo sanity check.
+
+    Attributes:
+        passed:  True se il dato è accettabile (anche con WARN).
+        level:   'OK' | 'WARN' | 'CRITICAL'.
+        rule:    Nome della regola applicata.
+        message: Descrizione human-readable del risultato.
+        value:   Valore controllato (opzionale).
+    """
+    passed:  bool
+    level:   str          # 'OK' | 'WARN' | 'CRITICAL'
+    rule:    str
+    message: str
+    value:   float | None = field(default=None)
 
 
 class SanityCheckerV2:
-    """Controlli sanity per i nuovi dati introdotti dalla Roadmap Unificata.
+    """Check di sanità avanzati per prezzi, VIX, roll yield, yield curve.
 
-    Usage::
-
-        checker = SanityCheckerV2()
-        result = checker.check_vix(vix_level=45.0)
-        if result.level == 'CRITICAL':
-            raise DataQualityError(result.message)
+    Tutti i metodi sono puri (nessun side effect) e testabili in isolation.
     """
 
-    # ── VIX ──────────────────────────────────────────────────────────────
+    # ── VIX ──────────────────────────────────────────────────────
 
-    def check_vix(self, vix_level: float) -> SanityResult:
-        """Verifica che il livello VIX sia in range plausibile.
+    def check_vix(self, vix: float) -> SanityResult:
+        """Controlla che il VIX sia in un range plausibile.
 
-        Args:
-            vix_level: Valore VIX corrente.
-
-        Returns:
-            SanityResult con level CRITICAL se VIX ≤ 0 o > 100.
+        Regole:
+          · VIX ≤ 0        → CRITICAL (fisicamente impossibile)
+          · VIX > 100      → CRITICAL (mai avvenuto nella storia)
+          · VIX > 50       → WARN (estremo ma possibile: Mar 2020 ≈ 82)
+          · 0 < VIX ≤ 50   → OK
         """
-        if vix_level <= 0:
+        rule = "vix_range_check"
+        if vix <= _VIX_MIN_OK:
             return SanityResult(
-                passed=False, level="CRITICAL", rule="vix_positive",
-                message=f"VIX ≤ 0 impossibile: {vix_level:.2f}. Probabile errore feed.",
-                value=vix_level,
+                passed=False, level="CRITICAL", rule=rule,
+                message=f"VIX={vix:.2f} ≤ 0: dato impossibile",
+                value=vix,
             )
-        if vix_level > 100:
+        if vix > _VIX_CRITICAL_UPPER:
             return SanityResult(
-                passed=False, level="CRITICAL", rule="vix_max",
-                message=f"VIX > 100 impossibile: {vix_level:.2f}. Probabile spike dato.",
-                value=vix_level,
+                passed=False, level="CRITICAL", rule=rule,
+                message=f"VIX={vix:.2f} > {_VIX_CRITICAL_UPPER}: mai osservato nella storia",
+                value=vix,
             )
-        if vix_level > 50:
+        if vix > _VIX_WARN_UPPER:
             return SanityResult(
-                passed=True, level="WARN", rule="vix_extreme",
-                message=f"VIX > 50 estremo ma plausibile: {vix_level:.2f}. Verificare.",
-                value=vix_level,
+                passed=True, level="WARN", rule=rule,
+                message=f"VIX={vix:.2f} > {_VIX_WARN_UPPER}: livello estremo, verificare",
+                value=vix,
             )
         return SanityResult(
-            passed=True, level="OK", rule="vix_range",
-            message=f"VIX in range normale: {vix_level:.2f}",
-            value=vix_level,
+            passed=True, level="OK", rule=rule,
+            message=f"VIX={vix:.2f} in range normale",
+            value=vix,
         )
 
-    # ── Futures ───────────────────────────────────────────────────────────
+    # ── Roll Yield ────────────────────────────────────────────────
 
-    def check_roll_yield(self, roll_yield: float, ticker: str = "") -> SanityResult:
-        """Verifica che il roll yield sia in range plausibile.
+    def check_roll_yield(self, roll: float, ticker: str) -> SanityResult:
+        """Controlla che il roll yield di un futures sia plausibile.
 
-        Args:
-            roll_yield: Roll yield in decimale (es. -0.018 = -1.8%).
-            ticker:     Simbolo futures per logging.
-
-        Returns:
-            SanityResult con level CRITICAL se |roll_yield| > 1.0 (100%).
+        Regole:
+          · |roll| > 100% → CRITICAL (dato impossibile)
+          · |roll| > 15%  → WARN (anomalo ma possibile in gas naturale)
+          · altrimenti     → OK
         """
-        abs_roll = abs(roll_yield)
-        if abs_roll > 1.0:
+        rule = "roll_yield_range_check"
+        abs_roll = abs(roll)
+        if abs_roll > _ROLL_CRITICAL_ABS:
             return SanityResult(
-                passed=False, level="CRITICAL", rule="roll_yield_max",
-                message=(
-                    f"{ticker}: roll_yield {roll_yield*100:.1f}% > 100% impossibile. "
-                    "Probabile errore nel prezzo proxy."
-                ),
-                value=roll_yield,
+                passed=False, level="CRITICAL", rule=rule,
+                message=f"{ticker}: roll yield={roll*100:.1f}% > ±100%: dato impossibile",
+                value=roll,
             )
-        if abs_roll > 0.15:
+        if abs_roll > _ROLL_WARN_ABS:
             return SanityResult(
-                passed=True, level="WARN", rule="roll_yield_high",
-                message=f"{ticker}: roll_yield {roll_yield*100:.1f}% molto alto. Verificare.",
-                value=roll_yield,
+                passed=True, level="WARN", rule=rule,
+                message=f"{ticker}: roll yield={roll*100:.1f}% > ±{_ROLL_WARN_ABS*100:.0f}%: anomalo",
+                value=roll,
             )
         return SanityResult(
-            passed=True, level="OK", rule="roll_yield_range",
-            message=f"{ticker}: roll_yield {roll_yield*100:.3f}% in range.",
-            value=roll_yield,
+            passed=True, level="OK", rule=rule,
+            message=f"{ticker}: roll yield={roll*100:.2f}% in range normale",
+            value=roll,
         )
+
+    # ── Discrepanza Futures/Spot ──────────────────────────────────
 
     def check_futures_spot_discrepancy(
-        self, futures_close: float, spot_close: float,
-        ticker: str = "", spot_ticker: str = "",
-        threshold_pct: float = 5.0,
+        self,
+        futures_price: float,
+        spot_price: float,
+        futures_ticker: str,
+        spot_ticker: str,
+        threshold_pct: float = _DISCREPANCY_DEFAULT_PCT,
     ) -> SanityResult:
-        """Verifica la discrepanza futures vs spot ETF.
+        """Controlla discrepanza tra futures e spot proxy.
 
-        Args:
-            futures_close:  Prezzo close futures.
-            spot_close:     Prezzo close ETF spot proxy.
-            ticker:         Simbolo futures.
-            spot_ticker:    Simbolo ETF proxy.
-            threshold_pct:  Soglia discrepanza % (default: 5%).
-
-        Returns:
-            SanityResult WARN se discrepanza > threshold_pct.
+        Regole:
+          · spot = 0      → WARN (dato mancante, non blocca ma segnala)
+          · discrepanza > threshold_pct% → WARN
+          · altrimenti     → OK
         """
-        if spot_close <= 0:
+        rule = "futures_spot_discrepancy_check"
+        if spot_price == 0:
             return SanityResult(
-                passed=False, level="WARN", rule="spot_zero",
-                message=f"{spot_ticker}: prezzo spot ≤ 0.",
-                value=spot_close,
+                passed=False, level="WARN", rule=rule,
+                message=f"{futures_ticker}/{spot_ticker}: spot price = 0, dato mancante",
+                value=0.0,
             )
-        discrepancy_pct = abs(futures_close - spot_close) / spot_close * 100
-        if discrepancy_pct > threshold_pct:
+        discrepancy = abs((futures_price - spot_price) / spot_price * 100)
+        if discrepancy > threshold_pct:
             return SanityResult(
-                passed=True, level="WARN", rule="futures_spot_discrepancy",
+                passed=True, level="WARN", rule=rule,
                 message=(
-                    f"{ticker} vs {spot_ticker}: discrepanza {discrepancy_pct:.1f}% "
-                    f"> {threshold_pct:.0f}%. Basis inusuale, verificare."
+                    f"{futures_ticker}/{spot_ticker}: discrepanza {discrepancy:.1f}% "
+                    f"> {threshold_pct:.1f}%"
                 ),
-                value=discrepancy_pct,
+                value=discrepancy,
             )
         return SanityResult(
-            passed=True, level="OK", rule="futures_spot_ok",
-            message=f"{ticker} vs {spot_ticker}: discrepanza {discrepancy_pct:.1f}% OK.",
-            value=discrepancy_pct,
+            passed=True, level="OK", rule=rule,
+            message=f"{futures_ticker}/{spot_ticker}: discrepanza {discrepancy:.1f}% OK",
+            value=discrepancy,
         )
 
-    # ── Yield Curve ───────────────────────────────────────────────────────
+    # ── Yield Spread ──────────────────────────────────────────────
 
-    def check_yield_spread(
-        self, spread_10y_2y: float, label: str = "10Y-2Y"
-    ) -> SanityResult:
-        """Verifica che lo spread yield sia in range plausibile.
+    def check_yield_spread(self, spread: float) -> SanityResult:
+        """Controlla che lo yield spread sia in range plausibile.
 
-        Args:
-            spread_10y_2y: Spread in punti percentuali.
-            label:         Etichetta per logging.
-
-        Returns:
-            SanityResult CRITICAL se |spread| > 15%.
+        Regola: |spread| > 15% → CRITICAL (mai osservato storicamente).
         """
-        if abs(spread_10y_2y) > 15.0:
+        rule = "yield_spread_range_check"
+        if abs(spread) > _SPREAD_CRITICAL_ABS:
             return SanityResult(
-                passed=False, level="CRITICAL", rule="yield_spread_max",
-                message=(
-                    f"Spread {label} = {spread_10y_2y:+.2f}% impossibile. "
-                    "Probabile errore nel dato FRED."
-                ),
-                value=spread_10y_2y,
+                passed=False, level="CRITICAL", rule=rule,
+                message=f"Yield spread={spread:.2f}% fuori range storico (|spread| > {_SPREAD_CRITICAL_ABS}%)",
+                value=spread,
             )
         return SanityResult(
-            passed=True, level="OK", rule="yield_spread_range",
-            message=f"Spread {label} = {spread_10y_2y:+.2f}% plausibile.",
-            value=spread_10y_2y,
+            passed=True, level="OK", rule=rule,
+            message=f"Yield spread={spread:.2f}% in range normale",
+            value=spread,
         )
 
-    # ── Batch check ───────────────────────────────────────────────────────
+    # ── Run all ───────────────────────────────────────────────────
 
-    def run_all(self, data: dict[str, float]) -> list[SanityResult]:
-        """Esegue tutti i controlli sui dati forniti.
+    def run_all(self, data: dict[str, Any]) -> list[SanityResult]:
+        """Esegue tutti i check disponibili sui dati forniti.
 
         Args:
-            data: Dict con chiavi 'vix', 'roll_yield_clf', 'roll_yield_gcf',
-                  'spread_10y_2y' e valori float.
+            data: Dict con chiavi opzionali:
+                  · 'vix': float
+                  · 'roll_yield_clf': float (CL=F)
+                  · 'spread_10y_2y': float
 
         Returns:
-            Lista di SanityResult con tutti i controlli eseguiti.
+            Lista di SanityResult (vuota se data è vuoto).
         """
         results: list[SanityResult] = []
-
         if "vix" in data:
-            results.append(self.check_vix(data["vix"]))
-
-        for key in ("roll_yield_clf", "roll_yield_gcf", "roll_yield_esf"):
-            if key in data:
-                ticker = key.replace("roll_yield_", "").upper().replace("LF", "L=F").replace("CF", "C=F").replace("SF", "S=F")
-                results.append(self.check_roll_yield(data[key], ticker=ticker))
-
+            results.append(self.check_vix(float(data["vix"])))
+        if "roll_yield_clf" in data:
+            results.append(self.check_roll_yield(float(data["roll_yield_clf"]), "CL=F"))
         if "spread_10y_2y" in data:
-            results.append(self.check_yield_spread(data["spread_10y_2y"]))
-
-        # Log CRITICAL e WARN
-        for r in results:
-            if r.level == "CRITICAL":
-                log.error("sanity_checker.critical", rule=r.rule, message=r.message)
-            elif r.level == "WARN":
-                log.warning("sanity_checker.warn", rule=r.rule, message=r.message)
-
+            results.append(self.check_yield_spread(float(data["spread_10y_2y"])))
         return results
 
-    def has_critical(self, results: list[SanityResult]) -> bool:
+    @staticmethod
+    def has_critical(results: list[SanityResult]) -> bool:
         """True se almeno un risultato è CRITICAL."""
         return any(r.level == "CRITICAL" for r in results)

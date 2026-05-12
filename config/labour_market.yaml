@@ -1,0 +1,54 @@
+# config/labour_market.yaml — Labour Market Forecasting Config (Blocco B)
+
+fred_series:
+  jolts:
+    job_openings:   "JTSJOL"
+    hires:          "JTSHL"
+    quits:          "JTSQUL"
+    layoffs:        "JTSLUL"
+    quits_rate:     "JTSQUR"
+    openings_rate:  "JTSJOR"
+    hires_rate:     "JTSQUR"
+  claims:
+    initial:        "ICSA"
+    continuing:     "CCSA"
+  payroll:
+    total:          "PAYEMS"
+    manufacturing:  "MANEMP"
+    construction:   "USCONS"
+    retail:         "USTRADE"
+    leisure_hosp:   "AEHOUS"
+    services:       "SRVPRD"
+    government:     "USGOVT"
+    education_health: "EDUHITH"
+  macro_context:
+    unemployment:   "UNRATE"
+
+forecast:
+  history_months:  120   # 10 anni per fit
+  arima_weight:    0.50
+  ridge_alpha:     1.0
+  horizons:        ["1M", "3M", "6M"]
+  targets:
+    - metric: "UNRATE"
+      fred_id: "UNRATE"
+      rmse_target_3m: 0.30
+    - metric: "NFP"
+      fred_id: "PAYEMS"
+      mae_target_1m: 80
+    - metric: "QUITS_RATE"
+      fred_id: "JTSQUR"
+
+regime_thresholds:
+  tight:
+    quits_rate_min:    2.5
+    openings_rate_min: 5.0
+  balanced:
+    quits_rate_min:    2.0
+    openings_rate_min: 3.5
+  deteriorating:
+    quits_mom_threshold: -0.3
+
+scheduler:
+  trigger: "thursday_17_00"   # Post-claims settimanali
+  timezone: "America/New_York"

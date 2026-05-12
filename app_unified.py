@@ -112,11 +112,15 @@ context_pages = [
     _page(f"{ENG}/E6_Macro.py",               "Macro (FRED)",      "🏛️"),
     _page(f"{ENG}/E7_Sentiment.py",           "Sentiment",         "🌡️"),
     _page(f"{ENG}/E8_Correlations.py",        "Correlazioni",      "🕸️"),
+    _page(f"{ENG}/M3_Labour_Market.py",       "Labour Market",     "👷"),
+    _page(f"{ENG}/M5_Economic_Surprise.py",   "Economic Surprise", "⚡"),
 ]
 
 # Cluster 4: rischio & previsione — "cosa potrebbe succedere?"
 risk_pages = [
     _page(f"{ENG}/E9_Forecasting.py",         "Forecasting",       "🔮"),
+    _page(f"{ENG}/Q9_Labour_Forecasting.py",  "Labour Forecast",   "🔬"),
+    _page(f"{ENG}/Q10_Surprise_Heatmap.py",   "Surprise Heatmap",  "🗺️"),
     _page(f"{ENG}/E12_Backtesting.py",        "Backtesting",       "🧪"),
     _page(f"{ENG}/E13_Stress_Test.py",        "Stress Test",       "⚡"),
 ]

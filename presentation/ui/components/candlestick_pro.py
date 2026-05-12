@@ -42,7 +42,7 @@ def build_candlestick_figure(
 
     fig.add_trace(
         go.Candlestick(
-            x=ohlcv["ts"],
+            x=ohlcv["ts"] if "ts" in ohlcv.columns else ohlcv.index,
             open=ohlcv["open"],
             high=ohlcv["high"],
             low=ohlcv["low"],
@@ -56,7 +56,7 @@ def build_candlestick_figure(
 
     fig.add_trace(
         go.Bar(
-            x=ohlcv["ts"],
+            x=ohlcv["ts"] if "ts" in ohlcv.columns else ohlcv.index,
             y=ohlcv["volume"],
             name="Volume",
             marker_color=c.accent_primary,
@@ -68,7 +68,7 @@ def build_candlestick_figure(
     for overlay in overlays or []:
         fig.add_trace(
             go.Scatter(
-                x=ohlcv["ts"],
+                x=ohlcv["ts"] if "ts" in ohlcv.columns else ohlcv.index,
                 y=overlay["series"],
                 name=overlay["name"],
                 line={"width": 2},

@@ -98,3 +98,12 @@ rebalancing_method: "hrp"          # 'markowitz'|'hrp'|'risk_parity'|'equal_weig
 rebalancing_tax_aware: true        # Considera l'impatto fiscale IT
 rebalancing_min_trade_eur: 50.0    # Non suggerire trade < 50 EUR
 rebalancing_threshold_pct: 5.0     # Ribilancia solo se drift > 5% dal target
+
+# ─── Blocco B — Labour Market (Roadmap Analisi/Previsione v1.0) ──────────
+labour_market_forecasting: true     # JOLTSAnalyzer + LabourForecastEngine
+labour_market_scheduler: true       # Job scheduler giovedì 17:00
+
+# ─── Blocco C — Economic Surprise (Roadmap Analisi/Previsione v1.0) ──────
+economic_surprise_engine: true      # SurpriseCalculator + Aggregator
+surprise_consensus_loader: false    # Abilitare quando ConsensusLoader pronto
+surprise_scheduler: false           # Abilitare dopo test staging 48h

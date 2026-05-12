@@ -116,32 +116,28 @@ class ParquetIO:
             log.info("parquet.import_empty", path=str(input_path))
             return 0
 
-        with (
-            metrics.timer("parquet_import_ms", table=table, mode=mode),
-            self._client.transaction(),
-        ):
-            # La transazione garantisce atomicità: o tutto o niente.
-            # v7.2 (fix B3): per il mode "replace" usiamo TRUNCATE invece
-            # di DELETE FROM. Motivo: in DuckDB, DELETE+INSERT nella stessa
-            # transazione su una tabella con PRIMARY KEY puo' generare
-            # "Constraint Error: Duplicate key" perche' il motore MVCC
-            # mantiene i record eliminati nel "visibility window" della
-            # transazione corrente. TRUNCATE rilascia subito la visibilita'
-            # dei record vecchi senza creare delete-marker.
-            if mode == "replace":
-                self._client.execute(f"TRUNCATE {table}")
-
-            # v7.2 (fix B3, soluzione difensiva C): anche in mode="replace"
-            # usiamo INSERT OR REPLACE — superflua dopo TRUNCATE, ma fornisce
-            # una rete di sicurezza extra se il TRUNCATE dovesse fallire o se
-            # il PARQUET stesso contenesse PK duplicate al suo interno.
-            if mode == "upsert" or mode == "replace":
-                insert_verb = "INSERT OR REPLACE INTO"
-            else:
-                insert_verb = "INSERT INTO"
-            self._client.execute(
-                f"{insert_verb} {table} SELECT * FROM read_parquet('{path_str}')"
-            )
+        # BUGFIX v7.2.4 (definitivo): il mode "replace" NON usa transazione.
+        # Problema DuckDB MVCC: DELETE + INSERT con stesse PK nella stessa
+        # transazione fallisce con ConstraintException "Duplicate key" perché
+        # il delete-marker non è ancora committed quando l'INSERT viene valutato.
+        # TRUNCATE non funziona perché è DDL (auto-commit, poi INSERT isolato).
+        # Soluzione: DELETE e INSERT come statement separati fuori transazione.
+        # Per "append" e "upsert" manteniamo la transazione per atomicità.
+        if mode == "replace":
+            with metrics.timer("parquet_import_ms", table=table, mode=mode):
+                self._client.execute(f"DELETE FROM {table}")
+                self._client.execute(
+                    f"INSERT INTO {table} SELECT * FROM read_parquet('{path_str}')"
+                )
+        else:
+            insert_verb = "INSERT OR REPLACE INTO" if mode == "upsert" else "INSERT INTO"
+            with (
+                metrics.timer("parquet_import_ms", table=table, mode=mode),
+                self._client.transaction(),
+            ):
+                self._client.execute(
+                    f"{insert_verb} {table} SELECT * FROM read_parquet('{path_str}')"
+                )
 
         metrics.inc("parquet_rows_imported_total", amount=n_rows, table=table)
         log.info(

@@ -1,0 +1,112 @@
+# config/surprise_engine.yaml — Economic Surprise Engine Config (Blocco C)
+
+normalization_window_months: 24
+aggregation_months: 3
+decay_lambda: 0.10
+significance_threshold: 1.0
+regime_threshold: 0.30
+
+sector_weights:
+  labour:         0.30
+  growth:         0.30
+  inflation:      0.20
+  housing:        0.15
+  trade_external: 0.05
+
+sectors:
+  labour:
+    indicators:
+      - code: NFP
+        name: "Non-Farm Payrolls"
+        fred_actual: "PAYEMS"
+        unit: "migliaia di posti"
+        weight: 0.35
+      - code: INITIAL_CLAIMS
+        name: "Initial Jobless Claims"
+        fred_actual: "ICSA"
+        unit: "migliaia"
+        weight: 0.25
+      - code: UNEMPLOYMENT_RATE
+        name: "Unemployment Rate"
+        fred_actual: "UNRATE"
+        unit: "percentuale"
+        weight: 0.25
+      - code: AVERAGE_HOURLY_EARNINGS
+        name: "Average Hourly Earnings MoM"
+        fred_actual: "CES0500000003"
+        unit: "percentuale"
+        weight: 0.15
+
+  growth:
+    indicators:
+      - code: GDP_ADVANCE
+        name: "GDP Advance Estimate QoQ"
+        unit: "percentuale annualizzata"
+        weight: 0.30
+      - code: ISM_MFG
+        name: "ISM Manufacturing PMI"
+        unit: "indice"
+        weight: 0.25
+      - code: ISM_SERVICES
+        name: "ISM Services PMI"
+        unit: "indice"
+        weight: 0.20
+      - code: RETAIL_SALES
+        name: "Retail Sales MoM"
+        fred_actual: "RSAFS"
+        unit: "percentuale"
+        weight: 0.25
+
+  inflation:
+    indicators:
+      - code: CPI_YOY
+        name: "CPI Year-over-Year"
+        fred_actual: "CPIAUCSL"
+        unit: "percentuale"
+        weight: 0.40
+      - code: PCE_YOY
+        name: "PCE YoY"
+        fred_actual: "PCEPI"
+        unit: "percentuale"
+        weight: 0.35
+      - code: PPI_MOM
+        name: "PPI MoM"
+        unit: "percentuale"
+        weight: 0.25
+
+  housing:
+    indicators:
+      - code: HOUSING_STARTS
+        name: "Housing Starts"
+        fred_actual: "HOUST"
+        unit: "migliaia"
+        weight: 0.35
+      - code: EXISTING_HOME_SALES
+        name: "Existing Home Sales"
+        unit: "milioni"
+        weight: 0.30
+      - code: CASE_SHILLER
+        name: "Case-Shiller HPI MoM"
+        unit: "percentuale"
+        weight: 0.35
+
+  trade_external:
+    indicators:
+      - code: TRADE_BALANCE
+        name: "Trade Balance"
+        fred_actual: "BOPGSTB"
+        unit: "miliardi USD"
+        weight: 0.60
+      - code: DURABLE_GOODS
+        name: "Durable Goods Orders MoM"
+        unit: "percentuale"
+        weight: 0.40
+
+scheduler:
+  trigger: "friday_18_00"   # Post mercati USA
+  timezone: "America/New_York"
+
+consensus_loader:
+  primary: "econoday"
+  fallback: "investing_com"
+  manual_yaml: "config/consensus_manual.yaml"

@@ -80,9 +80,9 @@ def test_build_macro_rows_no_api_key_returns_unavailable():
 
     assert len(rows) == 5  # GDP, CPIAUCSL, UNRATE, FEDFUNDS, DGS10
     for r in rows:
-        assert r.value is None
-        assert r.status == "⚪"
-        assert "non configurata" in r.status_text.lower()
+        assert r["value"] is None
+        assert r["status"] == "⚪"
+        assert "non configurata" in r["status_text"].lower()
 
 
 def test_build_macro_rows_with_data():
@@ -107,9 +107,9 @@ def test_build_macro_rows_with_data():
 
     assert len(rows) == 5
     # Ogni riga ha value popolato
-    cpi = next(r for r in rows if r.series_id == "CPIAUCSL")
-    assert cpi.value == 2.7
-    assert cpi.delta == pytest.approx(0.2)  # 2.7 - 2.5
+    cpi = next(r for r in rows if r["series_id"] == "CPIAUCSL")
+    assert cpi["value"] == 2.7
+    assert cpi["delta"] == pytest.approx(0.2)  # 2.7 - 2.5
     # 2.7% e' fuori green (0-2.5) ma dentro yellow (-0.5..4)
-    assert cpi.status == "🟡"
-    assert cpi.trend == "↑"  # delta positivo
+    assert cpi["status"] == "🟡"
+    assert cpi["trend"] == "↑"  # delta positivo

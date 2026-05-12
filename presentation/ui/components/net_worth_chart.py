@@ -27,11 +27,20 @@ def build_net_worth_figure(
         return fig
 
     # Sort by date asc for proper timeline
-    sorted_snaps = sorted(snapshots, key=lambda s: s.captured_at)
-    timestamps = [s.captured_at for s in sorted_snaps]
-    assets = [s.total_assets for s in sorted_snaps]
-    liabs = [-s.total_liabilities for s in sorted_snaps]   # negative for waterfall feel
-    net = [s.net_worth for s in sorted_snaps]
+    # BUGFIX v7.2.4: supporta sia dict (mock/test) sia oggetti NetWorthSnapshot
+    def _get(snap, key, fallback_key=None):
+        if isinstance(snap, dict):
+            return snap.get(key) or (snap.get(fallback_key) if fallback_key else None)
+        return getattr(snap, key, None)
+
+    sorted_snaps = sorted(
+        snapshots,
+        key=lambda s: _get(s, "captured_at", "snapshot_date") or ""
+    )
+    timestamps = [_get(s, "captured_at", "snapshot_date") for s in sorted_snaps]
+    assets = [_get(s, "total_assets") or 0.0 for s in sorted_snaps]
+    liabs = [-(_get(s, "total_liabilities") or 0.0) for s in sorted_snaps]
+    net = [_get(s, "net_worth") or 0.0 for s in sorted_snaps]
 
     c = tokens.colors
 
