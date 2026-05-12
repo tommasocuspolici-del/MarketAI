@@ -3,17 +3,17 @@
     "positions": [
       {
         "unrealizedPnL": {
-          "pnL": 6.87,
-          "pnlAssetCurrency": 377.17,
-          "exposureInAccountCurrency": 63.87,
-          "exposureInAssetCurrency": 4687.18,
+          "pnL": 6.53,
+          "pnlAssetCurrency": 385.32,
+          "exposureInAccountCurrency": 63.53,
+          "exposureInAssetCurrency": 4695.33,
           "marginInAccountCurrency": 57.0,
-          "marginInAssetCurrency": 4183.18,
+          "marginInAssetCurrency": 4212.86,
           "marginCurrencyId": 1,
           "assetCurrencyId": 666,
-          "closeRate": 10352.0,
-          "closeConversionRate": 0.013626,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 10370.0,
+          "closeConversionRate": 0.01353,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387758800,
         "CID": 46659103,
@@ -53,17 +53,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 4.04,
-          "pnlAssetCurrency": 215.48,
-          "exposureInAccountCurrency": 61.53,
-          "exposureInAssetCurrency": 4515.4,
+          "pnL": 3.71,
+          "pnlAssetCurrency": 223.33,
+          "exposureInAccountCurrency": 61.2,
+          "exposureInAssetCurrency": 4523.25,
           "marginInAccountCurrency": 57.49,
-          "marginInAssetCurrency": 4219.14,
+          "marginInAssetCurrency": 4249.08,
           "marginCurrencyId": 1,
           "assetCurrencyId": 666,
-          "closeRate": 10352.0,
-          "closeConversionRate": 0.013626,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 10370.0,
+          "closeConversionRate": 0.01353,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3349741827,
         "CID": 46659103,
@@ -103,17 +103,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 5.87,
-          "pnlAssetCurrency": 335.17,
-          "exposureInAccountCurrency": 63.55,
-          "exposureInAssetCurrency": 4663.54,
+          "pnL": 5.53,
+          "pnlAssetCurrency": 343.28,
+          "exposureInAccountCurrency": 63.21,
+          "exposureInAssetCurrency": 4671.65,
           "marginInAccountCurrency": 57.68,
-          "marginInAssetCurrency": 4233.08,
+          "marginInAssetCurrency": 4263.12,
           "marginCurrencyId": 1,
           "assetCurrencyId": 666,
-          "closeRate": 10352.0,
-          "closeConversionRate": 0.013626,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 10370.0,
+          "closeConversionRate": 0.01353,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387201030,
         "CID": 46659103,
@@ -153,17 +153,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 1.05,
-          "pnlAssetCurrency": 77.25,
-          "exposureInAccountCurrency": 59.87,
-          "exposureInAssetCurrency": 4393.67,
+          "pnL": 0.73,
+          "pnlAssetCurrency": 84.89,
+          "exposureInAccountCurrency": 59.55,
+          "exposureInAssetCurrency": 4401.31,
           "marginInAccountCurrency": 58.82,
-          "marginInAssetCurrency": 4316.75,
+          "marginInAssetCurrency": 4347.38,
           "marginCurrencyId": 1,
           "assetCurrencyId": 666,
-          "closeRate": 10352.0,
-          "closeConversionRate": 0.013626,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 10370.0,
+          "closeConversionRate": 0.01353,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3423393949,
         "CID": 46659103,
@@ -203,17 +203,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.25,
-          "pnlAssetCurrency": -0.1,
-          "exposureInAccountCurrency": 25.74,
-          "exposureInAssetCurrency": 21.86,
+          "pnL": 0.12,
+          "pnlAssetCurrency": -0.15,
+          "exposureInAccountCurrency": 25.61,
+          "exposureInAssetCurrency": 21.8,
           "marginInAccountCurrency": 25.49,
-          "marginInAssetCurrency": 21.65,
+          "marginInAssetCurrency": 21.7,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 119.135,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 118.825,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3349819953,
         "CID": 46659103,
@@ -253,17 +253,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 1.29,
-          "pnlAssetCurrency": 0.31,
-          "exposureInAccountCurrency": 45.4,
-          "exposureInAssetCurrency": 38.56,
+          "pnL": 1.06,
+          "pnlAssetCurrency": 0.21,
+          "exposureInAccountCurrency": 45.17,
+          "exposureInAssetCurrency": 38.46,
           "marginInAccountCurrency": 44.11,
-          "marginInAssetCurrency": 37.46,
+          "marginInAssetCurrency": 37.55,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 119.135,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 118.825,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387802808,
         "CID": 46659103,
@@ -303,17 +303,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.77,
-          "pnlAssetCurrency": 0.18,
-          "exposureInAccountCurrency": 41.46,
-          "exposureInAssetCurrency": 35.21,
+          "pnL": 0.56,
+          "pnlAssetCurrency": 0.09,
+          "exposureInAccountCurrency": 41.25,
+          "exposureInAssetCurrency": 35.12,
           "marginInAccountCurrency": 40.69,
-          "marginInAssetCurrency": 34.55,
+          "marginInAssetCurrency": 34.64,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 119.135,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 118.825,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387205024,
         "CID": 46659103,
@@ -353,17 +353,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.21,
-          "pnlAssetCurrency": 0.03,
-          "exposureInAccountCurrency": 41.38,
-          "exposureInAssetCurrency": 35.14,
+          "pnL": 0.0,
+          "pnlAssetCurrency": -0.06,
+          "exposureInAccountCurrency": 41.17,
+          "exposureInAssetCurrency": 35.05,
           "marginInAccountCurrency": 41.17,
-          "marginInAssetCurrency": 34.96,
+          "marginInAssetCurrency": 35.05,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 119.135,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 118.825,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3424160027,
         "CID": 46659103,
@@ -403,17 +403,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 14.61,
-          "pnlAssetCurrency": 14.61,
-          "exposureInAccountCurrency": 129.99,
-          "exposureInAssetCurrency": 129.99,
+          "pnL": 13.9,
+          "pnlAssetCurrency": 13.9,
+          "exposureInAccountCurrency": 129.28,
+          "exposureInAssetCurrency": 129.28,
           "marginInAccountCurrency": 115.38,
           "marginInAssetCurrency": 115.38,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 797.77,
+          "closeRate": 793.44,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3373638209,
         "CID": 46659103,
@@ -453,17 +453,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 10.91,
-          "pnlAssetCurrency": 10.91,
-          "exposureInAccountCurrency": 97.44,
-          "exposureInAssetCurrency": 97.44,
+          "pnL": 10.38,
+          "pnlAssetCurrency": 10.38,
+          "exposureInAccountCurrency": 96.91,
+          "exposureInAssetCurrency": 96.91,
           "marginInAccountCurrency": 86.53,
           "marginInAssetCurrency": 86.53,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 797.77,
+          "closeRate": 793.44,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387195959,
         "CID": 46659103,
@@ -503,17 +503,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 12.35,
-          "pnlAssetCurrency": 12.35,
-          "exposureInAccountCurrency": 98.35,
-          "exposureInAssetCurrency": 98.35,
+          "pnL": 11.81,
+          "pnlAssetCurrency": 11.81,
+          "exposureInAccountCurrency": 97.81,
+          "exposureInAssetCurrency": 97.81,
           "marginInAccountCurrency": 86.0,
           "marginInAssetCurrency": 86.0,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 797.77,
+          "closeRate": 793.44,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387765963,
         "CID": 46659103,
@@ -553,17 +553,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 2.11,
-          "pnlAssetCurrency": 2.11,
-          "exposureInAccountCurrency": 90.34,
-          "exposureInAssetCurrency": 90.34,
+          "pnL": 1.62,
+          "pnlAssetCurrency": 1.62,
+          "exposureInAccountCurrency": 89.85,
+          "exposureInAssetCurrency": 89.85,
           "marginInAccountCurrency": 88.23,
           "marginInAssetCurrency": 88.23,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 797.77,
+          "closeRate": 793.44,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3423397526,
         "CID": 46659103,
@@ -603,17 +603,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 5.97,
-          "pnlAssetCurrency": 5.97,
-          "exposureInAccountCurrency": 74.95,
-          "exposureInAssetCurrency": 74.95,
+          "pnL": 5.57,
+          "pnlAssetCurrency": 5.57,
+          "exposureInAccountCurrency": 74.55,
+          "exposureInAssetCurrency": 74.55,
           "marginInAccountCurrency": 68.98,
           "marginInAssetCurrency": 68.98,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 797.77,
+          "closeRate": 793.44,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3349753941,
         "CID": 46659103,
@@ -653,17 +653,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 1.23,
-          "pnlAssetCurrency": 0.22,
-          "exposureInAccountCurrency": 47.23,
-          "exposureInAssetCurrency": 40.11,
+          "pnL": 1.0,
+          "pnlAssetCurrency": 0.13,
+          "exposureInAccountCurrency": 47.0,
+          "exposureInAssetCurrency": 40.02,
           "marginInAccountCurrency": 46.0,
-          "marginInAssetCurrency": 39.06,
+          "marginInAssetCurrency": 39.16,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 160.685,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 160.32,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387796311,
         "CID": 46659103,
@@ -703,17 +703,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.34,
-          "pnlAssetCurrency": -0.23,
-          "exposureInAccountCurrency": 42.04,
-          "exposureInAssetCurrency": 35.7,
+          "pnL": 0.13,
+          "pnlAssetCurrency": -0.31,
+          "exposureInAccountCurrency": 41.83,
+          "exposureInAssetCurrency": 35.62,
           "marginInAccountCurrency": 41.7,
-          "marginInAssetCurrency": 35.41,
+          "marginInAssetCurrency": 35.5,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 160.685,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 160.32,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3349819220,
         "CID": 46659103,
@@ -753,17 +753,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.17,
-          "pnlAssetCurrency": -0.03,
-          "exposureInAccountCurrency": 47.22,
-          "exposureInAssetCurrency": 40.1,
+          "pnL": -0.06,
+          "pnlAssetCurrency": -0.13,
+          "exposureInAccountCurrency": 46.99,
+          "exposureInAssetCurrency": 40.0,
           "marginInAccountCurrency": 47.05,
-          "marginInAssetCurrency": 39.96,
+          "marginInAssetCurrency": 40.06,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 160.685,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 160.32,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3424162624,
         "CID": 46659103,
@@ -803,17 +803,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 0.79,
-          "pnlAssetCurrency": 0.13,
-          "exposureInAccountCurrency": 47.29,
-          "exposureInAssetCurrency": 40.16,
+          "pnL": 0.57,
+          "pnlAssetCurrency": 0.04,
+          "exposureInAccountCurrency": 47.07,
+          "exposureInAssetCurrency": 40.07,
           "marginInAccountCurrency": 46.5,
-          "marginInAssetCurrency": 39.49,
+          "marginInAssetCurrency": 39.59,
           "marginCurrencyId": 1,
           "assetCurrencyId": 2,
-          "closeRate": 160.685,
-          "closeConversionRate": 1.17756,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "closeRate": 160.32,
+          "closeConversionRate": 1.17457,
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387209847,
         "CID": 46659103,
@@ -853,17 +853,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 6.28,
-          "pnlAssetCurrency": 6.28,
-          "exposureInAccountCurrency": 35.28,
-          "exposureInAssetCurrency": 35.28,
+          "pnL": 5.36,
+          "pnlAssetCurrency": 5.36,
+          "exposureInAccountCurrency": 34.36,
+          "exposureInAssetCurrency": 34.36,
           "marginInAccountCurrency": 29.0,
           "marginInAssetCurrency": 29.0,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 55.6,
+          "closeRate": 54.14,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387799752,
         "CID": 46659103,
@@ -903,17 +903,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 1.59,
-          "pnlAssetCurrency": 1.59,
-          "exposureInAccountCurrency": 31.0,
-          "exposureInAssetCurrency": 31.0,
+          "pnL": 0.78,
+          "pnlAssetCurrency": 0.78,
+          "exposureInAccountCurrency": 30.19,
+          "exposureInAssetCurrency": 30.19,
           "marginInAccountCurrency": 29.41,
           "marginInAssetCurrency": 29.41,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 55.6,
+          "closeRate": 54.14,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3423393952,
         "CID": 46659103,
@@ -953,17 +953,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 12.74,
-          "pnlAssetCurrency": 12.74,
-          "exposureInAccountCurrency": 78.52,
-          "exposureInAssetCurrency": 78.52,
+          "pnL": 10.68,
+          "pnlAssetCurrency": 10.68,
+          "exposureInAccountCurrency": 76.46,
+          "exposureInAssetCurrency": 76.46,
           "marginInAccountCurrency": 65.78,
           "marginInAssetCurrency": 65.78,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 55.6,
+          "closeRate": 54.14,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3373625154,
         "CID": 46659103,
@@ -1003,17 +1003,17 @@
       },
       {
         "unrealizedPnL": {
-          "pnL": 5.15,
-          "pnlAssetCurrency": 5.15,
-          "exposureInAccountCurrency": 34.0,
-          "exposureInAssetCurrency": 34.0,
+          "pnL": 4.26,
+          "pnlAssetCurrency": 4.26,
+          "exposureInAccountCurrency": 33.11,
+          "exposureInAssetCurrency": 33.11,
           "marginInAccountCurrency": 28.85,
           "marginInAssetCurrency": 28.85,
           "marginCurrencyId": 1,
           "assetCurrencyId": 1,
-          "closeRate": 55.6,
+          "closeRate": 54.14,
           "closeConversionRate": 1.0,
-          "timestamp": "2026-05-11T19:20:53.0609759Z"
+          "timestamp": "2026-05-12T09:09:06.5439646Z"
         },
         "positionID": 3387210711,
         "CID": 46659103,
@@ -1052,7 +1052,7 @@
         "lotCount": 0.611487
       }
     ],
-    "unrealizedPnL": 94.59,
+    "unrealizedPnL": 84.24,
     "mirrors": [],
     "accountCurrencyId": 1,
     "credit": 0.06,

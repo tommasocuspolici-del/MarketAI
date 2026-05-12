@@ -206,10 +206,21 @@ class LiveMarketService:
             self._refresh_in_progress = True
 
         # Fuori dal lock: il fetch e' lento (HTTP), non bloccare gli altri.
+        new_snapshot = None
         try:
             new_snapshot = self._fetch_snapshot()
+        except Exception as e:
+            log.error("Failed to fetch snapshot", error=str(e))
+            # Fallback: usa la cache precedente se disponibile, altrimenti costruisci snapshot di errore
+            with self._lock:
+                if self._cache.kpis:
+                    new_snapshot = self._cache
+                    new_snapshot.is_stale = True
+                else:
+                    new_snapshot = MarketSnapshot(
+                        kpis=self._build_unavailable_kpis(f"Fetch error: {e}")
+                    )
         finally:
-            # Ricomponi: scrivi cache + sveglia gli altri thread.
             with self._refresh_cv:
                 self._cache = new_snapshot
                 self._refresh_in_progress = False
