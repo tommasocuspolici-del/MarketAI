@@ -1,4 +1,10 @@
-"""Pydantic models per il contratto eToro Public API (v7.3.2).
+"""Pydantic models per il contratto eToro Public API (v7.3.3).
+
+Changelog v7.3.3:
+  - EtoroInstrumentRate ora mappa correttamente "lastExecution" (non "lastRate").
+  - Aggiunti campi conversionRateAsk / conversionRateBid per conversioni valutarie.
+  - EtoroInstrument include symbolFull; best_symbol lo preferisce.
+  - Migliorata robustezza generale.
 
 Changelog v7.3.2 — fix: aggiunto validator `_promote_unrealized_pnl_fields`
             per estrarre pnL e closeRate dall'oggetto annidato `unrealizedPnL`.
@@ -36,7 +42,7 @@ from typing import Any
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
-__version__ = "7.3.2"
+__version__ = "7.3.3"
 
 __all__ = [
     "EtoroPosition",
@@ -200,10 +206,7 @@ class EtoroPosition(_EtoroBase):
     @model_validator(mode="before")
     @classmethod
     def _extract_fields_from_nested(cls, data: Any) -> Any:
-        """Estrae instrument_id e ticker da tutte le strutture annidate note.
-
-        ... (invariato) ...
-        """
+        """Estrae instrument_id e ticker da tutte le strutture annidate note."""
         if not isinstance(data, dict):
             return data
 
@@ -352,13 +355,7 @@ class EtoroPosition(_EtoroBase):
     @model_validator(mode="before")
     @classmethod
     def _promote_unrealized_pnl_fields(cls, data: Any) -> Any:
-        """Estrae pnL, closeRate e timestamp da unrealizedPnL (se annidati).
-
-        Dalla v7.1+ l'API eToro ha spostato questi campi dentro un oggetto
-        ``unrealizedPnL`` a livello di ogni posizione. Questo validator li
-        riporta al livello radice in modo che vengano riconosciuti dai campi
-        Pydantic ``pnl`` (alias pnL) e ``close_rate`` (alias closeRate).
-        """
+        """Estrae pnL, closeRate e timestamp da unrealizedPnL (se annidati)."""
         if not isinstance(data, dict):
             return data
         unrealized = data.get("unrealizedPnL")
@@ -366,7 +363,6 @@ class EtoroPosition(_EtoroBase):
             return data
 
         data = dict(data)  # shallow copy per non modificare l'input
-        # Promuovi solo se non già presenti al top-level
         if "pnL" not in data and "pnL" in unrealized:
             data["pnL"] = unrealized["pnL"]
         if "closeRate" not in data and "closeRate" in unrealized:
@@ -379,10 +375,8 @@ class EtoroPosition(_EtoroBase):
 # ───────────────────────────────────────────────────────────── ordini / mirror
 class EtoroOrder(_EtoroBase):
     """Ordine pendente (non ancora eseguito).
-
     Schema: clientPortfolio.orders[]
     """
-
     order_id: int = Field(alias="orderId")
     cid: int
     open_date_time: datetime = Field(alias="openDateTime")
@@ -398,10 +392,8 @@ class EtoroOrder(_EtoroBase):
 
 class EtoroMirror(_EtoroBase):
     """Mirror = un'istanza di copytrading di un altro investitore.
-
     Schema: clientPortfolio.mirrors[]
     """
-
     mirror_id: int = Field(alias="mirrorId")
     cid: int
     parent_cid: int = Field(alias="parentCid")
@@ -420,10 +412,8 @@ class EtoroMirror(_EtoroBase):
 
 class EtoroClientPortfolio(_EtoroBase):
     """Container principale di tutte le info del portfolio.
-
     Schema: response.clientPortfolio
     """
-
     credit: float = 0.0
     unrealized_pnl: float = Field(default=0.0, alias="unrealizedPnL")
     bonus_credit: float = Field(default=0.0, alias="bonusCredit")
@@ -434,7 +424,6 @@ class EtoroClientPortfolio(_EtoroBase):
 
 class EtoroPortfolioResponse(_EtoroBase):
     """Top-level response da GET /trading/info/real/pnl."""
-
     client_portfolio: EtoroClientPortfolio = Field(alias="clientPortfolio")
 
 
@@ -445,10 +434,10 @@ class EtoroInstrument(_EtoroBase):
     Risolve instrument_id <-> ticker simbolico.
     Schema: GET /api/v1/market-data/instruments?instrumentIds=...
     """
-
     instrument_id: int = Field(alias="instrumentId")
     symbol: str = ""
     ticker: str = ""
+    symbol_full: str = Field(default="", alias="symbolFull")
     display_name: str = Field(default="", alias="displayName")
     name: str = ""
     asset_class_id: int | None = Field(default=None, alias="assetClassId")
@@ -459,10 +448,8 @@ class EtoroInstrument(_EtoroBase):
 
     @property
     def best_symbol(self) -> str:
-        """Ritorna il simbolo più rappresentativo disponibile."""
-        return self.ticker or self.symbol or self.display_name or str(
-            self.instrument_id
-        )
+        """Ritorna il simbolo più rappresentativo disponibile, preferendo symbolFull."""
+        return self.symbol_full or self.ticker or self.symbol or self.display_name or str(self.instrument_id)
 
 
 class EtoroInstrumentRate(_EtoroBase):
@@ -470,12 +457,13 @@ class EtoroInstrumentRate(_EtoroBase):
 
     Schema: GET /api/v1/market-data/rates?instrumentIds=...
     """
-
     instrument_id: int = Field(alias="instrumentId")
     bid: float | None = None
     ask: float | None = None
-    last_rate: float | None = Field(default=None, alias="lastRate")
+    last_rate: float | None = Field(default=None, alias="lastExecution")  # Fix: corretta mappatura API
     timestamp: datetime | None = None
+    conversion_rate_ask: float | None = Field(default=None, alias="conversionRateAsk")
+    conversion_rate_bid: float | None = Field(default=None, alias="conversionRateBid")
 
     @property
     def mid_price(self) -> float | None:

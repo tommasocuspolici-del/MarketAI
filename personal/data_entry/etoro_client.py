@@ -1,7 +1,8 @@
-"""Client per eToro Public API (v7.1.2).
+"""Client per eToro Public API (v7.1.3).
 
 Aggiunto metodo get_instrument_id_from_order() per supportare
 la risoluzione tier-4 via orderId (richiesto da etoro_importer v7.3.0).
+Migliorata validazione del campo instrumentID nella risposta degli ordini.
 """
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ from personal.data_entry.etoro_models import (
     parse_portfolio_response,
 )
 
-__version__ = "7.1.2"
+__version__ = "7.1.3"
 
 __all__ = [
     "EtoroAuthError",
@@ -172,9 +173,14 @@ class EtoroClient:
         path = f"{_ORDERS_PATH}/{order_id}"
         try:
             payload = self._get_json(path)
-            iid = payload.get("instrumentID")
-            if iid is not None:
-                return int(iid)
+            # Validazione: il campo instrumentID deve esistere ed essere convertibile a int
+            if not isinstance(payload, dict) or "instrumentID" not in payload:
+                log.warning("get_instrument_id_from_order(%d): 'instrumentID' non presente nella risposta.", order_id)
+                return None
+            iid = payload["instrumentID"]
+            return int(iid)
+        except (ValueError, TypeError) as exc:
+            log.warning("get_instrument_id_from_order(%d): formato instrumentID non valido - %s", order_id, exc)
         except EtoroClientError as exc:
             log.warning("get_instrument_id_from_order(%d) failed: %s", order_id, exc)
         return None
@@ -185,7 +191,7 @@ class EtoroClient:
             "x-user-key": self._config.user_key,
             "x-request-id": str(uuid.uuid4()),
             "Accept": "application/json",
-            "User-Agent": "MarketAI/7.1.2 (Python urllib)",
+            "User-Agent": "MarketAI/7.1.3 (Python urllib)",
         }
 
     def _build_url(self, path: str, params: dict[str, str] | None = None) -> str:

@@ -1,14 +1,19 @@
-"""EtoroImporter: facade unica (v7.3.1) con aggregazione, ticker reali e prezzi live.
+"""EtoroImporter: facade unica (v7.3.3) con mappatura ticker numerici e prezzi live.
 
-Novità v7.3.1:
-  - Estrazione ticker reale per tutte le posizioni (API e XLSX).
-  - Metodo aggregate_by_real_ticker() per unire posizioni con lo stesso
-    ticker sottostante (corregge l'errore #3040).
-  - Funzione update_live_prices() che recupera prezzi da yfinance e
-    ricalcola market value / profit, risolvendo il problema del valore
-    totale errato.
-  - Metodo get_portfolio_overview() per inserire i dati eToro nella
-    sezione "patrimonio" dell'applicazione.
+Novità v7.3.3:
+  - Fix aggregazione: calcolo corretto del totale investito senza riferimento
+    a variabili esterne.
+  - _override_prices_for_numeric_tickers ora gestisce NaN in open_price.
+  - Allineato ai nuovi campi dei modelli (symbolFull, lastExecution, 
+    conversion rates).
+  - Migliorata robustezza generale del parsing.
+
+Novità v7.3.2:
+  - Tabella di associazione instrumentID numerico (es. #3040) → ticker reale
+    (SWDA.L, CSPX, EIMI.L). Facilmente aggiornabile.
+  - I prezzi per gli strumenti numerici vengono sempre presi da yfinance,
+    ignorando il close_rate errato dell'API.
+  - La mappatura è utilizzata sia per l'API che per il fallback XLSX.
 """
 from __future__ import annotations
 
@@ -35,7 +40,7 @@ from personal.data_entry.etoro_models import (
 )
 from personal.data_entry.etoro_parser import EToroParseError, EToroParser
 
-__version__ = "7.3.1"
+__version__ = "7.3.3"
 
 __all__ = [
     "EtoroImporter",
@@ -75,30 +80,23 @@ _CANONICAL_COLUMNS = [
     "raw_action",
 ]
 
-# Mapping manuale instrument_id → ticker reale (ultima risorsa se l'API non fornisce il ticker)
-_MANUAL_TICKER_MAP: dict[int, str] = {
-    3040: "CSPX",
-    # aggiungere altri id se necessario
+# ───────────────────────────────────────────────────────────────
+#  MAPPATURA INSTRUMENT ID NUMERICO → TICKER REALE
+#  Aggiorna questa tabella quando compaiono nuovi codici interni.
+#  I ticker devono essere nel formato riconosciuto da yfinance
+#  (es. "SWDA.L" per ETF su Borsa Italiana / Xetra, "CSPX.L" per LSE).
+# ───────────────────────────────────────────────────────────────
+_INSTRUMENT_ID_TO_REAL_TICKER: dict[int, str] = {
+    3040: "EUNL.DE",      # iShares Core MSCI World UCITS ETF (EUR, Xetra) – ISIN IE00B4L5Y983
+    3434: "CSPX.L",       # iShares Core S&P 500 UCITS ETF (GBX, LSE)
+    15435: "EIMI.L",      # iShares Core MSCI EM IMI UCITS ETF (GBX, LSE)
+    3394: "EUN5.DE",      # iShares EUR Corp Bond UCITS ETF (EUR, Xetra?)
+    10569: "IBCN.DE",     # iShares EUR Govt Bond 3-7yr UCITS ETF (EUR, Xetra?)
+    # ... aggiungi qui altre corrispondenze
 }
 
-
-def _extract_real_ticker_from_raw(ticker_col: str, instrument_id: int | None = None) -> str:
-    """Determina il ticker reale da una stringa 'ticker' del DataFrame canonico."""
-    if ticker_col.startswith("#"):
-        # è un placeholder "#id"
-        iid = int(ticker_col[1:]) if ticker_col[1:].isdigit() else None
-        if iid and iid in _MANUAL_TICKER_MAP:
-            return _MANUAL_TICKER_MAP[iid]
-        return ticker_col  # nessun mapping
-    return ticker_col
-
-
 class EtoroImporter:
-    """Facade unificata per import posizioni eToro.
-
-    Aggiunte le capacità di estrazione ticker reale, aggregazione e
-    aggiornamento prezzi live.
-    """
+    """Facade unificata per import posizioni eToro."""
 
     def __init__(
         self,
@@ -119,7 +117,9 @@ class EtoroImporter:
     def credential_status_message(self) -> str:
         if self.has_api_credentials:
             return "✅ API eToro configurata."
-        return "ℹ️ Credenziali API eToro assenti: userai il file XLSX."
+        return (
+            "ℹ️ Credenziali API eToro assenti: sarà usato il file XLSX."
+        )
 
     def import_open_positions(
         self,
@@ -136,7 +136,9 @@ class EtoroImporter:
                     raise EtoroImportError(
                         f"API fallita ({exc}) e nessun XLSX di fallback."
                     ) from exc
-                return self.import_via_xlsx(xlsx_source, notes=f"Fallback dopo errore API: {exc}")
+                return self.import_via_xlsx(
+                    xlsx_source, notes=f"Fallback dopo errore API: {exc}"
+                )
         if xlsx_source is None:
             raise EtoroImportError("Nessuna fonte disponibile.")
         return self.import_via_xlsx(xlsx_source)
@@ -156,7 +158,7 @@ class EtoroImporter:
                 notes="Nessuna posizione aperta.",
             )
 
-        # Classificazione (tier 1-4) – invariata rispetto alla 7.3.0
+        # Classificazione (tier 1-4) invariata
         resolvable_with_id: list[EtoroPosition] = []
         resolvable_ticker_only: list[EtoroPosition] = []
         candidate_via_order: list[EtoroPosition] = []
@@ -174,7 +176,9 @@ class EtoroImporter:
 
         resolvable_via_order: list[EtoroPosition] = []
         if candidate_via_order:
-            resolved, still = _resolve_instrument_ids_via_orders(client, candidate_via_order)
+            resolved, still = _resolve_instrument_ids_via_orders(
+                client, candidate_via_order
+            )
             resolvable_via_order = resolved
             resolvable_with_id.extend(resolved)
             unresolvable.extend(still)
@@ -188,7 +192,7 @@ class EtoroImporter:
                 source="api",
                 n_positions=0,
                 n_warnings=n_unresolvable,
-                notes=f"Tutte le {n_unresolvable} posizioni sono irrecuperabili.",
+                notes="Nessuna posizione recuperabile.",
             )
 
         instruments: dict[int, EtoroInstrument] = {}
@@ -199,33 +203,39 @@ class EtoroImporter:
             except EtoroClientError as exc:
                 log.warning("Lookup instrument fallito: %s", exc)
 
+        # Quote correnti (API) – non le useremo più per i ticker numerici,
+        # ma la chiamata resta per eventuali ticker "normali" (non numerici).
         rates: dict[int, EtoroInstrumentRate] = {}
         if resolvable_with_id:
             try:
-                rates = client.get_rates([p.instrument_id for p in resolvable_with_id])  # type: ignore
+                rates = client.get_rates(
+                    [p.instrument_id for p in resolvable_with_id]  # type: ignore
+                )
             except EtoroClientError as exc:
                 log.warning("Lookup rates fallito: %s", exc)
 
         all_resolvable = resolvable_with_id + resolvable_ticker_only
         df = _api_positions_to_dataframe(all_resolvable, instruments, rates)
 
-        # Aggiungi colonna 'real_ticker' basandosi sulla risoluzione strumento
+        # Aggiungi colonna real_ticker basata sulla mappatura
         df["real_ticker"] = df.apply(
-            lambda row: _resolve_real_ticker_for_row(row, instruments, client),
-            axis=1,
+            lambda row: _resolve_real_ticker_for_row(row, instruments), axis=1
         )
 
-        # Costruzione note
+        # Sostituisci i prezzi per le righe con ticker numerici
+        # usando il prezzo live da Yahoo Finance (ignora l'eventuale prezzo API)
+        df = _override_prices_for_numeric_tickers(df)
+
         notes_parts = [f"Importate {n_resolvable} posizioni via API."]
-        if len(resolvable_ticker_only) > 0:
+        if resolvable_ticker_only:
             notes_parts.append(
                 f"{len(resolvable_ticker_only)} posizioni importate tramite ticker_from_api."
             )
-        if len(resolvable_via_order) > 0:
+        if resolvable_via_order:
             notes_parts.append(
                 f"{len(resolvable_via_order)} posizioni risolte via orderId."
             )
-        if n_unresolvable > 0:
+        if n_unresolvable:
             notes_parts.append(f"{n_unresolvable} posizioni scartate.")
         return EtoroImportResult(
             positions=df,
@@ -244,17 +254,17 @@ class EtoroImporter:
         except EToroParseError as exc:
             raise EtoroImportError(f"Impossibile leggere XLSX: {exc}") from exc
 
-        # Allinea al formato canonico
         df = _align_canonical_schema(df)
 
-        # Estrai ticker reale dalla colonna "Nome" se presente
+        # Se la colonna "Nome" esiste, estrai il ticker reale da lì,
+        # altrimenti usa la mappatura sul ticker numerico.
         if "Nome" in df.columns:
             df["real_ticker"] = df["Nome"].apply(_extract_ticker_from_nome)
         else:
-            # Se non c'è Nome, prova a usare il ticker normale
-            df["real_ticker"] = df["ticker"].apply(
-                lambda x: _extract_real_ticker_from_raw(x)
-            )
+            df["real_ticker"] = df["ticker"].apply(_resolve_ticker_from_placeholder)
+
+        # Anche per XLSX, sovrascrivi i prezzi se il ticker è numerico
+        df = _override_prices_for_numeric_tickers(df)
 
         return EtoroImportResult(
             positions=df,
@@ -268,36 +278,50 @@ class EtoroImporter:
         """Aggrega posizioni con lo stesso ticker reale."""
         return _aggregate_positions(df)
 
-    def get_portfolio_overview(self, df: pd.DataFrame, etoro_total_value: float = 0.0) -> dict:
+    def get_portfolio_overview(
+        self, df: pd.DataFrame, etoro_total_value: float = 0.0
+    ) -> dict:
         """Restituisce un dizionario pronto per la sezione patrimonio."""
         aggr = _aggregate_positions(df)
+        total = etoro_total_value if etoro_total_value else aggr["market_value"].sum()
         return {
             "eToro": {
-                "valore_corrente": etoro_total_value if etoro_total_value else aggr["market_value"].sum(),
+                "valore_corrente": total,
                 "posizioni": aggr.to_dict(orient="records"),
                 "aggiornato_il": pd.Timestamp.now().isoformat(),
             }
         }
 
 
-# ─────────────────────────────────────────────────────── helpers pubblici
+# ─────────────────────────────────────────────────────── funzioni pubbliche
 def update_live_prices(df: pd.DataFrame) -> pd.DataFrame:
-    """Sostituisce current_price e ricalcola market_value/profit usando yfinance."""
+    """Sostituisce current_price e ricalcola market_value/profit usando yfinance.
+    
+    Per le righe che hanno un real_ticker valido (non placeholder "#xxx")
+    richiede il prezzo corrente e aggiorna tutte le metriche.
+    """
     if "real_ticker" not in df.columns:
-        # Prova a determinarlo dalla colonna ticker
-        df["real_ticker"] = df["ticker"].apply(lambda x: _extract_real_ticker_from_raw(x))
-    df = df.copy()
-    total = len(df)
+        # Tenta di ricavarlo dalla colonna ticker
+        df = df.copy()
+        df["real_ticker"] = df["ticker"].apply(_resolve_ticker_from_placeholder)
+    else:
+        df = df.copy()
+
     for idx, row in df.iterrows():
-        real_ticker = row["real_ticker"]
-        price = _get_live_price_yfinance(real_ticker)
+        ticker = row["real_ticker"]
+        # Salta se il ticker è ancora un placeholder o vuoto
+        if not ticker or ticker.startswith("#"):
+            continue
+        price = _get_live_price_yfinance(ticker)
         if price is not None:
             df.at[idx, "current_price"] = price
             qty = row["quantity"]
             df.at[idx, "market_value"] = qty * price
             invested = row["open_price"] * qty
             df.at[idx, "profit_eur"] = (qty * price) - invested
-            df.at[idx, "profit_pct"] = ((qty * price) / invested - 1) * 100 if invested else 0.0
+            df.at[idx, "profit_pct"] = (
+                ((qty * price) / invested - 1) * 100 if invested else 0.0
+            )
     return df
 
 
@@ -306,33 +330,49 @@ def aggregate_by_real_ticker(df: pd.DataFrame) -> pd.DataFrame:
     return _aggregate_positions(df)
 
 
-# ─────────────────────────────────────────────────────── funzioni interne
+# ─────────────────────────────────────────────────────── helper interni
+def _resolve_ticker_from_placeholder(ticker_col: str) -> str:
+    """Converte un placeholder '#3040' in un ticker reale, se mappato."""
+    if ticker_col.startswith("#"):
+        iid_str = ticker_col[1:]
+        if iid_str.isdigit():
+            iid = int(iid_str)
+            if iid in _INSTRUMENT_ID_TO_REAL_TICKER:
+                return _INSTRUMENT_ID_TO_REAL_TICKER[iid]
+        # Non mappato: restituisci il placeholder originale (non facciamo danni)
+    return ticker_col
+
+
 def _resolve_real_ticker_for_row(
     row: pd.Series,
     instruments: dict[int, EtoroInstrument],
-    client: EtoroClient | None = None,
 ) -> str:
-    """Restituisce il ticker reale per una riga del DataFrame API."""
+    """Determina il ticker reale per una riga proveniente dall'API.
+    
+    Priorità:
+    1. Ticker non numerico (già un simbolo reale) → restituiscilo così.
+    2. Placeholder `#id` con id presente nella mappatura manuale → usa quella.
+    3. Placeholder `#id` con id risolto via /instruments → usa best_symbol
+       dello strumento (spesso è ancora un ticker generico, ma meglio di #id).
+    4. Altrimenti mantieni il placeholder.
+    """
     ticker = row["ticker"]
     if not ticker.startswith("#"):
         return ticker
-    # Prova a estrarre l'instrument_id dal placeholder "#1234"
+
     iid_str = ticker[1:]
-    if iid_str.isdigit():
-        iid = int(iid_str)
-        if iid in _MANUAL_TICKER_MAP:
-            return _MANUAL_TICKER_MAP[iid]
-        if iid in instruments:
-            return instruments[iid].best_symbol
-        # Ultimo tentativo: search API (costoso, meglio evitare in loop)
-        if client:
-            try:
-                results = client.search_instrument(ticker)
-                if results:
-                    return results[0].best_symbol
-            except Exception:
-                pass
-    return ticker  # fallback
+    if not iid_str.isdigit():
+        return ticker
+    iid = int(iid_str)
+
+    # Mappatura manuale ha la precedenza
+    if iid in _INSTRUMENT_ID_TO_REAL_TICKER:
+        return _INSTRUMENT_ID_TO_REAL_TICKER[iid]
+
+    # Fallback: cerca fra gli strumenti risolti
+    if iid in instruments:
+        return instruments[iid].best_symbol
+    return ticker
 
 
 def _extract_ticker_from_nome(nome: str) -> str:
@@ -342,20 +382,13 @@ def _extract_ticker_from_nome(nome: str) -> str:
     match = re.search(r'\(([A-Z0-9\.]+)\)$', str(nome).strip())
     if match:
         return match.group(1)
-    return nome  # No parentesi, restituisci Nome come ticker
+    return nome
 
 
 def _get_live_price_yfinance(ticker: str) -> float | None:
-    """Prezzo live via yfinance con mappatura degli exchange noti."""
-    exchange_map = {
-        "CSPX": "CSPX.L",
-        "VOO": "VOO",
-        "QQQ": "QQQ",
-        # Aggiungi altri se necessario
-    }
-    symbol = exchange_map.get(ticker.upper(), ticker)
+    """Prezzo live via yfinance, con mappatura exchange se necessario."""
     try:
-        stock = yf.Ticker(symbol)
+        stock = yf.Ticker(ticker)
         data = stock.history(period="1d")
         if not data.empty:
             return data["Close"].iloc[-1]
@@ -364,20 +397,55 @@ def _get_live_price_yfinance(ticker: str) -> float | None:
     return None
 
 
+def _override_prices_for_numeric_tickers(df: pd.DataFrame) -> pd.DataFrame:
+    """Per le righe il cui ticker originario era un placeholder (#...), 
+    rimpiazza il prezzo con quello live da yfinance e ricalcola le metriche.
+    """
+    df = df.copy()
+    for idx, row in df.iterrows():
+        original_ticker = row["ticker"]
+        real_ticker = row["real_ticker"]
+        # Se il ticker originale è un placeholder e abbiamo un real_ticker valido,
+        # oppure il real_ticker è stato mappato esplicitamente
+        if original_ticker.startswith("#") and real_ticker and not real_ticker.startswith("#"):
+            price = _get_live_price_yfinance(real_ticker)
+            if price is not None:
+                df.at[idx, "current_price"] = price
+                qty = row["quantity"]
+                # Gestione NaN nel prezzo di carico
+                invested = (row["open_price"] * qty) if pd.notna(row["open_price"]) else 0.0
+                df.at[idx, "market_value"] = qty * price
+                df.at[idx, "profit_eur"] = (qty * price) - invested
+                df.at[idx, "profit_pct"] = (
+                    ((qty * price) / invested - 1) * 100 if invested else 0.0
+                )
+    return df
+
+
 def _aggregate_positions(df: pd.DataFrame) -> pd.DataFrame:
     """Raggruppa per real_ticker, somma quantità, calcola prezzo medio ponderato e market value."""
     if "real_ticker" not in df.columns:
-        raise ValueError("DataFrame must have 'real_ticker' column. Run update_live_prices or assign it first.")
+        raise ValueError("DataFrame must have 'real_ticker' column.")
+    
+    # Assicuriamoci che le colonne numeriche siano pulite
+    for col in ["quantity", "open_price", "current_price"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    
+    # Calcoliamo il valore investito per riga per un'aggregazione sicura
+    df["invested_value"] = df["open_price"] * df["quantity"]
+    
     grouped = df.groupby("real_ticker", as_index=False).agg(
         total_units=("quantity", "sum"),
-        total_invested=("open_price", lambda x, q=df.loc[x.index, "quantity"]: (x * q).sum() if len(x) > 0 else 0),
+        total_invested=("invested_value", "sum"),
         last_current_price=("current_price", "last"),
         raw_action=("raw_action", "first"),
     )
     grouped["avg_open_price"] = grouped["total_invested"] / grouped["total_units"]
     grouped["market_value"] = grouped["total_units"] * grouped["last_current_price"]
     grouped["profit_eur"] = grouped["market_value"] - grouped["total_invested"]
-    grouped["profit_pct"] = (grouped["profit_eur"] / grouped["total_invested"]) * 100
+    # Evitiamo divisioni per zero
+    grouped["profit_pct"] = (grouped["profit_eur"] / grouped["total_invested"].replace(0, pd.NA)) * 100
     return grouped.rename(columns={"real_ticker": "ticker"})
 
 
@@ -387,10 +455,9 @@ def _resolve_instrument_ids_via_orders(
     if not positions:
         return [], []
     if not hasattr(client, "get_instrument_id_from_order"):
-        log.warning("EtoroClient non supporta get_instrument_id_from_order.")
         return [], positions
 
-    unique_order_ids = list({p.order_id for p in positions if p.order_id is not None})
+    unique_order_ids = list({pos.order_id for pos in positions if pos.order_id is not None})
     order_to_iid: dict[int, int] = {}
     for oid in unique_order_ids:
         iid = client.get_instrument_id_from_order(oid)
@@ -440,7 +507,10 @@ def _api_positions_to_dataframe(
         else:
             ticker = "UNKNOWN"
 
-        raw_action = inst.name if inst and inst.name else (pos.display_name_from_api or ticker)
+        raw_action = (
+            inst.name if inst and inst.name
+            else (pos.display_name_from_api or ticker)
+        )
 
         current_price: float | None = None
         if rate and rate.mid_price is not None:
@@ -448,7 +518,11 @@ def _api_positions_to_dataframe(
         elif pos.close_rate is not None:
             current_price = pos.close_rate
 
-        market_value = current_price * pos.units if current_price is not None and pos.units else None
+        market_value = (
+            current_price * pos.units
+            if current_price is not None and pos.units
+            else None
+        )
         profit_pct = (pos.pnl / pos.amount * 100.0) if pos.amount else None
 
         rows.append({
@@ -467,8 +541,12 @@ def _api_positions_to_dataframe(
 
     if not rows:
         return _empty_canonical_df()
+
     df = pd.DataFrame(rows, columns=_CANONICAL_COLUMNS)
-    for col in ("quantity", "open_price", "current_price", "market_value", "profit_pct", "profit_eur"):
+    for col in (
+        "quantity", "open_price", "current_price", "market_value",
+        "profit_pct", "profit_eur",
+    ):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["open_date"] = pd.to_datetime(df["open_date"], errors="coerce", utc=True)
     return df.reset_index(drop=True)
