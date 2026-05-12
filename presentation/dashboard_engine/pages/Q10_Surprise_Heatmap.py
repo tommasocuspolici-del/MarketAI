@@ -35,14 +35,35 @@ def body_surprise_heatmap(tokens: DesignTokens) -> None:
 
     try:
         db = DuckDBClient(path=DUCKDB_PATH)
-        sectors_placeholder = ",".join(f"'{s}'" for s in sectors_sel)
-        rows = db.query(
-            f"SELECT release_date, indicator_code, sector, consensus_value, "
-            f"actual_value, surprise_raw, surprise_z FROM economic_consensus "
-            f"WHERE sector IN ({sectors_placeholder}) "
-            f"AND release_date >= CURRENT_DATE - INTERVAL 12 MONTH "
-            f"ORDER BY release_date DESC LIMIT 500"
-        )
+        # SECURITY FIX: whitelist validation prima di costruire la query
+        # Mai costruire IN (...) con valori utente via f-string
+        _VALID = {"labour", "growth", "inflation", "housing", "trade_external"}
+        safe_sectors = [s for s in sectors_sel if s in _VALID]
+        if not safe_sectors:
+            rows = None
+        else:
+            # Usa placeholders parametrizzati se il client li supporta
+            # Fallback: costruisce la IN-clause solo con valori dalla whitelist
+            placeholders = ",".join("?" * len(safe_sectors))
+            try:
+                rows = db.query(
+                    f"SELECT release_date, indicator_code, sector, consensus_value, "
+                    f"actual_value, surprise_raw, surprise_z FROM economic_consensus "
+                    f"WHERE sector IN ({placeholders}) "
+                    f"AND release_date >= CURRENT_DATE - INTERVAL 12 MONTH "
+                    f"ORDER BY release_date DESC LIMIT 500",
+                    safe_sectors,
+                )
+            except TypeError:
+                # Fallback per client che non accettano params in .query()
+                in_clause = ",".join(f"'{s}'" for s in safe_sectors)  # già validati da whitelist
+                rows = db.query(
+                    f"SELECT release_date, indicator_code, sector, consensus_value, "
+                    f"actual_value, surprise_raw, surprise_z FROM economic_consensus "
+                    f"WHERE sector IN ({in_clause}) "
+                    f"AND release_date >= CURRENT_DATE - INTERVAL 12 MONTH "
+                    f"ORDER BY release_date DESC LIMIT 500"
+                )
     except Exception:
         rows = None
 

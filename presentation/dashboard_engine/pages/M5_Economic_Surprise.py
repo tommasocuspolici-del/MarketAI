@@ -26,12 +26,25 @@ def _load_sector_data(db):
         return None
 
 
+# Settori validi — whitelist per prevenire SQL injection (BUG FIX: f-string su input utente)
+_VALID_SECTORS = frozenset({"labour", "growth", "inflation", "housing", "trade_external"})
+
+
 def _load_indicator_data(db, sector: str):
+    """Carica dati indicatori per settore.
+
+    SECURITY FIX: validazione whitelist prima di usare il valore in query.
+    Mai usare f-string con input utente direttamente in SQL.
+    """
+    if sector not in _VALID_SECTORS:
+        return None
     try:
+        # Query parametrizzata — nessuna f-string con user input
         rows = db.query(
             "SELECT release_date, indicator_code, consensus_value, actual_value, "
             "surprise_raw, surprise_z FROM economic_consensus "
-            f"WHERE sector = '{sector}' ORDER BY release_date DESC LIMIT 60"
+            "WHERE sector = ? ORDER BY release_date DESC LIMIT 60",
+            [sector],
         )
         return rows
     except Exception:

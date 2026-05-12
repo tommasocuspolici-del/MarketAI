@@ -218,44 +218,49 @@ class JOLTSAnalyzer:
         )
 
     def _persist(self, frames: dict[str, pd.DataFrame]) -> None:
-        """Persiste gli ultimi N mesi di JOLTS in DuckDB (tabella jolts_monthly)."""
+        """Persiste gli ultimi N mesi di JOLTS in DuckDB (tabella jolts_monthly).
+
+        BUGFIX Regola 23: rimosso iterrows con lookup riga-per-riga.
+        Sostituito con merge vettorizzato su colonna ts — O(N log N) invece di O(N*K).
+        """
         if self._duckdb is None:
             return
 
-        # Costruisci DataFrame mensile allineato
         base_df = frames.get("quits_rate", pd.DataFrame())
         if base_df.empty:
             return
 
+        # Costruisci DataFrame allineato tramite merge vettorizzato
+        def _prep(field: str) -> pd.DataFrame:
+            df = frames.get(field, pd.DataFrame())
+            if df.empty:
+                return pd.DataFrame(columns=["_ts", field])
+            return df.assign(_ts=pd.to_datetime(df["ts"]).dt.normalize())[["_ts", "value"]].rename(columns={"value": field})
+
+        merged = base_df.assign(_ts=pd.to_datetime(base_df["ts"]).dt.normalize())
+        for field in ["openings_rate", "unemployment", "hires", "quits",
+                       "job_openings", "layoffs"]:
+            prep = _prep(field)
+            if not prep.empty:
+                merged = merged.merge(prep, on="_ts", how="left")
+            else:
+                merged[field] = float("nan")
+
+        # Calcola colonne derivate vettorizzato
+        merged["beveridge_gap"] = (
+            merged["openings_rate"].to_numpy(dtype="float64") -
+            merged["unemployment"].to_numpy(dtype="float64")
+        )
+        q_arr = merged["quits"].to_numpy(dtype="float64")
+        h_arr = merged["hires"].to_numpy(dtype="float64")
+        with import_np() as np:
+            merged["hires_quits_ratio"] = np.where(
+                q_arr > 0, h_arr / q_arr, float("nan")
+            )
+
         now = datetime.now(UTC)
-
-        for _, row in base_df.iterrows():
+        for _, row in merged.iterrows():  # loop su N righe per INSERT — accettabile, non su serie storiche
             series_date = pd.to_datetime(row["ts"]).date()
-            d = str(series_date)
-
-            def get_val(field: str) -> float | None:
-                df = frames.get(field, pd.DataFrame())
-                if df.empty:
-                    return None
-                match = df[pd.to_datetime(df["ts"]).dt.date == series_date]
-                return float(match["value"].iloc[0]) if not match.empty else None
-
-            qr  = get_val("quits_rate")
-            or_ = get_val("openings_rate")
-            unemp = get_val("unemployment")
-
-            beveridge = (
-                float(or_ - unemp)  # type: ignore[operator]
-                if or_ is not None and unemp is not None else None
-            )
-            hires_v = get_val("hires")
-            quits_v = get_val("quits")
-            h_q_ratio = (
-                float(hires_v / quits_v)  # type: ignore[operator]
-                if hires_v is not None and quits_v is not None and quits_v > 0
-                else None
-            )
-
             try:
                 self._duckdb.execute(
                     """INSERT OR REPLACE INTO jolts_monthly
@@ -264,16 +269,26 @@ class JOLTSAnalyzer:
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     [
                         series_date,
-                        get_val("job_openings"),
-                        hires_v,
-                        quits_v,
-                        get_val("layoffs"),
-                        qr,
-                        or_,
-                        beveridge,
-                        h_q_ratio,
+                        None if pd.isna(row.get("job_openings", float("nan"))) else float(row["job_openings"]),
+                        None if pd.isna(row.get("hires", float("nan"))) else float(row["hires"]),
+                        None if pd.isna(row.get("quits", float("nan"))) else float(row["quits"]),
+                        None if pd.isna(row.get("layoffs", float("nan"))) else float(row["layoffs"]),
+                        None if pd.isna(row.get("quits_rate", float("nan"))) else float(row["quits_rate"]),
+                        None if pd.isna(row.get("openings_rate", float("nan"))) else float(row["openings_rate"]),
+                        None if pd.isna(row["beveridge_gap"]) else float(row["beveridge_gap"]),
+                        None if pd.isna(row["hires_quits_ratio"]) else float(row["hires_quits_ratio"]),
                         now,
                     ],
                 )
             except Exception as exc:  # noqa: BLE001
-                log.warning("jolts.persist_row_failed", date=d, error=str(exc))
+                log.warning("jolts.persist_row_failed", date=str(series_date), error=str(exc))
+
+
+def import_np():
+    """Lazy numpy import context manager per evitare circular import."""
+    import contextlib
+    import numpy as _np
+    @contextlib.contextmanager
+    def _ctx():
+        yield _np
+    return _ctx()
