@@ -1,0 +1,69 @@
+# =============================================================================
+# surprise_engine_consensus.yaml — Stime Consensus Manuali
+# Roadmap v3.0 — Settimana 6: ConsensusLoader source 'yaml_manual'
+#
+# Come usarlo:
+#   Aggiungi le stime degli analisti prima di ogni rilascio dati.
+#   ConsensusLoader.load_yaml() carica questo file e lo persiste
+#   in consensus_estimates DuckDB con source='yaml_manual'.
+#
+# Formato:
+#   code:       codice indicatore (deve corrispondere a surprise_engine.yaml)
+#   date:       data rilascio YYYY-MM-DD
+#   consensus:  stima mediana analisti (stessa unità del FRED actual)
+#
+# Fonti utili per consensus:
+#   · Trading Economics: https://tradingeconomics.com/calendar
+#   · Investing.com Economic Calendar
+#   · Bloomberg Economic Calendar (paywall)
+# =============================================================================
+
+estimates:
+  # ─── Labour Market ──────────────────────────────────────────────────────────
+  - code: NFP
+    date: "2026-06-06"
+    consensus: 185000      # Non-Farm Payrolls (migliaia posti)
+    note: "Fonte: Trading Economics, consensus Bloomberg 183k-188k"
+
+  - code: INITIAL_CLAIMS
+    date: "2026-06-05"
+    consensus: 225.0       # Initial Jobless Claims (migliaia)
+    note: "Media mobile 4 settimane ~225k"
+
+  - code: UNEMPLOYMENT_RATE
+    date: "2026-06-06"
+    consensus: 3.9         # Unemployment Rate (%)
+
+  - code: AVERAGE_HOURLY_EARNINGS
+    date: "2026-06-06"
+    consensus: 0.3         # AHE MoM (%)
+
+  # ─── Growth ─────────────────────────────────────────────────────────────────
+  - code: ISM_MFG
+    date: "2026-06-02"
+    consensus: 49.5        # ISM Manufacturing PMI (indice)
+
+  - code: ISM_SERVICES
+    date: "2026-06-04"
+    consensus: 52.0        # ISM Services PMI (indice)
+
+  - code: RETAIL_SALES
+    date: "2026-06-16"
+    consensus: 0.4         # Retail Sales MoM (%)
+
+  # ─── Inflation ──────────────────────────────────────────────────────────────
+  - code: CPI_YOY
+    date: "2026-06-11"
+    consensus: 3.4         # CPI YoY (%)
+
+  - code: CPI_MOM
+    date: "2026-06-11"
+    consensus: 0.3         # CPI MoM (%)
+
+  - code: CORE_CPI_YOY
+    date: "2026-06-11"
+    consensus: 3.2         # Core CPI YoY (%)
+
+  - code: PCE_YOY
+    date: "2026-06-27"
+    consensus: 2.6         # PCE Price Index YoY (%)

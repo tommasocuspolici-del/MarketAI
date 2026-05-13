@@ -12,9 +12,9 @@
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Fonti dati costose ──────────────────────────────────────────────────
-edgar_bulk_download: false        # Download SEC EDGAR bulk (lento, eseguire manualmente)
-realtime_websocket: false          # WebSocket Finnhub per prezzi live (consuma rate limit)
-alpha_vantage_premium: false       # Usa tier premium Alpha Vantage (richiede API key paid)
+edgar_bulk_download: true          # ROADMAP v3.0 Sett.1: abilitato — richiede SEC_EDGAR_USER_AGENT in .env
+realtime_websocket: true           # ROADMAP v3.0 Sett.2: abilitato — richiede FINNHUB_API_KEY in .env
+alpha_vantage_premium: true        # ROADMAP v3.0 Sett.1: abilitato — richiede ALPHA_VANTAGE_KEY premium in .env
 
 # ─── Modelli costosi in RAM/CPU ──────────────────────────────────────────
 pytorch_forecasting: false         # Modelli DL: richiedono GPU/molta RAM
@@ -105,5 +105,14 @@ labour_market_scheduler: true       # Job scheduler giovedì 17:00
 
 # ─── Blocco C — Economic Surprise (Roadmap Analisi/Previsione v1.0) ──────
 economic_surprise_engine: true      # SurpriseCalculator + Aggregator
-surprise_consensus_loader: false    # Abilitare quando ConsensusLoader pronto
-surprise_scheduler: false           # Abilitare dopo test staging 48h
+surprise_consensus_loader: true     # ROADMAP v3.0 Sett.6: ConsensusLoader abilitato
+surprise_scheduler: true            # ROADMAP v3.0 Sett.6: job surprise lunedì 08:00 UTC
+
+# ─── Blocco A — Fondamentali (Roadmap v3.0 Settimana 1) ──────────────────────
+edgar_fundamentals_scheduler: true    # Job edgar_fundamentals domenica 06:00 UTC
+av_fundamentals_scheduler: true       # Job av_fundamentals lunedì 07:30 UTC
+fundamentals_ui_k2: true              # Mostra sezione fondamentali in K2_Equity
+
+# ─── Blocco A — Data Quality avanzata (Roadmap v3.0 Settimana 2) ─────────────
+data_quality_alerting: true        # DataQualityAlerter: alert automatici su score basso
+cross_source_validation: true      # CrossSourceValidator: confronto yfinance vs AV

@@ -27,6 +27,8 @@ __all__ = [
     "DataValidationError",
     # Database
     "DatabaseError",
+    "DSLEvalError",
+    "DSLParseError",
     "DuckDBError",
     "FeatureDisabledError",
     "FetchError",
@@ -151,6 +153,22 @@ class DuckDBError(DatabaseError):
 
 class SQLiteError(DatabaseError):
     """Raised on SQLite-specific errors."""
+
+
+class DSLParseError(MarketAIError):
+    """Raised when a DSL expression cannot be parsed or uses disallowed constructs.
+
+    L'utente riceve questo errore quando la sintassi dell'indicatore è errata.
+    Il messaggio deve essere comprensibile senza conoscenza del codice interno.
+    """
+
+
+class DSLEvalError(MarketAIError):
+    """Raised when a valid DSL expression fails during evaluation.
+
+    Distinto da DSLParseError: l'espressione è sintatticamente corretta
+    ma produce un errore durante il calcolo sui dati reali (es. divisione per zero).
+    """
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -58,3 +58,38 @@ individual_equity:
   - { ticker: "GOOGL",  exchange: "NASDAQ", label: "Alphabet" }
   - { ticker: "TSLA",   exchange: "NASDAQ", label: "Tesla" }
   - { ticker: "NVDA",   exchange: "NASDAQ", label: "NVIDIA" }
+
+# ─── EDGAR CIK Map (Roadmap v3.0 Settimana 1) ────────────────────────────────
+# Mapping ticker → CIK SEC per edgar_fundamentals scheduler job.
+# CIK disponibile su https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=TICKER
+# Aggiungere nuovi ticker qui — il job li processa automaticamente.
+edgar_cik:
+  AAPL:  "0000320193"   # Apple Inc.
+  MSFT:  "0000789019"   # Microsoft Corporation
+  GOOGL: "0001652044"   # Alphabet Inc.
+  TSLA:  "0001318605"   # Tesla Inc.
+  NVDA:  "0001045810"   # NVIDIA Corporation
+  JPM:   "0000019617"   # JPMorgan Chase & Co.
+  BAC:   "0000070858"   # Bank of America Corp.
+  AMZN:  "0001018724"   # Amazon.com Inc.
+  META:  "0001326801"   # Meta Platforms Inc.
+  JNJ:   "0000200406"   # Johnson & Johnson
+
+# ─── Equities per AV valuation (lista piatta per av_fundamentals job) ─────────
+# Alpha Vantage: rate limit 5 req/min — job fetcha solo OVERVIEW endpoint.
+# Mantenere ≤ 25 ticker per rispettare il rate budget (100 req / 20 min max).
+equities:
+  - AAPL
+  - MSFT
+  - GOOGL
+  - TSLA
+  - NVDA
+  - JPM
+  - BAC
+  - AMZN
+  - META
+  - JNJ
+  - SPY
+  - QQQ
+  - GLD
+  - USO

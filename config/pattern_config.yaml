@@ -1,0 +1,61 @@
+# =============================================================================
+# Pattern Recognition Configuration — Roadmap v3.0 Settimana 3
+# Regola 7: nessun magic number nel codice — tutto configurato qui.
+# =============================================================================
+
+# ─── Pivot detection ─────────────────────────────────────────────────────────
+# order: numero di barre sinistra/destra per identificare un pivot locale.
+# Valore più alto = meno pivot, pattern più "grandi" e affidabili.
+pivot_order: 5
+
+# ─── Soglia confidence minima ─────────────────────────────────────────────────
+# Pattern con confidence < min_confidence vengono scartati.
+# Range: [0.0, 1.0]. Default 0.6 (da specifica utente).
+min_confidence: 0.6
+
+# ─── Head and Shoulders / Inverse H&S ────────────────────────────────────────
+head_and_shoulders:
+  # Asimmetria massima tra le due spalle (fraczione del prezzo della testa)
+  max_shoulder_asymmetry: 0.15
+  # Pendenza massima della neckline (come frazione del price_range)
+  max_neckline_slope_ratio: 0.05
+  # La testa deve essere almeno questa % sopra/sotto le spalle
+  min_head_dominance: 0.03
+
+# ─── Double Top / Double Bottom ───────────────────────────────────────────────
+double_top_bottom:
+  # Massima differenza % tra i due massimi/minimi
+  max_price_proximity_pct: 0.03
+  # La valle/picco tra i due estremi deve essere almeno questa % distante
+  min_valley_depth_pct: 0.02
+
+# ─── Triangoli ────────────────────────────────────────────────────────────────
+triangle:
+  # Minimo di pivot alti E bassi per rilevare un triangolo
+  min_pivot_count: 3
+  # Pendenza considerata "piatta" (|slope_normalizzato| < questo)
+  flat_slope_threshold: 0.005
+  # Pendenza considerata "significativa" per trend
+  min_slope_threshold: 0.003
+  # Finestra in barre per fitting del triangolo
+  window_bars: 60
+
+# ─── Cup and Handle ──────────────────────────────────────────────────────────
+cup_and_handle:
+  # Profondità minima della coppa come % del prezzo iniziale
+  min_cup_depth_pct: 0.10
+  # Profondità massima (troppo profondo = crash, non coppa)
+  max_cup_depth_pct: 0.50
+  # Il manico non deve ritracciare più di questa % dal bordo della coppa
+  max_handle_retracement_pct: 0.15
+  # Barre minime per la coppa
+  min_cup_bars: 20
+
+# ─── Flag / Pennant ──────────────────────────────────────────────────────────
+flag_pennant:
+  # Variazione % minima del flagpole (move di impulso)
+  min_pole_move_pct: 0.05
+  # Barre massime per il consolidamento (flag/pennant)
+  max_consolidation_bars: 20
+  # Barre minime per il pole
+  min_pole_bars: 5
