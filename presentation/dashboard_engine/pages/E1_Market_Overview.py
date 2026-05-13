@@ -27,7 +27,7 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.0"
+__version__ = "7.1.1"
 
 __all__ = ["body_market_overview"]
 
@@ -116,9 +116,16 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
 
     svc = get_live_market_service()
 
+    # Pulizia forzata della cache di Streamlit se necessario (risolve "vista vuota" persistente)
+    if st.session_state.get("clear_cache", False):
+        st.cache_data.clear()
+        st.session_state["clear_cache"] = False
+
     # Force-refresh flag tramite session_state
     if st.session_state.pop("force_refresh", False):
         snapshot = svc.refresh_now()
+        # Dopo un refresh manuale, cancella anche la cache Streamlit per sicurezza
+        st.cache_data.clear()
     else:
         snapshot = svc.get_kpi_snapshot()
 

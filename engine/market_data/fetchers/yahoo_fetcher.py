@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from shared.db.quality import QualityReportRepository
     from shared.rate_limit_manager import RateLimitManager
 
-__version__ = "6.0.0"
+__version__ = "6.0.1"
 
 __all__ = ["YahooFetcher"]
 
@@ -125,6 +125,7 @@ class YahooFetcher(BaseOhlcvFetcher):
             "auto_adjust": False,    # vogliamo close + adj_close separati
             "progress": False,
             "threads": False,         # già su un thread asyncio
+            "group_by": "ticker",    # evita MultiIndex complicato
         }
         if start is not None:
             kwargs["start"] = ensure_utc(start).date().isoformat()
@@ -149,10 +150,12 @@ class YahooFetcher(BaseOhlcvFetcher):
           · OR multi-level if multiple tickers (we always use single ticker here)
           · Index is ``DatetimeIndex`` (often tz-naive in 'America/New_York')
         """
-        # Se yfinance restituisce multi-index (multi-ticker), prendiamo livello 0
+        # Se yfinance restituisce multi-index (multi-ticker) e noi abbiamo usato
+        # group_by='ticker', la struttura è: (ticker, field). Prendiamo solo il ticker.
         if isinstance(raw.columns, pd.MultiIndex):
-            # Single ticker → livello 0 sufficiente
-            raw = raw.xs(raw.columns.get_level_values(1)[0], axis=1, level=1)
+            # Prendiamo il primo ticker (dovrebbe essere l'unico)
+            first_ticker = raw.columns.get_level_values(0)[0]
+            raw = raw[first_ticker].copy()
 
         # Reset index: il timestamp diventa colonna ts.
         # Quando il DatetimeIndex non ha .name (default), reset_index() produce
