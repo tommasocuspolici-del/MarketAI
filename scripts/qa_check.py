@@ -34,6 +34,7 @@ _WARNINGS:   list[str] = []
 def check_file_lengths() -> None:
     print("\n📏 Check Regola 2 — File > 400 righe")
     # File PRE-ESISTENTI a Roadmap v3.0 (debito tecnico noto, non contano come violazioni)
+    # Normalizzati con forward-slash per compatibilità Windows/Linux
     _PREEXISTING_OVERSIZE = {
         "engine/market_data/live_market_service.py",
         "presentation/dashboard_personal/pages/P2_Portafoglio_eToro.py",
@@ -58,11 +59,13 @@ def check_file_lengths() -> None:
                 continue
             n = len(f.read_text(encoding="utf-8", errors="replace").splitlines())
             if n > _LIMIT:
-                rel = str(f.relative_to(_ROOT))
-                if rel in _PREEXISTING_OVERSIZE:
-                    oversize_pre.append((f.relative_to(_ROOT), n))
+                rel = f.relative_to(_ROOT)
+                # Normalizza a forward-slash per confronto cross-platform
+                rel_str = rel.as_posix()
+                if rel_str in _PREEXISTING_OVERSIZE:
+                    oversize_pre.append((rel, n))
                 else:
-                    oversize_new.append((f.relative_to(_ROOT), n))
+                    oversize_new.append((rel, n))
 
     for path, n in sorted(oversize_new, key=lambda x: -x[1]):
         line = f"  ❌ NUOVO: {path} — {n} righe"

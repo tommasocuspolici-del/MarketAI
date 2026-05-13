@@ -57,8 +57,38 @@ __all__ = [
 
 log = get_logger(__name__)
 
-# TTL della cache in secondi. Sotto questo, get_kpi_snapshot ritorna cache.
-_TTL_SECONDS = 60.0
+
+def _safe_float(val: Any) -> float:
+    """Converte in float in modo robusto — gestisce Series, DataFrame, scalari.
+
+    ANTI-REGRESSIONE (v9.0 fix): yfinance con rate-limit o MultiIndex restituisce
+    una pandas.Series invece di uno scalare quando si accede con .iloc[-1] su un
+    DataFrame a colonne multiple. float(Series) lancia TypeError: "cannot convert
+    the series to <class 'float'>".
+    Soluzione: se `val` è una Series, prende l'ultimo valore non-NaN.
+    """
+    import numpy as np
+    if hasattr(val, "dropna"):          # pandas Series/DataFrame
+        clean = val.dropna()
+        if hasattr(clean, "iloc") and len(clean) > 0:
+            v = clean.iloc[-1]
+            return float(v) if not (hasattr(v, '__len__')) else float(v.iloc[-1])
+        return float("nan")
+    if hasattr(val, "item"):            # numpy scalar
+        return float(val.item())
+    return float(val)
+
+# TTL della cache in secondi.
+# ANTI-REGRESSIONE (v9.0 rate-limit fix): TTL aumentato da 60s a 900s (15 min).
+# Con TTL=60 il live service chiama yfinance ~1440 volte/giorno solo per i KPI
+# di dashboard — Yahoo Finance blocca l'IP entro poche ore.
+# Il trade-off è accettabile: i prezzi di dashboard si aggiornano ogni 15 min
+# invece che ogni minuto. Per prezzi più freschi usa lo scheduler (ogni 4h dal DB).
+_TTL_SECONDS = 900.0
+
+# Età massima dei dati DuckDB (secondi) prima di fallire su yfinance.
+# Se il DB ha prezzi aggiornati nelle ultime 6 ore, li usa senza chiamare yfinance.
+_DB_MAX_AGE_SECONDS = 6 * 3600
 
 # Mappa term-glossario -> ticker yfinance.
 # I ticker sono quelli ufficiali di Yahoo Finance.
@@ -507,9 +537,9 @@ class LiveMarketService:
                     "yfinance", f"no Close column for {yf_ticker}"
                 )
 
-            last_close = float(ticker_data[close_col].iloc[-1])
+            last_close = _safe_float(ticker_data[close_col].iloc[-1])
             prev_close = (
-                float(ticker_data[close_col].iloc[-2])
+                _safe_float(ticker_data[close_col].iloc[-2])
                 if len(ticker_data) >= 2
                 else last_close
             )
@@ -787,17 +817,17 @@ def fetch_delta_windows(
             )
             continue
 
-        last = float(close.iloc[-1])
+        last = _safe_float(close.iloc[-1])
 
         # 1W = 5 trading day fa (l'indice e' il 6° dalla fine — len-_TRADING_DAYS_1W-1)
         ref_1w: float | None = None
         if len(close) > _TRADING_DAYS_1W:
-            ref_1w = float(close.iloc[-_TRADING_DAYS_1W - 1])
+            ref_1w = _safe_float(close.iloc[-_TRADING_DAYS_1W - 1])
 
         # 1M = ~21 trading day fa
         ref_1m: float | None = None
         if len(close) > _TRADING_DAYS_1M:
-            ref_1m = float(close.iloc[-_TRADING_DAYS_1M - 1])
+            ref_1m = _safe_float(close.iloc[-_TRADING_DAYS_1M - 1])
 
         # YTD = primo trading day dell'anno corrente
         ref_ytd: float | None = None
