@@ -138,10 +138,9 @@ def _render_profile_summary(tokens, st_module, result: RiskProfileResult) -> Non
 
 def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
     """Body Streamlit della pagina P6 v7.1."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     saved = load_saved_profile()
 

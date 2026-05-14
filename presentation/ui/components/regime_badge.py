@@ -34,8 +34,6 @@ def build_regime_html(tokens: DesignTokens, regime: str) -> str:
 def render_regime_badge(tokens: DesignTokens, regime: str) -> None:  # pragma: no cover
     """Render a market regime badge."""
     html = build_regime_html(tokens, regime)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)

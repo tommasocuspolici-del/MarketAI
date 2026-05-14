@@ -46,17 +46,15 @@ def render_health_status_bar(
     """Render the health status bar in the sidebar (Rule 30)."""
     html = build_health_html(tokens, health)
 
-    try:  # pragma: no cover
-        import streamlit as st
-        st.sidebar.markdown(html, unsafe_allow_html=True)
-        # Expandable detail per component
-        with st.sidebar.expander("Component details"):
-            for comp in health.components:
-                st.sidebar.markdown(
-                    f"**{comp.name}**: `{comp.status.value}` "
-                    f"({comp.latency_ms or 0:.0f}ms)"
-                )
-                if comp.message:
-                    st.sidebar.caption(comp.message)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.sidebar.markdown(html, unsafe_allow_html=True)
+    # Expandable detail per component
+    with st.sidebar.expander("Component details"):
+        for comp in health.components:
+            st.sidebar.markdown(
+                f"**{comp.name}**: `{comp.status.value}` "
+                f"({comp.latency_ms or 0:.0f}ms)"
+            )
+            if comp.message:
+                st.sidebar.caption(comp.message)

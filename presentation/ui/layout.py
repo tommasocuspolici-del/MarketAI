@@ -131,10 +131,9 @@ def render_section_header(title: str, subtitle: str | None = None) -> None:  # p
 
     No-op outside Streamlit.
     """
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     st.markdown(f"## {title}")
     if subtitle:

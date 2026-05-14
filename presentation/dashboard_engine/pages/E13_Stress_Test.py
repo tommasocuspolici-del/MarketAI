@@ -32,10 +32,9 @@ def build_mock_stress_report() -> StressTestReport:
 
 
 def body_stress_test(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-rendered body
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
     render_section_header("Market Context Sliders", "What-if scenario builder")
     cols = st.columns(3)
     cols[0].slider("VIX", 10.0, 60.0, 20.0)

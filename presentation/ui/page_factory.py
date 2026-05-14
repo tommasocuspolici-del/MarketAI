@@ -78,12 +78,10 @@ def render_sidebar_status(tokens: DesignTokens) -> None:  # pragma: no cover
     render_health_status_bar(tokens, health)
 
     last_update = now_utc() - timedelta(seconds=42)
-    try:  # pragma: no cover
-        import streamlit as st
-        with st.sidebar:
-            render_latency_indicator(tokens, "Market Data", last_update)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    with st.sidebar:
+        render_latency_indicator(tokens, "Market Data", last_update)
 
 
 def render_page(

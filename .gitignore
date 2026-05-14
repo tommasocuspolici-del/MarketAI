@@ -68,3 +68,6 @@ site/
 
 # ─── Streamlit ──────────────────────────────────────────────────
 .streamlit/secrets.toml
+
+# ─── Debug artifacts (mai committare dati finanziari) ──────────
+etoro_raw_payload.json

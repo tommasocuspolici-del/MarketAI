@@ -56,19 +56,15 @@ def build_goal_tracker_html(tokens: DesignTokens, goal: Goal) -> str:
 def render_goal_tracker(tokens: DesignTokens, goal: Goal) -> None:  # pragma: no cover
     """Render a single goal tracker card."""
     html = build_goal_tracker_html(tokens, goal)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def render_goals_list(tokens: DesignTokens, goals: list[Goal]) -> None:  # pragma: no cover
     """Render a vertical list of goal trackers."""
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
 
     if not goals:
         st.info("Nessun obiettivo definito. Crea il tuo primo obiettivo SMART.")

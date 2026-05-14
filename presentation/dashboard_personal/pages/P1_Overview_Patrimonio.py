@@ -75,10 +75,9 @@ def _safe_load_top_goals(profile_id: str, max_n: int = 3) -> list[Goal]:
 def body_overview_patrimonio(
     tokens: DesignTokens,
 ) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     # ── 1. Patrimonio (asset - passivita) ─────────────────────────────────
     summary = net_worth_summary()

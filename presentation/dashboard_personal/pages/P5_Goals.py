@@ -296,10 +296,9 @@ def _render_goal_card(st_module, goal: GoalInput) -> None:  # pragma: no cover
 
 def body_goals(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-rendered
     """Body Streamlit della pagina P5 v7.1."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     render_section_header(
         "🎯 I tuoi obiettivi SMART",

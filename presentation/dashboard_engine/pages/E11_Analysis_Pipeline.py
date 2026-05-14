@@ -20,10 +20,9 @@ __all__ = ["body_analysis_pipeline"]
 
 
 def body_analysis_pipeline(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-rendered body
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
     render_section_header("Pipeline State", "Last run for selected ticker")
     ticker = st.selectbox("Ticker", ["AAPL", "MSFT", "GOOGL"])
     steps = [

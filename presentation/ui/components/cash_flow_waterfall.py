@@ -64,8 +64,6 @@ def render_cash_flow_waterfall(
 ) -> None:  # pragma: no cover
     """Render a cash flow waterfall."""
     fig = build_waterfall_figure(tokens, categories, amounts, title)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.plotly_chart(fig, use_container_width=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.plotly_chart(fig, use_container_width=True)

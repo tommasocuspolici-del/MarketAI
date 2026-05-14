@@ -93,10 +93,9 @@ def _cached_fetch_deltas() -> list[DeltaWindow]:
 def body_delta_tracker(
     tokens: DesignTokens,
 ) -> None:  # pragma: no cover -- Streamlit-rendered
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     render_section_header(
         "📐 Asset Performance — Multi-Window",

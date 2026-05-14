@@ -101,10 +101,9 @@ di possibili futuri.
 
 def body_scenari_ricchezza(tokens: DesignTokens) -> None:  # pragma: no cover
     """Body Streamlit della pagina P7 v7.1."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     # Tenta import dei simulatori esistenti
     try:

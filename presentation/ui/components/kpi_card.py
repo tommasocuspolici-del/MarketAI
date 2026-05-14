@@ -67,11 +67,9 @@ def render_kpi_card(
 
     html = _build_kpi_html(tokens, label, value_str, delta_str, delta_color)
 
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-    except ImportError:
-        return  # pragma: no cover - smoke-test only
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def render_kpi_row(tokens: DesignTokens, kpis: list[dict[str, object]]) -> None:  # pragma: no cover
@@ -79,10 +77,8 @@ def render_kpi_row(tokens: DesignTokens, kpis: list[dict[str, object]]) -> None:
 
     Each dict must include 'label' and 'value'; optional 'delta' and 'fmt'.
     """
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
 
     cols = st.columns(len(kpis))
     for col, kpi in zip(cols, kpis, strict=True):

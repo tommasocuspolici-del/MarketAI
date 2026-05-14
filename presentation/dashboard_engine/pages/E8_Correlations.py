@@ -84,10 +84,9 @@ def _top_n_pairs(matrix: pd.DataFrame, n: int = 5) -> list[tuple[str, str, float
 
 
 def body_correlations(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     matrix = build_mock_correlation_matrix()
 

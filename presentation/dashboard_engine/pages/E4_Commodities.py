@@ -36,10 +36,9 @@ def _filter_commodities(kpis: list[MarketKpi]) -> list[MarketKpi]:
 
 
 def body_commodities(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     svc = get_live_market_service()
     if st.session_state.pop("commodity_force_refresh", False):

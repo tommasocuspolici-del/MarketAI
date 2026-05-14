@@ -80,8 +80,6 @@ def render_net_worth_chart(
 ) -> None:  # pragma: no cover
     """Render the net worth timeline."""
     fig = build_net_worth_figure(tokens, snapshots, title)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.plotly_chart(fig, use_container_width=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.plotly_chart(fig, use_container_width=True)

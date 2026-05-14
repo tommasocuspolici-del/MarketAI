@@ -41,10 +41,8 @@ def render_pipeline_stepper(
     tokens: DesignTokens, steps: list[PipelineStep]
 ) -> None:  # pragma: no cover
     """Render a horizontal stepper of pipeline stages."""
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
 
     cols = st.columns(len(steps))
     for col, step in zip(cols, steps, strict=True):

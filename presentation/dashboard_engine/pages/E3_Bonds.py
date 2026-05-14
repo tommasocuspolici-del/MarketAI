@@ -121,10 +121,9 @@ def _spread(df: pd.DataFrame, tenor_long: str, tenor_short: str) -> float | None
 
 
 def body_bonds(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     render_section_header(
         "💵 Yield Curve · US Treasuries (FRED)",

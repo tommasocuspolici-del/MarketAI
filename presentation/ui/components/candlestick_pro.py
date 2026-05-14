@@ -95,8 +95,6 @@ def render_candlestick_pro(
 ) -> None:  # pragma: no cover
     """Render a candlestick chart with overlays."""
     fig = build_candlestick_figure(tokens, ohlcv, title, overlays)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.plotly_chart(fig, use_container_width=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.plotly_chart(fig, use_container_width=True)

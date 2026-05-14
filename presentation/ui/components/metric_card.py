@@ -72,13 +72,12 @@ class MetricSpec:
     delta_pct: bool = False
 
 
-def _get_user_level() -> str:
+def _get_user_level() -> str:  # pragma: no cover
     """Recupera il livello utente da Streamlit session_state, o default."""
-    try:
-        import streamlit as st
-        return st.session_state.get("user_level", _DEFAULT_LEVEL)
-    except ImportError:
-        return _DEFAULT_LEVEL
+    # [v8.1.0 FIX-P9] chiamata solo da render_metric_card (già #pragma no cover);
+    # rimosso try/except: ImportError è un errore reale di installazione
+    import streamlit as st
+    return st.session_state.get("user_level", _DEFAULT_LEVEL)
 
 
 def _format_value(value: float | str, fmt: str) -> str:
@@ -240,18 +239,16 @@ def render_metric_card(
         delta_unavailable=show_delta_unavailable and delta is None,
     )
 
-    try:
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-        # Tooltip via expander leggero — sempre disponibile, ma compatto.
-        # Per Beginner aggiungiamo anche il caption inline visibile.
-        if user_level == "beginner" and entry.description:
-            st.caption(f"ⓘ {entry.description}")
-        elif entry.description:
-            with st.expander("ⓘ Cos'è?", expanded=False):
-                st.markdown(entry.tooltip_text(level=user_level))
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)
+    # Tooltip via expander leggero — sempre disponibile, ma compatto.
+    # Per Beginner aggiungiamo anche il caption inline visibile.
+    if user_level == "beginner" and entry.description:
+        st.caption(f"ⓘ {entry.description}")
+    elif entry.description:
+        with st.expander("ⓘ Cos'è?", expanded=False):
+            st.markdown(entry.tooltip_text(level=user_level))
 
 
 # v7.2 (fix B4): default cols_per_row=4. Su viewport 1080p (~1920px),
@@ -281,10 +278,8 @@ def render_metric_row(
             "variazione N/D" invece di restare vuote. Default True (era
             comportamento implicito False prima della v7.2).
     """
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
 
     if not metrics:
         return

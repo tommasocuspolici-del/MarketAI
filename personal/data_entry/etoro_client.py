@@ -23,6 +23,7 @@ from personal.data_entry.etoro_models import (
     EtoroPortfolioResponse,
     parse_portfolio_response,
 )
+from shared.config.operational_config import OP_CONFIG
 
 __version__ = "7.1.3"
 
@@ -43,11 +44,11 @@ _RATES_PATH = "/market-data/rates"
 _ORDERS_PATH = "/trading/info/real/orders"  # per risoluzione via orderId
 _SEARCH_PATH = "/market-data/search"
 
-_DEFAULT_TIMEOUT = 15.0
-_DEFAULT_MAX_RETRIES = 3
-_DEFAULT_RETRY_BASE_DELAY = 1.0
-
-
+# [v8.1.0 FIX-P4] Costanti operative → config/operational_defaults.yaml
+# Per modificare questi valori, aggiornare il YAML e riavviare.
+_DEFAULT_TIMEOUT: float = OP_CONFIG.http.default_timeout_s
+_DEFAULT_MAX_RETRIES: int = OP_CONFIG.http.max_retries
+_DEFAULT_RETRY_BASE_DELAY: float = OP_CONFIG.http.retry_base_delay_s
 class EtoroClientError(Exception):
     """Base exception del client eToro."""
 
@@ -247,7 +248,7 @@ class EtoroClient:
     def _raise_for_http_error(exc: urllib.error.HTTPError) -> None:
         code = exc.code
         try:
-            body_preview = exc.read(2048).decode("utf-8", errors="replace")
+            body_preview = exc.read(OP_CONFIG.http.error_body_preview_bytes).decode("utf-8", errors="replace")
         except OSError:
             body_preview = ""
         if code == 401:

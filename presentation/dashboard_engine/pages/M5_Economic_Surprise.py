@@ -53,10 +53,9 @@ def _load_indicator_data(db, sector: str):
 
 def body_economic_surprise(tokens: DesignTokens) -> None:
     """Body Streamlit pagina M5."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     import pandas as pd
     import plotly.graph_objects as go

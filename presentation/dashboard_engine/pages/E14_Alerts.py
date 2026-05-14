@@ -18,10 +18,9 @@ __all__ = ["body_alerts"]
 
 
 def body_alerts(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-rendered body
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
     render_section_header("Active Alerts")
     st.dataframe(pd.DataFrame({
         "Severity":   ["🔴 Critical", "🟡 Warning", "🟡 Warning"],

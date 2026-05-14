@@ -679,10 +679,9 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
 
 def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     """Body Streamlit della pagina P2 (v7.3.0)."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     tab_positions, tab_import, tab_metrics = st.tabs(
         ["💼 Posizioni", "📥 Import", "📊 Metriche"]

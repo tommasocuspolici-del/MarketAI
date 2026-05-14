@@ -325,10 +325,9 @@ def _render_tab_summary(  # pragma: no cover -- Streamlit
 def body_cash_flow(
     tokens: DesignTokens,
 ) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     engine = CashFlowEngine()
 

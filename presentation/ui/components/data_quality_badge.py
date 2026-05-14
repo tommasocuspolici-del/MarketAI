@@ -32,13 +32,11 @@ def render_data_quality_badge(
     """Render a quality badge for a series."""
     html = build_quality_badge_html(tokens, report.quality_score)
 
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-        if report.quality_score < 0.7:
-            st.caption(
-                f"⚠️ Quality below recommended threshold for analytics. "
-                f"Series: {report.series_id}"
-            )
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)
+    if report.quality_score < 0.7:
+        st.caption(
+            f"⚠️ Quality below recommended threshold for analytics. "
+            f"Series: {report.series_id}"
+        )

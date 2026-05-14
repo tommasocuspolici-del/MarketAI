@@ -42,6 +42,7 @@ from engine.market_data.hardening.silent_failure_detector import (
     SilentFailureError,
 )
 from personal.data_entry.override_store import ManualOverrideStore
+from shared.config.operational_config import OP_CONFIG
 from shared.logger import get_logger
 
 __version__ = "9.0.0"

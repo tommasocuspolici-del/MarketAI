@@ -73,8 +73,6 @@ def render_wealth_scenario_chart(
 ) -> None:  # pragma: no cover
     """Render the Monte Carlo fan chart."""
     fig = build_wealth_fan_figure(tokens, result, title)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.plotly_chart(fig, use_container_width=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.plotly_chart(fig, use_container_width=True)

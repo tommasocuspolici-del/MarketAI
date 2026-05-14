@@ -23,10 +23,9 @@ __all__ = ["body_fiscale"]
 
 
 def body_fiscale(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-rendered body
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
     render_section_header("Calcolo Plus/Minusvalenze — Regime IT (26%)")
     fiscal_year = st.number_input("Anno fiscale", value=2025, min_value=2020, max_value=2030)
     if st.button("Calcola tasse anno corrente"):

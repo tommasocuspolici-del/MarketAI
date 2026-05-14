@@ -90,10 +90,9 @@ def _render_alert_card(  # pragma: no cover -- Streamlit-rendered
 def body_alerts_personali(
     tokens: DesignTokens,
 ) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     # Rigenera alert ogni apertura pagina (idempotente entro 24h grazie a dedup)
     new_alerts = run_rules()

@@ -109,10 +109,9 @@ def _render_error_summary(st_module, snapshot: MarketSnapshot) -> None:  # pragm
 
 def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     """Body della pagina E1 v7.1."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     svc = get_live_market_service()
 

@@ -217,10 +217,9 @@ def _render_forecasting_tab(st, tokens: DesignTokens) -> None:
 
 def body_labour_market(tokens: DesignTokens) -> None:
     """Body Streamlit pagina M3."""
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     tab1, tab2, tab3, tab4 = st.tabs(
         ["📉 Claims & Ciclo", "📊 JOLTS & Beveridge", "💼 Payroll", "🔮 Forecasting"]

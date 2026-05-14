@@ -107,10 +107,8 @@ def render_backtest_report(
     tokens: DesignTokens, result: BacktestResult
 ) -> None:  # pragma: no cover
     """Render the full backtest report (charts + metrics table)."""
-    try:  # pragma: no cover
-        import streamlit as st
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
 
     st.plotly_chart(
         build_equity_curve_figure(tokens, result), use_container_width=True

@@ -124,10 +124,9 @@ def _cached_fetch(ticker: str, period: str) -> pd.DataFrame:
 
 
 def body_equities(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    try:
-        import streamlit as st
-    except ImportError:
-        return
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
+    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    import streamlit as st
 
     render_section_header(
         "📊 Equity Screener",

@@ -60,8 +60,6 @@ def render_profile_card(
 ) -> None:  # pragma: no cover
     """Render an investor profile card."""
     html = build_profile_card_html(tokens, profile)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)

@@ -54,8 +54,6 @@ def render_latency_indicator(
 ) -> None:  # pragma: no cover
     """Render a latency indicator for a data source."""
     html = build_latency_html(tokens, source, last_update)
-    try:  # pragma: no cover
-        import streamlit as st
-        st.markdown(html, unsafe_allow_html=True)
-    except ImportError:
-        return  # pragma: no cover
+    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso
+    import streamlit as st  # pragma: no cover
+    st.markdown(html, unsafe_allow_html=True)
