@@ -1,10 +1,31 @@
-"""EtoroImporter: facade unica (v7.3.3) con mappatura ticker numerici e prezzi live.
+"""EtoroImporter: facade unica (v7.4.0) con fix conversione valuta GBX/EUR→USD.
+
+Novità v7.4.0:
+  - FIX CRITICO #1: _INSTRUMENT_ID_TO_REAL_TICKER[3040] corretto da "EUNL.DE"
+    a "SWDA.L" (iShares Core MSCI World UCITS ETF, LSE, GBX). Il codice
+    precedente puntava alla classe Xetra/EUR; il portfolio reale mostra SWDA.L.
+  - FIX CRITICO #2: openRate dall'API eToro per ETF LSE (*.L) è in GBX (pence
+    sterling), non in USD. Introdotta conversione GBX→USD:
+        price_usd = price_gbx / 100 * GBP/USD
+    Stessa logica applicata ai ticker EUR (*.DE, *.MI ecc.) tramite EUR/USD.
+  - FIX: _get_live_price_usd restituisce prezzi sempre in USD per qualunque
+    mercato (sostituisce la vecchia _get_live_price_yfinance che restituiva
+    il valore grezzo in valuta nativa).
+  - FIX: _override_prices_for_numeric_tickers corregge open_price → USD oltre
+    a current_price (prima open_price rimaneva in GBX causando P/L -98%).
+  - FIX: currency non più hardcoded a "USD"; derivata dal suffisso del ticker
+    e poi normalizzata a "USD" dopo la conversione.
+  - FIX: _api_positions_to_dataframe usa conversionRateAsk/Bid dall'API eToro
+    per convertire open_rate dalla valuta nativa in USD. Fallback su GBP/USD
+    o EUR/USD da yfinance se il campo API non è disponibile.
+  - Aggiunta public function get_live_price_usd(ticker) per uso da P2/altri
+    moduli senza duplicare la logica di conversione GBX.
 
 Novità v7.3.3:
   - Fix aggregazione: calcolo corretto del totale investito senza riferimento
     a variabili esterne.
   - _override_prices_for_numeric_tickers ora gestisce NaN in open_price.
-  - Allineato ai nuovi campi dei modelli (symbolFull, lastExecution, 
+  - Allineato ai nuovi campi dei modelli (symbolFull, lastExecution,
     conversion rates).
   - Migliorata robustezza generale del parsing.
 
@@ -40,7 +61,7 @@ from personal.data_entry.etoro_models import (
 )
 from personal.data_entry.etoro_parser import EToroParseError, EToroParser
 
-__version__ = "7.3.3"
+__version__ = "7.4.0"
 
 __all__ = [
     "EtoroImporter",
@@ -48,6 +69,7 @@ __all__ = [
     "EtoroImportResult",
     "update_live_prices",
     "aggregate_by_real_ticker",
+    "get_live_price_usd",       # ← nuovo export pubblico
 ]
 
 log = logging.getLogger(__name__)
@@ -83,18 +105,138 @@ _CANONICAL_COLUMNS = [
 # ───────────────────────────────────────────────────────────────
 #  MAPPATURA INSTRUMENT ID NUMERICO → TICKER REALE
 #  Aggiorna questa tabella quando compaiono nuovi codici interni.
-#  I ticker devono essere nel formato riconosciuto da yfinance
-#  (es. "SWDA.L" per ETF su Borsa Italiana / Xetra, "CSPX.L" per LSE).
+#  I ticker devono essere nel formato riconosciuto da yfinance.
 # ───────────────────────────────────────────────────────────────
 _INSTRUMENT_ID_TO_REAL_TICKER: dict[int, str] = {
-    3040: "EUNL.DE",      # iShares Core MSCI World UCITS ETF (EUR, Xetra) – ISIN IE00B4L5Y983
-    3434: "CSPX.L",       # iShares Core S&P 500 UCITS ETF (GBX, LSE)
-    15435: "EIMI.L",      # iShares Core MSCI EM IMI UCITS ETF (GBX, LSE)
-    3394: "EUN5.DE",      # iShares EUR Corp Bond UCITS ETF (EUR, Xetra?)
-    10569: "IBCN.DE",     # iShares EUR Govt Bond 3-7yr UCITS ETF (EUR, Xetra?)
+    # v7.4.0 FIX: 3040 era "EUNL.DE" (Xetra/EUR) → corretto a "SWDA.L" (LSE/GBX)
+    # ISIN IE00B4L5Y983: stessa UCITS ETF, listino diverso.
+    3040:  "SWDA.L",    # iShares Core MSCI World UCITS ETF   (GBX, LSE)
+    3434:  "CSPX.L",    # iShares Core S&P 500 UCITS ETF      (GBX, LSE)
+    15435: "EIMI.L",    # iShares Core MSCI EM IMI UCITS ETF  (GBX, LSE)
+    3394:  "EUN5.DE",   # iShares EUR Corp Bond UCITS ETF      (EUR, Xetra)
+    10569: "IBCN.DE",   # iShares EUR Govt Bond 3-7yr UCITS ETF(EUR, Xetra)
     # ... aggiungi qui altre corrispondenze
 }
 
+# ───────────────────────────────────────────────────────────────
+#  MAPPA SUFFISSO TICKER → VALUTA NATIVA DI QUOTAZIONE
+#  L'API eToro restituisce openRate e closeRate nella valuta nativa
+#  del listino su cui lo strumento è quotato.
+# ───────────────────────────────────────────────────────────────
+_SUFFIX_TO_CURRENCY: dict[str, str] = {
+    ".L":  "GBX",   # London Stock Exchange  → pence sterling (GBX = GBP/100)
+    ".DE": "EUR",   # Deutsche Börse / Xetra → euro
+    ".MI": "EUR",   # Borsa Italiana         → euro
+    ".PA": "EUR",   # Euronext Paris         → euro
+    ".AS": "EUR",   # Euronext Amsterdam     → euro
+    ".BR": "EUR",   # Euronext Bruxelles     → euro
+    ".LS": "EUR",   # Euronext Lisbona       → euro
+}
+
+# Tassi FX di fallback (usati se yfinance non è raggiungibile)
+_FX_FALLBACK: dict[str, float] = {
+    "GBP_USD": 1.27,
+    "EUR_USD": 1.08,
+}
+
+
+# ─────────────────────────────────────────────────── FX helpers
+def _get_instrument_currency(ticker: str) -> str:
+    """Determina la valuta nativa di quotazione dal suffisso del ticker.
+
+    Ritorna 'GBX', 'EUR' o 'USD' (default per tutto il resto).
+    """
+    upper = ticker.upper()
+    for suffix, ccy in _SUFFIX_TO_CURRENCY.items():
+        if upper.endswith(suffix.upper()):
+            return ccy
+    return "USD"
+
+
+def _fetch_fx_rate(yf_pair: str, fallback: float) -> float:
+    """Recupera un tasso FX da yfinance. fast_info → history → fallback."""
+    try:
+        t = yf.Ticker(yf_pair)
+        fi = t.fast_info
+        price = getattr(fi, "last_price", None)
+        if price is not None and float(price) > 0:
+            return float(price)
+        hist = t.history(period="1d")
+        if not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception:  # noqa: BLE001
+        pass
+    return fallback
+
+
+def _build_fx_cache() -> dict[str, float]:
+    """Scarica GBP/USD e EUR/USD una volta sola per importazione.
+
+    Centralizzato qui per evitare N chiamate yfinance ridondanti durante
+    il loop sulle posizioni.
+    """
+    return {
+        "GBP_USD": _fetch_fx_rate("GBPUSD=X", _FX_FALLBACK["GBP_USD"]),
+        "EUR_USD": _fetch_fx_rate("EURUSD=X", _FX_FALLBACK["EUR_USD"]),
+    }
+
+
+def _native_to_usd(price: float, currency: str, fx: dict[str, float]) -> float:
+    """Converte un prezzo dalla valuta nativa del listino in USD.
+
+    GBX (pence sterling) → USD : price / 100 * GBP_USD
+    EUR                  → USD : price * EUR_USD
+    USD                  → USD : invariato
+    """
+    if currency == "GBX":
+        return price / 100.0 * fx.get("GBP_USD", _FX_FALLBACK["GBP_USD"])
+    if currency == "EUR":
+        return price * fx.get("EUR_USD", _FX_FALLBACK["EUR_USD"])
+    return float(price)
+
+
+def _get_live_price_usd(ticker: str, fx: dict[str, float] | None = None) -> float | None:
+    """Prezzo live via yfinance, sempre convertito in USD.
+
+    Per ticker *.L (LSE): yfinance restituisce GBX (pence) →
+        price_usd = price_gbx / 100 * GBP/USD
+    Per ticker *.DE, *.MI ecc. (EUR): →
+        price_usd = price_eur * EUR/USD
+    Per tutti gli altri (USD): invariato.
+
+    Args:
+        ticker: Ticker Yahoo Finance (es. "SWDA.L", "CSPX.L", "EUN5.DE").
+        fx: Cache dei tassi FX. Se None, viene costruita on-demand.
+
+    Returns:
+        Prezzo in USD, o None se il fetch fallisce.
+    """
+    if fx is None:
+        fx = _build_fx_cache()
+    try:
+        stock = yf.Ticker(ticker)
+        data = stock.history(period="1d")
+        if data.empty:
+            return None
+        price_native = float(data["Close"].iloc[-1])
+        currency = _get_instrument_currency(ticker)
+        return _native_to_usd(price_native, currency, fx)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+# ─────────────────────────────────────── public alias (usato da P2 e altri moduli)
+def get_live_price_usd(ticker: str) -> float | None:
+    """Public wrapper: prezzo live in USD per qualunque ticker (GBX/EUR/USD).
+
+    Costruisce la cache FX internamente; per uso in loop preferire
+    _get_live_price_usd(ticker, fx) passando una cache condivisa.
+    """
+    return _get_live_price_usd(ticker, _build_fx_cache())
+
+
+# ─────────────────────────────────────────────────────── EtoroImporter
 class EtoroImporter:
     """Facade unificata per import posizioni eToro."""
 
@@ -117,9 +259,7 @@ class EtoroImporter:
     def credential_status_message(self) -> str:
         if self.has_api_credentials:
             return "✅ API eToro configurata."
-        return (
-            "ℹ️ Credenziali API eToro assenti: sarà usato il file XLSX."
-        )
+        return "ℹ️ Credenziali API eToro assenti: sarà usato il file XLSX."
 
     def import_open_positions(
         self,
@@ -203,8 +343,7 @@ class EtoroImporter:
             except EtoroClientError as exc:
                 log.warning("Lookup instrument fallito: %s", exc)
 
-        # Quote correnti (API) – non le useremo più per i ticker numerici,
-        # ma la chiamata resta per eventuali ticker "normali" (non numerici).
+        # Quote correnti dall'API — includono conversionRateAsk/Bid per la conversione FX.
         rates: dict[int, EtoroInstrumentRate] = {}
         if resolvable_with_id:
             try:
@@ -215,16 +354,20 @@ class EtoroImporter:
                 log.warning("Lookup rates fallito: %s", exc)
 
         all_resolvable = resolvable_with_id + resolvable_ticker_only
-        df = _api_positions_to_dataframe(all_resolvable, instruments, rates)
 
-        # Aggiungi colonna real_ticker basata sulla mappatura
+        # Cache FX costruita una volta per tutta l'importazione
+        fx = _build_fx_cache()
+        log.debug("etoro_importer.fx_cache GBP/USD=%.4f EUR/USD=%.4f",
+                  fx["GBP_USD"], fx["EUR_USD"])
+
+        df = _api_positions_to_dataframe(all_resolvable, instruments, rates, fx)
+
         df["real_ticker"] = df.apply(
             lambda row: _resolve_real_ticker_for_row(row, instruments), axis=1
         )
 
-        # Sostituisci i prezzi per le righe con ticker numerici
-        # usando il prezzo live da Yahoo Finance (ignora l'eventuale prezzo API)
-        df = _override_prices_for_numeric_tickers(df)
+        # Correzione prezzi + conversione valuta nativa → USD per i ticker numerici
+        df = _override_prices_for_numeric_tickers(df, fx)
 
         notes_parts = [f"Importate {n_resolvable} posizioni via API."]
         if resolvable_ticker_only:
@@ -256,15 +399,13 @@ class EtoroImporter:
 
         df = _align_canonical_schema(df)
 
-        # Se la colonna "Nome" esiste, estrai il ticker reale da lì,
-        # altrimenti usa la mappatura sul ticker numerico.
         if "Nome" in df.columns:
             df["real_ticker"] = df["Nome"].apply(_extract_ticker_from_nome)
         else:
             df["real_ticker"] = df["ticker"].apply(_resolve_ticker_from_placeholder)
 
-        # Anche per XLSX, sovrascrivi i prezzi se il ticker è numerico
-        df = _override_prices_for_numeric_tickers(df)
+        fx = _build_fx_cache()
+        df = _override_prices_for_numeric_tickers(df, fx)
 
         return EtoroImportResult(
             positions=df,
@@ -273,7 +414,6 @@ class EtoroImporter:
             notes=notes or "Parsing XLSX completato.",
         )
 
-    # ── Nuove funzionalità pubbliche ─────────────────────────────────
     def aggregate_by_real_ticker(self, df: pd.DataFrame) -> pd.DataFrame:
         """Aggrega posizioni con lo stesso ticker reale."""
         return _aggregate_positions(df)
@@ -296,31 +436,33 @@ class EtoroImporter:
 # ─────────────────────────────────────────────────────── funzioni pubbliche
 def update_live_prices(df: pd.DataFrame) -> pd.DataFrame:
     """Sostituisce current_price e ricalcola market_value/profit usando yfinance.
-    
+
     Per le righe che hanno un real_ticker valido (non placeholder "#xxx")
     richiede il prezzo corrente e aggiorna tutte le metriche.
+    Prezzi sempre in USD (GBX→USD per *.L, EUR→USD per *.DE ecc.).
+    open_price è assunto già corretto in USD (post-import v7.4.0).
     """
     if "real_ticker" not in df.columns:
-        # Tenta di ricavarlo dalla colonna ticker
         df = df.copy()
         df["real_ticker"] = df["ticker"].apply(_resolve_ticker_from_placeholder)
     else:
         df = df.copy()
 
+    fx = _build_fx_cache()
+
     for idx, row in df.iterrows():
         ticker = row["real_ticker"]
-        # Salta se il ticker è ancora un placeholder o vuoto
         if not ticker or ticker.startswith("#"):
             continue
-        price = _get_live_price_yfinance(ticker)
+        price = _get_live_price_usd(ticker, fx)
         if price is not None:
             df.at[idx, "current_price"] = price
-            qty = row["quantity"]
+            qty = float(row["quantity"]) if pd.notna(row["quantity"]) else 0.0
             df.at[idx, "market_value"] = qty * price
-            invested = row["open_price"] * qty
+            invested = float(row["open_price"]) * qty if pd.notna(row["open_price"]) else 0.0
             df.at[idx, "profit_eur"] = (qty * price) - invested
             df.at[idx, "profit_pct"] = (
-                ((qty * price) / invested - 1) * 100 if invested else 0.0
+                ((qty * price) / invested - 1) * 100 if invested > 0 else 0.0
             )
     return df
 
@@ -339,7 +481,6 @@ def _resolve_ticker_from_placeholder(ticker_col: str) -> str:
             iid = int(iid_str)
             if iid in _INSTRUMENT_ID_TO_REAL_TICKER:
                 return _INSTRUMENT_ID_TO_REAL_TICKER[iid]
-        # Non mappato: restituisci il placeholder originale (non facciamo danni)
     return ticker_col
 
 
@@ -348,12 +489,11 @@ def _resolve_real_ticker_for_row(
     instruments: dict[int, EtoroInstrument],
 ) -> str:
     """Determina il ticker reale per una riga proveniente dall'API.
-    
+
     Priorità:
     1. Ticker non numerico (già un simbolo reale) → restituiscilo così.
     2. Placeholder `#id` con id presente nella mappatura manuale → usa quella.
-    3. Placeholder `#id` con id risolto via /instruments → usa best_symbol
-       dello strumento (spesso è ancora un ticker generico, ma meglio di #id).
+    3. Placeholder `#id` con id risolto via /instruments → usa best_symbol.
     4. Altrimenti mantieni il placeholder.
     """
     ticker = row["ticker"]
@@ -365,11 +505,9 @@ def _resolve_real_ticker_for_row(
         return ticker
     iid = int(iid_str)
 
-    # Mappatura manuale ha la precedenza
     if iid in _INSTRUMENT_ID_TO_REAL_TICKER:
         return _INSTRUMENT_ID_TO_REAL_TICKER[iid]
 
-    # Fallback: cerca fra gli strumenti risolti
     if iid in instruments:
         return instruments[iid].best_symbol
     return ticker
@@ -385,56 +523,83 @@ def _extract_ticker_from_nome(nome: str) -> str:
     return nome
 
 
-def _get_live_price_yfinance(ticker: str) -> float | None:
-    """Prezzo live via yfinance, con mappatura exchange se necessario."""
-    try:
-        stock = yf.Ticker(ticker)
-        data = stock.history(period="1d")
-        if not data.empty:
-            return data["Close"].iloc[-1]
-    except Exception:
-        pass
-    return None
+def _override_prices_for_numeric_tickers(
+    df: pd.DataFrame,
+    fx: dict[str, float] | None = None,
+) -> pd.DataFrame:
+    """Per le righe con ticker placeholder (#...), corregge current_price E open_price.
 
-
-def _override_prices_for_numeric_tickers(df: pd.DataFrame) -> pd.DataFrame:
-    """Per le righe il cui ticker originario era un placeholder (#...), 
-    rimpiazza il prezzo con quello live da yfinance e ricalcola le metriche.
+    v7.4.0 — fix rispetto alla v7.3.3:
+      · Converte open_price dalla valuta nativa (GBX/EUR) in USD.
+        Prima open_price rimaneva il raw openRate dell'API (es. 9782.20 GBX)
+        che veniva trattato come USD, producendo un costo base ~100x gonfiato
+        per i ticker LSE e un P/L di -98.77% invece di +10%.
+      · Aggiorna df["currency"] = "USD" dopo la conversione.
+      · Usa la cache FX condivisa per non fare chiamate yfinance ripetute.
     """
     df = df.copy()
+    if fx is None:
+        fx = _build_fx_cache()
+
     for idx, row in df.iterrows():
         original_ticker = row["ticker"]
         real_ticker = row["real_ticker"]
-        # Se il ticker originale è un placeholder e abbiamo un real_ticker valido,
-        # oppure il real_ticker è stato mappato esplicitamente
-        if original_ticker.startswith("#") and real_ticker and not real_ticker.startswith("#"):
-            price = _get_live_price_yfinance(real_ticker)
-            if price is not None:
-                df.at[idx, "current_price"] = price
-                qty = row["quantity"]
-                # Gestione NaN nel prezzo di carico
-                invested = (row["open_price"] * qty) if pd.notna(row["open_price"]) else 0.0
-                df.at[idx, "market_value"] = qty * price
-                df.at[idx, "profit_eur"] = (qty * price) - invested
-                df.at[idx, "profit_pct"] = (
-                    ((qty * price) / invested - 1) * 100 if invested else 0.0
-                )
+
+        if not (
+            original_ticker.startswith("#")
+            and real_ticker
+            and not real_ticker.startswith("#")
+        ):
+            continue
+
+        # Valuta nativa del listino reale (es. GBX per SWDA.L)
+        native_currency = _get_instrument_currency(real_ticker)
+
+        # ── current_price: prezzo live yfinance → USD ─────────────────────
+        price_usd = _get_live_price_usd(real_ticker, fx)
+        if price_usd is None:
+            log.warning(
+                "etoro_importer._override_prices: nessun prezzo yfinance per %s",
+                real_ticker,
+            )
+            continue
+
+        # ── open_price: raw API (GBX/EUR) → USD ───────────────────────────
+        # BUGFIX v7.4.0: prima questa conversione non veniva fatta, lasciando
+        # open_price in GBX (es. 9782.20) che veniva sommato come se fosse USD.
+        open_price_native = row["open_price"]
+        if pd.notna(open_price_native) and float(open_price_native) > 0:
+            open_price_usd = _native_to_usd(float(open_price_native), native_currency, fx)
+        else:
+            open_price_usd = 0.0
+
+        qty = float(row["quantity"]) if pd.notna(row["quantity"]) else 0.0
+        market_value = qty * price_usd
+        invested = open_price_usd * qty
+
+        df.at[idx, "current_price"] = price_usd
+        df.at[idx, "open_price"]    = open_price_usd   # ← fix chiave
+        df.at[idx, "market_value"]  = market_value
+        df.at[idx, "profit_eur"]    = market_value - invested
+        df.at[idx, "profit_pct"]    = (
+            ((market_value / invested) - 1) * 100 if invested > 0 else 0.0
+        )
+        df.at[idx, "currency"] = "USD"  # normalizzato dopo conversione
+
     return df
 
 
 def _aggregate_positions(df: pd.DataFrame) -> pd.DataFrame:
-    """Raggruppa per real_ticker, somma quantità, calcola prezzo medio ponderato e market value."""
+    """Raggruppa per real_ticker, somma quantità, calcola prezzo medio ponderato."""
     if "real_ticker" not in df.columns:
         raise ValueError("DataFrame must have 'real_ticker' column.")
-    
-    # Assicuriamoci che le colonne numeriche siano pulite
+
     for col in ["quantity", "open_price", "current_price"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    
-    # Calcoliamo il valore investito per riga per un'aggregazione sicura
+
     df["invested_value"] = df["open_price"] * df["quantity"]
-    
+
     grouped = df.groupby("real_ticker", as_index=False).agg(
         total_units=("quantity", "sum"),
         total_invested=("invested_value", "sum"),
@@ -442,10 +607,11 @@ def _aggregate_positions(df: pd.DataFrame) -> pd.DataFrame:
         raw_action=("raw_action", "first"),
     )
     grouped["avg_open_price"] = grouped["total_invested"] / grouped["total_units"]
-    grouped["market_value"] = grouped["total_units"] * grouped["last_current_price"]
-    grouped["profit_eur"] = grouped["market_value"] - grouped["total_invested"]
-    # Evitiamo divisioni per zero
-    grouped["profit_pct"] = (grouped["profit_eur"] / grouped["total_invested"].replace(0, pd.NA)) * 100
+    grouped["market_value"]   = grouped["total_units"] * grouped["last_current_price"]
+    grouped["profit_eur"]     = grouped["market_value"] - grouped["total_invested"]
+    grouped["profit_pct"]     = (
+        grouped["profit_eur"] / grouped["total_invested"].replace(0, pd.NA)
+    ) * 100
     return grouped.rename(columns={"real_ticker": "ticker"})
 
 
@@ -492,12 +658,25 @@ def _api_positions_to_dataframe(
     positions: list[EtoroPosition],
     instruments: dict[int, EtoroInstrument],
     rates: dict[int, EtoroInstrumentRate],
+    fx: dict[str, float] | None = None,
 ) -> pd.DataFrame:
+    """Converte posizioni API in DataFrame canonico con open_price/current_price in USD.
+
+    v7.4.0:
+      - Usa conversionRateAsk/Bid dall'API (già normalizzati nativo→USD)
+        quando disponibili.
+      - Fallback su _native_to_usd(fx) se il campo API non è presente.
+      - currency impostata a "USD" (tutto normalizzato).
+    """
+    if fx is None:
+        fx = _build_fx_cache()
+
     rows = []
     for pos in positions:
         inst = instruments.get(pos.instrument_id) if pos.instrument_id else None
         rate = rates.get(pos.instrument_id) if pos.instrument_id else None
 
+        # ── Ticker display ────────────────────────────────────────────────
         if inst is not None:
             ticker = inst.best_symbol
         elif pos.ticker_from_api:
@@ -512,31 +691,61 @@ def _api_positions_to_dataframe(
             else (pos.display_name_from_api or ticker)
         )
 
-        current_price: float | None = None
+        # ── Conversione FX: tasso nativo→USD ─────────────────────────────
+        # Preferenza: conversionRate dall'API eToro (mid bid/ask).
+        # Per SWDA.L: conversionRateBid ≈ GBX→USD ≈ 0.0127
+        # Se assente: fallback su _native_to_usd con yfinance.
+        native_currency = _get_instrument_currency(ticker)
+
+        api_conv: float | None = None
+        if rate is not None:
+            bid = rate.conversion_rate_bid
+            ask = rate.conversion_rate_ask
+            if bid is not None and ask is not None:
+                api_conv = (bid + ask) / 2.0
+            elif bid is not None:
+                api_conv = bid
+            elif ask is not None:
+                api_conv = ask
+
+        def _to_usd(price_native: float) -> float:
+            if api_conv is not None and api_conv > 0:
+                return price_native * api_conv
+            return _native_to_usd(price_native, native_currency, fx)
+
+        open_price_usd = _to_usd(pos.open_rate)
+
+        # ── Prezzo corrente (API rates o close_rate dall'unrealizedPnL) ──
+        current_price_native: float | None = None
         if rate and rate.mid_price is not None:
-            current_price = rate.mid_price
+            current_price_native = rate.mid_price
         elif pos.close_rate is not None:
-            current_price = pos.close_rate
+            current_price_native = pos.close_rate
+
+        current_price_usd = (
+            _to_usd(current_price_native)
+            if current_price_native is not None else None
+        )
 
         market_value = (
-            current_price * pos.units
-            if current_price is not None and pos.units
+            current_price_usd * pos.units
+            if current_price_usd is not None and pos.units
             else None
         )
         profit_pct = (pos.pnl / pos.amount * 100.0) if pos.amount else None
 
         rows.append({
-            "ticker": ticker,
-            "direction": pos.direction,
-            "quantity": pos.units,
-            "open_price": pos.open_rate,
-            "current_price": current_price,
-            "open_date": pos.open_date_time,
-            "market_value": market_value,
-            "profit_pct": profit_pct,
-            "profit_eur": pos.pnl,
-            "currency": "USD",
-            "raw_action": raw_action,
+            "ticker":        ticker,
+            "direction":     pos.direction,
+            "quantity":      pos.units,
+            "open_price":    open_price_usd,    # ← USD (convertito)
+            "current_price": current_price_usd, # ← USD (convertito)
+            "open_date":     pos.open_date_time,
+            "market_value":  market_value,
+            "profit_pct":    profit_pct,
+            "profit_eur":    pos.pnl,
+            "currency":      "USD",             # ← normalizzato
+            "raw_action":    raw_action,
         })
 
     if not rows:

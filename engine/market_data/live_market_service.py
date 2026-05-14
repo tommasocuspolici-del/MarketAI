@@ -517,12 +517,9 @@ class LiveMarketService:
         try:
             # Quando si chiama yf.download con piu' tickers e group_by="ticker",
             # il risultato e' un DataFrame multi-index. Selezioniamo il sotto-frame.
-            try:
-                ticker_data = data[yf_ticker]
-            except (KeyError, TypeError):
-                # Singolo ticker: il DataFrame non ha multi-index.
-                ticker_data = data
-
+            ticker_data = self._get_ticker_frame(data, yf_ticker)
+            if ticker_data is None:
+                raise SilentFailureError("yfinance", f"no frame for {yf_ticker}")
             if ticker_data is None or ticker_data.empty:
                 raise SilentFailureError("yfinance", f"empty data for {yf_ticker}")
 
