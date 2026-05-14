@@ -41,6 +41,10 @@ from engine.market_data.hardening.sanity_checker import SanityChecker
 from engine.market_data.hardening.silent_failure_detector import (
     SilentFailureError,
 )
+from engine.market_data.currency_converter import (
+    CurrencyConverter,
+    get_instrument_native_currency,
+)
 from personal.data_entry.override_store import ManualOverrideStore
 from shared.config.operational_config import OP_CONFIG
 from shared.logger import get_logger
@@ -79,13 +83,11 @@ def _safe_float(val: Any) -> float:
         return float(val.item())
     return float(val)
 
-# TTL della cache in secondi.
-# ANTI-REGRESSIONE (v9.0 rate-limit fix): TTL aumentato da 60s a 900s (15 min).
-# Con TTL=60 il live service chiama yfinance ~1440 volte/giorno solo per i KPI
-# di dashboard — Yahoo Finance blocca l'IP entro poche ore.
-# Il trade-off è accettabile: i prezzi di dashboard si aggiornano ogni 15 min
-# invece che ogni minuto. Per prezzi più freschi usa lo scheduler (ogni 4h dal DB).
-_TTL_SECONDS = 900.0
+# [v8.1.0 FIX-P4] TTL centralizzato in config/operational_defaults.yaml
+# (cache.live_market_ttl_s = 900s — deliberato per rate-limit Yahoo Finance).
+# ANTI-REGRESSIONE (v9.0): 900s evita ~1440 chiamate/giorno che bancano l'IP.
+# Per cambiare il TTL: modificare il YAML, nessuna modifica al codice.
+_TTL_SECONDS: float = OP_CONFIG.cache.live_market_ttl_s
 
 # Età massima dei dati DuckDB (secondi) prima di fallire su yfinance.
 # Se il DB ha prezzi aggiornati nelle ultime 6 ore, li usa senza chiamare yfinance.
@@ -195,6 +197,8 @@ class LiveMarketService:
     ) -> None:
         self._override_store = override_store or ManualOverrideStore()
         self._sanity = sanity or SanityChecker()
+        # [v8.1.0 FIX Sett3] Converter GBX/EUR→USD per _extract_kpi
+        self._currency_converter = CurrencyConverter()
         self._ttl = ttl_seconds
         self._cache: MarketSnapshot = MarketSnapshot()
         self._lock = Lock()

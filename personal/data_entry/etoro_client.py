@@ -102,11 +102,13 @@ class EtoroClient:
 
     def get_real_portfolio(self) -> EtoroPortfolioResponse:
         payload = self._get_json(_PORTFOLIO_PNL_PATH)
-        # debug: salva payload raw (opzionale)
-        import json as _json, pathlib as _pathlib
-        _pathlib.Path("etoro_raw_payload.json").write_text(
-            _json.dumps(payload, indent=2, ensure_ascii=False)
-        )
+        # [v8.1.0 FIX-P1] Debug block protetto da env var (mai in produzione).
+        # Per abilitare in locale: ETORO_DEBUG_PAYLOAD=1 python -m ...
+        if os.getenv("ETORO_DEBUG_PAYLOAD"):  # pragma: no cover
+            import json as _json, pathlib as _pathlib
+            _pathlib.Path("etoro_raw_payload.json").write_text(
+                _json.dumps(payload, indent=2, ensure_ascii=False)
+            )
         positions_raw = payload.get("clientPortfolio", {}).get("positions", [])
         if positions_raw:
             log.debug(

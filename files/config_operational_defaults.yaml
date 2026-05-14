@@ -1,0 +1,42 @@
+# config/operational_defaults.yaml
+# MarketAI — Costanti Operative Centralizzate
+# v8.1.0 — ROADMAP_CODE_QUALITY_v1.0, Settimana 2 (P4)
+#
+# Unico punto di verità per tutti i valori operativi configurabili.
+# Modificare qui NON richiede modifiche al codice Python.
+#
+# Uso: from shared.config.operational_config import OP_CONFIG
+# ─────────────────────────────────────────────────────────────────────────────
+
+fx_fallbacks:
+  gbp_usd: 1.27       # GBP/USD fallback se yfinance non raggiungibile
+  eur_usd: 1.08       # EUR/USD fallback
+  chf_usd: 1.12       # CHF/USD fallback
+
+http:
+  default_timeout_s: 15.0
+  max_retries: 3
+  retry_base_delay_s: 1.0
+  error_body_preview_bytes: 2048
+
+cache:
+  # NOTA: 900s (15 min) scelto deliberatamente in v9.0 per evitare rate-limit
+  # di Yahoo Finance con TTL=60s (~1440 chiamate/giorno → IP bannato).
+  # Per dati più freschi usare lo scheduler (ogni 4h dal DuckDB).
+  live_market_ttl_s: 900
+  macro_conviction_ttl_s: 3600
+  instrument_lookup_ttl_s: 86400
+  scheduler_job_ttl_s: 300
+  equities_ohlcv_ttl_s: 300
+
+alerts:
+  dedup_window_minutes: 60
+
+analytics:
+  extreme_greed_threshold: 0.60
+  vix_strategy_weight: 0.60
+  var_alpha: 0.05
+  backtesting_train_pct: 0.60
+
+etoro:
+  instrument_cache_max_age_days: 7
