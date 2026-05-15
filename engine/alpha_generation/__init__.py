@@ -1,8 +1,10 @@
-"""Alpha generation engine — MacroConviction + VIX Strategy.
+"""Alpha generation engine — Composite Signal v2/v3 + VIX + Macro.
 
-Roadmap Unificata:
-  Settimana 3: MacroConvictionCalculator (15 serie FRED)
-  Settimana 4: VixSignalCalculator + StrategyComposer (HMM-aware)
+Moduli principali:
+  · composite_signal_aggregator.py  — CompositeSignalAggregator v2.1 (9 componenti)
+  · composite_signal_v2.py          — Alias v2 per roadmap compliance
+  · macro_conviction.py             — MacroConvictionCalculator (15 serie FRED)
+  · vix_signal_calculator.py        — VixSignalCalculator + StrategyComposer
 """
 from __future__ import annotations
 
@@ -14,8 +16,16 @@ from engine.alpha_generation.schemas import (
 )
 from engine.alpha_generation.strategy_composer import StrategyComposer, StrategyOutput
 from engine.alpha_generation.vix_signal_calculator import VixSignal, VixSignalCalculator
+from engine.alpha_generation.composite_signal_aggregator import (
+    CompositeSignalAggregator,
+    CompositeSignalOutput,
+)
+from engine.alpha_generation.composite_signal_v2 import (
+    CompositeSignalAggregatorV2,
+    WEIGHTS_V2,
+)
 
-__version__ = "2.0.0"
+__version__ = "3.1.0"
 
 __all__ = [
     "ClaimsRegime",
@@ -26,4 +36,8 @@ __all__ = [
     "StrategyOutput",
     "VixSignal",
     "VixSignalCalculator",
+    "CompositeSignalAggregator",
+    "CompositeSignalOutput",
+    "CompositeSignalAggregatorV2",
+    "WEIGHTS_V2",
 ]

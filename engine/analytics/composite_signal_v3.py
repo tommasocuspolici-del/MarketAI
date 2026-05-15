@@ -53,21 +53,25 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
     from shared.db.macro_repo import MacroRepository
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 __all__ = ["CompositeSignalAggregatorV3", "CompositeSignalOutputV3"]
 
 log = get_logger(__name__)
 
-# Pesi v3: somma = 1.00 (Regola 8 — verifica numerica)
+# Pesi v3.1: somma = 1.00 (Regola 8 — verifica numerica)
+# Rispetto a v2.1: distribuisce peso tra i 10 componenti
+# includendo valuation e correlation dai Blocchi 3/4.
 _WEIGHTS_V3: dict[str, float] = {
-    "vix":           0.20,
-    "macro":         0.18,
-    "yield_curve":   0.18,
-    "credit":        0.13,
-    "claims":        0.07,
-    "labour_market": 0.12,
-    "surprise":      0.07,
-    "pattern":       0.05,   # ★ v3.0 — Pattern Recognition
+    "vix":           0.16,
+    "macro":         0.16,
+    "yield_curve":   0.15,
+    "credit":        0.11,
+    "claims":        0.06,
+    "labour_market": 0.11,
+    "surprise":      0.06,
+    "valuation":     0.09,   # da v2.1 Blocco 3 — ValuationSignalGenerator
+    "correlation":   0.04,   # da v2.1 Blocco 4 — CrossAssetMatrix
+    "pattern":       0.06,   # ★ v3.0 — Pattern Recognition
 }
 # ANTI-REGRESSIONE: se la somma non è 1.0, il file non si importa
 assert abs(sum(_WEIGHTS_V3.values()) - 1.0) < 1e-9, (
@@ -149,6 +153,11 @@ class CompositeSignalAggregatorV3(CompositeSignalAggregator):
             components["labour_market"] = v2.labour_market_component
         if v2.surprise_component != 0.0 or "surprise" in v2.components_used:
             components["surprise"] = v2.surprise_component
+        # v2.1 Blocco 3/4 — valuation e correlation
+        if v2.valuation_component != 0.0 or "valuation" in v2.components_used:
+            components["valuation"] = v2.valuation_component
+        if v2.correlation_component != 0.0 or "correlation" in v2.components_used:
+            components["correlation"] = v2.correlation_component
 
         # Step 2: legge pattern component
         pat_score, pat_count, pat_breakdown = self._read_pattern_component()
