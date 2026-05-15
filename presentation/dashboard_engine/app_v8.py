@@ -29,6 +29,8 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("M2 Yield Curve",           "M2_Yield_Curve"),
         ("M3 Labour Market ★",       "M3_Labour_Market"),
         ("M4 PMI & Leading Ind. ★",  "M4_PMI_Leading_Indicators"),
+        ("M5 Economic Surprise ★",   "M5_Economic_Surprise"),
+        ("M6 Valuation P/E ★",       "M6_Valuation_PE"),
     ],
     "📊 MERCATI": [
         ("K1 Market Overview ★",     "K1_Market_Overview"),
@@ -43,6 +45,8 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("Q3 Correlations",          "Q3_Correlations"),
         ("Q4 Forecasting",           "Q4_Forecasting"),
         ("Q5 Delta & Momentum",      "Q5_Delta"),
+        ("Q9 Labour Forecasting ★",  "Q9_Labour_Forecasting"),
+        ("Q10 Surprise Heatmap ★",   "Q10_Surprise_Heatmap"),
     ],
     "⚙️ STRATEGIE": [
         ("T1 Backtesting",           "T1_Backtesting"),

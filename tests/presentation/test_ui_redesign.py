@@ -455,13 +455,13 @@ class TestAppV8Navigation:
         assert len(app.PAGES) == 5
 
     def test_total_page_count(self):
-        """19 pagine totali (2+4+5+5+3)."""
+        """23 pagine totali (2+6+5+7+3): incluse M5, M6, Q9, Q10 da Roadmap v4."""
         import importlib
         app = importlib.import_module(
             "presentation.dashboard_engine.app_v8"
         )
         total = sum(len(pages) for pages in app.PAGES.values())
-        assert total == 19, f"Attese 19 pagine, trovate {total}"
+        assert total == 23, f"Attese 23 pagine, trovate {total}"
 
     def test_new_pages_are_starred(self):
         """Le 5 nuove pagine hanno ★ nel label."""

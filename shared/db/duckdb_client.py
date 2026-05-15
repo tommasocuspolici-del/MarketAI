@@ -138,11 +138,15 @@ class DuckDBClient:
 
     # ─── Transactions ────────────────────────────────────────────────────
     @contextmanager
-    def transaction(self) -> Iterator[None]:
-        """Context manager for explicit transaction control."""
+    def transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        """Context manager for explicit transaction control.
+
+        Yields the raw DuckDB connection so callers can use
+        ``with client.transaction() as conn: conn.execute(...)``
+        """
         try:
             self._conn.execute("BEGIN TRANSACTION")
-            yield
+            yield self._conn
             self._conn.execute("COMMIT")
         except Exception:
             # Rollback su qualunque errore; poi rilancia per non nascondere bug

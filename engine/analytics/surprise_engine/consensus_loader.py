@@ -165,10 +165,10 @@ class ConsensusLoader:
                 placeholders = ", ".join(["?"] * len(fred_series))
                 df_macro = conn.execute(  # type: ignore[attr-defined]
                     f"""
-                    SELECT series_id, date, value
+                    SELECT series_id, ts AS date, value
                     FROM macro_series
                     WHERE series_id IN ({placeholders})
-                    ORDER BY series_id, date DESC
+                    ORDER BY series_id, ts DESC
                     """,
                     fred_series,
                 ).df()
