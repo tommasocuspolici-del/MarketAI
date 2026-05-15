@@ -9,6 +9,9 @@ import pytest
 from shared.env_loader import (
     ApiKeyStatus,
     EnvLoadReport,
+    _candidate_paths,
+    _is_placeholder,
+    _load_dotenv_file,
     get_api_key_statuses,
     load_environment,
 )
@@ -124,3 +127,147 @@ def test_env_load_report_immutable():
     r = EnvLoadReport(dotenv_path=None, loaded_count=0)
     with pytest.raises((AttributeError, Exception)):
         r.loaded_count = 99  # type: ignore[misc]
+
+
+# ─── Tests for private helpers (uncovered lines) ──────────────────────────────
+
+class TestIsPlaceholder:
+    def test_your_prefix_caught(self) -> None:
+        assert _is_placeholder("your_api_key_here") is True
+
+    def test_YOUR_prefix_caught(self) -> None:
+        assert _is_placeholder("YOUR_FRED_KEY") is True
+
+    def test_angle_bracket_prefix(self) -> None:
+        assert _is_placeholder("<YOUR_KEY_HERE>") is True
+
+    def test_real_value_passes(self) -> None:
+        assert _is_placeholder("real_secret_value_xyz") is False
+
+    def test_known_placeholder_set_value(self) -> None:
+        assert _is_placeholder("xxx") is True
+        assert _is_placeholder("TODO") is True
+        assert _is_placeholder("changeme") is True
+
+    def test_empty_is_placeholder(self) -> None:
+        assert _is_placeholder("") is True
+
+    def test_whitespace_stripped_before_check(self) -> None:
+        assert _is_placeholder("  your_key  ") is True
+
+
+class TestLoadDotenvFile:
+    def test_loads_key_value(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("DOTENV_TEST_A=valueA\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_TEST_A", raising=False)
+        n = _load_dotenv_file(env_file)
+        assert n == 1
+        assert os.environ.get("DOTENV_TEST_A") == "valueA"
+
+    def test_skips_existing_env_var(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("DOTENV_EXISTING=new\n", encoding="utf-8")
+        monkeypatch.setenv("DOTENV_EXISTING", "original")
+        n = _load_dotenv_file(env_file)
+        assert n == 0
+        assert os.environ["DOTENV_EXISTING"] == "original"
+
+    def test_skips_comment_lines(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("# comment\nDOTENV_AFTER_COMMENT=ok\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_AFTER_COMMENT", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_AFTER_COMMENT") == "ok"
+
+    def test_skips_blank_lines(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("\n\nDOTENV_BLANK=yes\n\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_BLANK", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_BLANK") == "yes"
+
+    def test_strips_double_quotes(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text('DOTENV_DQ="quoted"\n', encoding="utf-8")
+        monkeypatch.delenv("DOTENV_DQ", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_DQ") == "quoted"
+
+    def test_strips_single_quotes(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("DOTENV_SQ='single'\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_SQ", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_SQ") == "single"
+
+    def test_export_prefix_stripped(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("export DOTENV_EXPORT=exported\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_EXPORT", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_EXPORT") == "exported"
+
+    def test_inline_comment_stripped(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("DOTENV_INLINE=val # comment\n", encoding="utf-8")
+        monkeypatch.delenv("DOTENV_INLINE", raising=False)
+        _load_dotenv_file(env_file)
+        assert os.environ.get("DOTENV_INLINE") == "val"
+
+    def test_returns_0_for_missing_file(self, tmp_path) -> None:
+        n = _load_dotenv_file(tmp_path / "missing.env")
+        assert n == 0
+
+    def test_skips_line_without_equals(self, tmp_path, monkeypatch) -> None:
+        env_file = tmp_path / ".env"
+        env_file.write_text("NO_EQUALS\nWITH_EQUALS=yes\n", encoding="utf-8")
+        monkeypatch.delenv("NO_EQUALS", raising=False)
+        monkeypatch.delenv("WITH_EQUALS", raising=False)
+        n = _load_dotenv_file(env_file)
+        assert n == 1
+
+
+class TestCandidatePaths:
+    def test_explicit_path_first(self, tmp_path) -> None:
+        explicit = tmp_path / "explicit.env"
+        paths = _candidate_paths(explicit)
+        assert paths[0] == explicit
+
+    def test_none_explicit_excludes_none(self, tmp_path) -> None:
+        paths = _candidate_paths(None)
+        assert None not in paths
+        assert len(paths) >= 1
+
+    def test_no_duplicates_when_cwd_matches_project(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr("shared.env_loader.PROJECT_ROOT", tmp_path)
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            paths = _candidate_paths(None)
+            # Check no duplicate paths
+            assert len(paths) == len(set(paths))
+        finally:
+            os.chdir(original_cwd)
+
+
+class TestLoadEnvironmentFallback:
+    def test_stdlib_fallback_when_dotenv_missing(self, tmp_path, monkeypatch) -> None:
+        """_load_dotenv_file used as fallback when python-dotenv unavailable."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("STDLIB_TEST_KEY=from_stdlib\n", encoding="utf-8")
+        monkeypatch.delenv("STDLIB_TEST_KEY", raising=False)
+
+        import builtins
+        real_import = builtins.__import__
+
+        def _block_dotenv(name, *args, **kwargs):
+            if name == "dotenv":
+                raise ImportError("blocked for test")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _block_dotenv)
+        report = load_environment(explicit_path=env_file)
+        assert report.dotenv_path == env_file
+        assert report.loaded_successfully is True
