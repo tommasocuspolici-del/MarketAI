@@ -10,6 +10,16 @@ from engine.analytics.valuation.schemas import (
 from engine.analytics.valuation.pe_calculator import PECalculator
 from engine.analytics.valuation.pe_context_builder import PEContextBuilder
 from engine.analytics.valuation.valuation_signal_generator import ValuationSignalGenerator
+from engine.analytics.valuation.earnings_fetcher import EarningsFetcher, EarningsSnapshot
+from engine.analytics.valuation.forward_estimates_fetcher import (
+    ForwardEstimatesFetcher,
+    ForwardEstimate,
+)
+from engine.analytics.valuation.equity_risk_premium import (
+    EquityRiskPremium,
+    ERPResult,
+    ERPRegime,
+)
 
 __all__ = [
     "PEMetrics",
@@ -18,4 +28,11 @@ __all__ = [
     "PECalculator",
     "PEContextBuilder",
     "ValuationSignalGenerator",
+    "EarningsFetcher",
+    "EarningsSnapshot",
+    "ForwardEstimatesFetcher",
+    "ForwardEstimate",
+    "EquityRiskPremium",
+    "ERPResult",
+    "ERPRegime",
 ]
