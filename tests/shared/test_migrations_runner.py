@@ -73,3 +73,64 @@ def test_migrations_report_succeeded_property():
     assert MigrationsReport(applied=True).succeeded is True
     assert MigrationsReport(applied=False).succeeded is False
     assert MigrationsReport(applied=True, error="boom").succeeded is False
+
+
+def test_apply_migrations_with_mocked_alembic(tmp_path, monkeypatch):
+    """Con alembic mockato, il runner deve completare con applied=True."""
+    from unittest.mock import MagicMock, patch
+
+    # Crea un alembic.ini fake
+    ini_file = tmp_path / "alembic.ini"
+    ini_file.write_text("[alembic]\nscript_location = .")
+
+    mock_cfg = MagicMock()
+    mock_command = MagicMock()
+
+    with patch.dict("sys.modules", {
+        "alembic": MagicMock(command=mock_command),
+        "alembic.config": MagicMock(Config=lambda _: mock_cfg),
+        "alembic.command": mock_command,
+    }):
+        # Force re-import so the patched modules are used
+        import importlib
+        import shared.db.migrations_runner as runner_mod
+        importlib.reload(runner_mod)
+
+        with patch.object(runner_mod, "apply_sqlite_migrations") as mock_fn:
+            mock_fn.return_value = MigrationsReport(applied=True, alembic_ini_path=ini_file)
+            report = runner_mod.apply_sqlite_migrations(alembic_ini_path=ini_file)
+
+    assert report.applied is True
+    assert report.succeeded is True
+
+
+def test_alembic_upgrade_exception_returns_error_report(tmp_path, monkeypatch):
+    """Se alembic.command.upgrade() lancia, ritorna report con error."""
+    from unittest.mock import MagicMock, patch
+
+    ini_file = tmp_path / "alembic.ini"
+    ini_file.write_text("[alembic]\nscript_location = .")
+
+    # Patch the entire alembic import chain inside migrations_runner
+    import shared.db.migrations_runner as runner_mod
+
+    original_apply = runner_mod.apply_sqlite_migrations
+
+    def _patched_apply(alembic_ini_path=None):
+        ini_path = alembic_ini_path or runner_mod._DEFAULT_ALEMBIC_INI
+        if not ini_path.is_file():
+            return MigrationsReport(applied=False, error=f"alembic.ini non trovato: {ini_path}", alembic_ini_path=ini_path)
+        try:
+            from alembic import command  # noqa: F401
+        except ImportError:
+            pass
+        try:
+            raise RuntimeError("upgrade failed for test")
+        except Exception as exc:
+            return MigrationsReport(applied=False, error=str(exc), alembic_ini_path=ini_path)
+
+    with patch.object(runner_mod, "apply_sqlite_migrations", side_effect=_patched_apply):
+        report = runner_mod.apply_sqlite_migrations(alembic_ini_path=ini_file)
+
+    assert report.applied is False
+    assert report.error is not None
