@@ -1,10 +1,10 @@
-"""
-Economic Surprise Engine — Blocco C.
+﻿"""
+Economic Surprise Engine â€” Blocco C.
 
 Tre moduli in un file (ognuno < 400 linee, Regola 2 rispettata):
-  · SurpriseCalculator:         calcola z-score normalizzato per indicatore
-  · SectorSurpriseAggregator:   aggrega per settore con decadimento esponenziale
-  · SurpriseSignalGenerator:    produce segnale [-1,1] per CompositeSignal v2
+  Â· SurpriseCalculator:         calcola z-score normalizzato per indicatore
+  Â· SectorSurpriseAggregator:   aggrega per settore con decadimento esponenziale
+  Â· SurpriseSignalGenerator:    produce segnale [-1,1] per CompositeSignal v2
 
 Metodologia basata su Citigroup Economic Surprise Index (CESI) adattata:
   surprise_raw = actual - consensus
@@ -12,9 +12,9 @@ Metodologia basata su Citigroup Economic Surprise Index (CESI) adattata:
   surprise_z   = surprise_raw / surprise_std
 
 Pesi settoriali per il segnale finale:
-  labour:         0.30   (leading del ciclo, alta predittività)
+  labour:         0.30   (leading del ciclo, alta predittivitÃ )
   growth:         0.30   (coincident, diretto impatto su earnings)
-  inflation:      0.20   (determinante per policy Fed → tassi)
+  inflation:      0.20   (determinante per policy Fed â†’ tassi)
   housing:        0.15   (leading ma noisier)
   trade_external: 0.05   (impatto limitato su equity USA)
 
@@ -23,7 +23,7 @@ Regola 13: persiste in economic_consensus, sector_surprise_index, surprise_signa
 
 DIPENDENZE DATI:
   I dati di consensus devono essere caricati in economic_consensus prima che
-  SurpriseCalculator possa calcolare i z-score. In v1.0 il caricamento è manuale
+  SurpriseCalculator possa calcolare i z-score. In v1.0 il caricamento Ã¨ manuale
   via YAML (vedere config/surprise_engine.yaml) o futuro ConsensusLoader automatico.
 """
 from __future__ import annotations
@@ -38,7 +38,7 @@ import structlog
 __version__ = "1.0.0"
 log = structlog.get_logger(__name__)
 
-# ─────────────────────────────────────────────── Pesi settoriali
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Pesi settoriali
 _SECTOR_WEIGHTS: dict[str, float] = {
     "labour":         0.30,
     "growth":         0.30,
@@ -50,13 +50,13 @@ _SECTOR_WEIGHTS: dict[str, float] = {
 # Parametri aggregazione
 _NORMALIZATION_WINDOW_MONTHS: int  = 24
 _AGGREGATION_MONTHS:          int  = 3
-_SIGNIFICANCE_THRESHOLD:      float= 1.0    # |z| > 1 → sorpresa significativa
+_SIGNIFICANCE_THRESHOLD:      float= 1.0    # |z| > 1 â†’ sorpresa significativa
 _DECAY_LAMBDA:                 float= 0.10  # half-life ~7 mesi
-_REGIME_THRESHOLD:             float= 0.30  # |index| > 0.3 → positive/negative
+_REGIME_THRESHOLD:             float= 0.30  # |index| > 0.3 â†’ positive/negative
 
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # PARTE 1: SurpriseCalculator
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @dataclass(frozen=True)
 class IndicatorSurprise:
@@ -77,7 +77,7 @@ class SurpriseCalculator:
     ritorna z-score normalizzati.
     """
 
-    def __init__(self, duckdb=None) -> None:
+    def __init__(self, duckdb: object = None) -> None:
         self._duckdb = duckdb
 
     def compute_from_df(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -133,9 +133,9 @@ class SurpriseCalculator:
             .last()
             .reset_index()
         )
-        # BUGFIX Regola 23: eliminato iterrows — usa to_dict + list comprehension vettorizzata.
-        # get_latest_surprises viene chiamato su DataFrame di al più ~25 indicatori:
-        # il gain di performance è marginale ma la coerenza con le convenzioni è essenziale.
+        # BUGFIX Regola 23: eliminato iterrows â€” usa to_dict + list comprehension vettorizzata.
+        # get_latest_surprises viene chiamato su DataFrame di al piÃ¹ ~25 indicatori:
+        # il gain di performance Ã¨ marginale ma la coerenza con le convenzioni Ã¨ essenziale.
         records = latest.to_dict(orient="records")
         results: list[IndicatorSurprise] = [
             IndicatorSurprise(
@@ -154,7 +154,7 @@ class SurpriseCalculator:
     def persist_to_db(self, computed: pd.DataFrame) -> None:
         """Salva i risultati calcolati in economic_consensus DuckDB.
 
-        BUGFIX Regola 23: eliminato iterrows — costruisce batch di tuple
+        BUGFIX Regola 23: eliminato iterrows â€” costruisce batch di tuple
         e usa executemany per inserimento efficiente.
         """
         if self._duckdb is None:
@@ -177,11 +177,11 @@ class SurpriseCalculator:
                 float(row["surprise_z"]),
                 str(row.get("source", "manual")),
             )
-            for _, row in rows.iterrows()  # noqa: B007 — necessario per accesso type-safe pre-executemany
+            for _, row in rows.iterrows()  # noqa: B007 â€” necessario per accesso type-safe pre-executemany
         ]
         try:
             for p in params:   # executemany non disponibile su tutti i DuckDB client, usa loop protetto
-                self._duckdb.execute(
+                self._duckdb.execute(  # type: ignore[attr-defined]
                     """INSERT OR REPLACE INTO economic_consensus
                        (release_date, indicator_code, sector, consensus_value,
                         actual_value, prior_value, surprise_raw, surprise_std,
@@ -193,9 +193,9 @@ class SurpriseCalculator:
             log.warning("surprise.persist_batch_failed", error=str(exc)[:80])
 
 
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # PARTE 2: SectorSurpriseAggregator
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @dataclass(frozen=True)
 class SectorSurpriseIndex:
@@ -215,15 +215,15 @@ class SectorSurpriseAggregator:
     """Costruisce l'indice di sorpresa settoriale con decadimento esponenziale.
 
     Segue metodologia CESI (Citigroup Economic Surprise Index) adattata:
-    · Media pesata dei z-score ultimi N mesi
-    · Decadimento esponenziale: sorprese più recenti pesano di più
-    · Lambda = 0.10 → half-life ~7 mesi
+    Â· Media pesata dei z-score ultimi N mesi
+    Â· Decadimento esponenziale: sorprese piÃ¹ recenti pesano di piÃ¹
+    Â· Lambda = 0.10 â†’ half-life ~7 mesi
     """
 
     def __init__(
         self,
         indicator_weights: dict[str, dict[str, float]],
-        duckdb=None,
+        duckdb: object = None,
     ) -> None:
         """
         Args:
@@ -352,7 +352,7 @@ class SectorSurpriseAggregator:
             return
         for r in results:
             try:
-                self._duckdb.execute(
+                self._duckdb.execute(  # type: ignore[attr-defined]
                     """INSERT OR REPLACE INTO sector_surprise_index
                        (snapshot_date, sector, surprise_index, momentum_1m,
                         momentum_3m, regime, beat_count, miss_count, data_points)
@@ -365,9 +365,9 @@ class SectorSurpriseAggregator:
                 log.warning("surprise.persist_sector_failed", sector=r.sector, error=str(exc)[:60])
 
 
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # PARTE 3: SurpriseSignalGenerator
-# ═══════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @dataclass(frozen=True)
 class SurpriseCompositeSignal:
@@ -385,7 +385,7 @@ class SurpriseSignalGenerator:
     Per uso nel CompositeSignalAggregator v2.
     """
 
-    def __init__(self, duckdb=None) -> None:
+    def __init__(self, duckdb: object = None) -> None:
         self._duckdb = duckdb
 
     def generate(
@@ -452,7 +452,7 @@ class SurpriseSignalGenerator:
         if self._duckdb is None:
             return
         try:
-            self._duckdb.execute(
+            self._duckdb.execute(  # type: ignore[attr-defined]
                 """INSERT OR REPLACE INTO surprise_signal
                    (generated_at, signal_value, dominant_sector, beat_count, miss_count)
                    VALUES (?, ?, ?, ?, ?)""",

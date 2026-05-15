@@ -137,7 +137,7 @@ class PECalculator:
                  metrics.eps_trailing_4q, metrics.eps_forward_1y, metrics.risk_free_rate],
             )
         except Exception as exc:
-            log.warning("pe_calculator.persist_failed", ticker=metrics.ticker, error=str(exc)[:120])
+            log.warning("pe_calculator.persist_failed ticker=%s: %s", metrics.ticker, str(exc)[:120])
 
     # ─── Lettura dati da DuckDB ──────────────────────────────────────────────
 

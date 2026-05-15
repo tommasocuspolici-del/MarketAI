@@ -1,10 +1,10 @@
-"""Lead-Lag Analysis via Granger Causality Test.
+﻿"""Lead-Lag Analysis via Granger Causality Test.
 
-Standard professionale: test formale Granger per causalità, con cross-
+Standard professionale: test formale Granger per causalitÃ , con cross-
 correlazione come filtro di rumore.
 
 Algoritmo:
-  1. Pre-processing: rendimenti log, ADF test, winsorize ±5σ
+  1. Pre-processing: rendimenti log, ADF test, winsorize Â±5Ïƒ
   2. Granger causality (statsmodels) per ogni coppia (A, B) e lag k
   3. Selezione lag ottimale: min p-value + max cross-corr
   4. Segnale: 'bullish_lead'|'bearish_lead'|'neutral'
@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 # Lag candidati (giorni trading) per test Granger
 _CANDIDATE_LAGS = [1, 2, 5, 10, 21]
 
-# Soglie significatività
+# Soglie significativitÃ 
 _PVALUE_THRESHOLD = 0.05
 _CORR_MIN         = 0.30    # Cross-correlazione minima per segnale affidabile
 
@@ -68,7 +68,7 @@ class LeadLagAnalyzer:
     Args:
         client:      DuckDBClient per persistenza.
         lags:        Lista di lag candidati (giorni trading).
-        pvalue_thr:  Soglia significatività Granger.
+        pvalue_thr:  Soglia significativitÃ  Granger.
         corr_min:    Soglia minima cross-correlazione.
 
     Usage::
@@ -95,7 +95,7 @@ class LeadLagAnalyzer:
         leader: str,
         follower: str,
     ) -> LeadLagResult:
-        """Test Granger: leader → follower.
+        """Test Granger: leader â†’ follower.
 
         Args:
             returns:  DataFrame rendimenti log (colonne=asset, righe=date).
@@ -145,7 +145,7 @@ class LeadLagAnalyzer:
         returns: pd.DataFrame,
         pairs: list[tuple[str, str]] | None = None,
     ) -> list[LeadLagResult]:
-        """Testa tutte le coppie leader→follower.
+        """Testa tutte le coppie leaderâ†’follower.
 
         Args:
             returns: DataFrame rendimenti.
@@ -163,17 +163,17 @@ class LeadLagAnalyzer:
             try:
                 results.append(self.test_pair(returns, leader, follower))
             except Exception as exc:
-                log.debug("lead_lag.test_pair_failed", leader=leader, follower=follower,
-                          error=str(exc)[:80])
+                log.debug("lead_lag.test_pair_failed leader=%s follower=%s: %s",
+                          leader, follower, str(exc)[:80])
                 results.append(self._null_result(leader, follower))
         return results
 
-    # ─── Core Granger ────────────────────────────────────────────────────────
+    # â”€â”€â”€ Core Granger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _run_granger(
         self,
-        x: np.ndarray,
-        y: np.ndarray,
+        x: np.ndarray,  # type: ignore[type-arg]
+        y: np.ndarray,  # type: ignore[type-arg]
     ) -> tuple[int, float, float, float]:
         """Esegue Granger per tutti i lag e seleziona il migliore.
 
@@ -191,20 +191,20 @@ class LeadLagAnalyzer:
             try:
                 f_stat, p_val = self._granger_test(x, y, lag)
                 corr = self._cross_corr_at_lag(x, y, lag)
-                # Selezione: min p-value, in parità max |corr|
+                # Selezione: min p-value, in paritÃ  max |corr|
                 if p_val < best_p or (abs(p_val - best_p) < 1e-4 and abs(corr) > abs(best_corr)):
                     best_lag  = lag
                     best_f    = f_stat
                     best_p    = p_val
                     best_corr = corr
             except Exception as exc:
-                log.debug("lead_lag.granger_lag_failed", lag=lag, error=str(exc)[:60])
+                log.debug("lead_lag.granger_lag_failed lag=%s: %s", lag, str(exc)[:60])
                 continue
 
         return best_lag, best_f, best_p, best_corr
 
     @staticmethod
-    def _granger_test(x: np.ndarray, y: np.ndarray, lag: int) -> tuple[float, float]:
+    def _granger_test(x: np.ndarray, y: np.ndarray, lag: int) -> tuple[float, float]:  # type: ignore[type-arg]
         """Test Granger: x causa y al lag specificato?
 
         Usa test F su modello VAR(lag) semplificato.
@@ -223,7 +223,7 @@ class LeadLagAnalyzer:
             return LeadLagAnalyzer._manual_granger(x, y, lag)
 
     @staticmethod
-    def _manual_granger(x: np.ndarray, y: np.ndarray, lag: int) -> tuple[float, float]:
+    def _manual_granger(x: np.ndarray, y: np.ndarray, lag: int) -> tuple[float, float]:  # type: ignore[type-arg]
         """F-test Granger semplificato senza statsmodels."""
         from scipy import stats as sp_stats
         n = len(y)
@@ -256,7 +256,7 @@ class LeadLagAnalyzer:
         return float(f_stat), p_val
 
     @staticmethod
-    def _cross_corr_at_lag(x: np.ndarray, y: np.ndarray, lag: int) -> float:
+    def _cross_corr_at_lag(x: np.ndarray, y: np.ndarray, lag: int) -> float:  # type: ignore[type-arg]
         """Cross-correlazione di y(t) con x(t-lag)."""
         if lag >= len(x):
             return 0.0
@@ -267,10 +267,10 @@ class LeadLagAnalyzer:
         corr = float(np.corrcoef(x_lagged, y_shifted)[0, 1])
         return 0.0 if np.isnan(corr) else corr
 
-    # ─── Pre-processing ───────────────────────────────────────────────────────
+    # â”€â”€â”€ Pre-processing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
-    def _preprocess(series: np.ndarray, winsorize_sigma: float = 5.0) -> np.ndarray:
+    def _preprocess(series: np.ndarray, winsorize_sigma: float = 5.0) -> np.ndarray:  # type: ignore[type-arg]
         """Winsorizza outlier via IQR-based bounds (robusto ai casi degeneri)."""
         s = series.copy()
         q25, q75 = np.nanpercentile(s, [25, 75])
@@ -284,7 +284,7 @@ class LeadLagAnalyzer:
             hi = q75 + winsorize_sigma * iqr
         return np.clip(s, lo, hi)
 
-    # ─── Helpers ─────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _null_result(leader: str, follower: str) -> LeadLagResult:
@@ -319,4 +319,4 @@ class LeadLagAnalyzer:
                  result.is_significant, result.lead_signal],
             )
         except Exception as exc:
-            log.debug("lead_lag.persist_failed", error=str(exc)[:80])
+            log.debug("lead_lag.persist_failed: %s", str(exc)[:80])

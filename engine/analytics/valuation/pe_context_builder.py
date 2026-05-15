@@ -1,6 +1,6 @@
-"""Contestualizzazione storica delle metriche PE (z-score, percentile).
+﻿"""Contestualizzazione storica delle metriche PE (z-score, percentile).
 
-Standard investment bank: ogni metrica è sempre presentata in contesto
+Standard investment bank: ogni metrica Ã¨ sempre presentata in contesto
 storico (z-score 20 anni, percentile, regime).
 
 Regola 8: numpy per calcoli statistici.
@@ -57,7 +57,7 @@ class PEContextBuilder:
         self._client = client
         self._lookback = lookback_years
 
-    def build(self, metrics: PEMetrics) -> dict:
+    def build(self, metrics: PEMetrics) -> dict:  # type: ignore[type-arg]
         """Calcola contesto storico per le metriche PE.
 
         Args:
@@ -88,16 +88,16 @@ class PEContextBuilder:
         # ERP z-score (invertito: ERP alto = positivo = sottovalutato)
         erp_contribution = 0.0
         if metrics.erp_implied is not None:
-            # ERP > 3% → z_erp positivo (buono per azioni)
+            # ERP > 3% â†’ z_erp positivo (buono per azioni)
             erp_contribution = float(np.clip((metrics.erp_implied - 0.02) / 0.015, -2, 2))
 
         # Score composito valuation (pesi roadmap)
-        # Nota: z-score positivo = metrica ALTA = costosa → segnale negativo per investitore
+        # Nota: z-score positivo = metrica ALTA = costosa â†’ segnale negativo per investitore
         composite_z = float(
             0.30 * (z_t or 0.0) +
             0.35 * (z_f or 0.0) +
             0.20 * (z_c or 0.0) +
-            0.15 * (-erp_contribution)  # ERP alto (buono) → score positivo
+            0.15 * (-erp_contribution)  # ERP alto (buono) â†’ score positivo
         )
         # composite_z > 0 = costoso, < 0 = economico
         # Invertiamo per avere: +1 = deep value, -1 = bubble
@@ -116,9 +116,9 @@ class PEContextBuilder:
             "label":            label,
         }
 
-    # ─── Helpers ─────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    def _get_hist_series(self, col: str, ticker: str, cutoff: date) -> np.ndarray:
+    def _get_hist_series(self, col: str, ticker: str, cutoff: date) -> np.ndarray:  # type: ignore[type-arg]
         try:
             rows = self._client.query(
                 f"SELECT {col} FROM pe_metrics "
@@ -130,7 +130,7 @@ class PEContextBuilder:
         except Exception:
             return np.array([], dtype=float)
 
-    def _get_hist_cape(self, cutoff: date) -> np.ndarray:
+    def _get_hist_cape(self, cutoff: date) -> np.ndarray:  # type: ignore[type-arg]
         try:
             rows = self._client.query(
                 "SELECT cape_ratio FROM shiller_cape_historical "
@@ -144,7 +144,7 @@ class PEContextBuilder:
     @staticmethod
     def _compute_zp(
         value: float | None,
-        history: np.ndarray,
+        history: np.ndarray,  # type: ignore[type-arg]
         fallback_mean: float,
         fallback_std: float,
     ) -> tuple[float | None, float | None]:

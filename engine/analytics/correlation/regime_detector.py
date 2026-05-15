@@ -1,4 +1,4 @@
-"""Regime detector — identifies bull/bear/transition/stress regimes.
+﻿"""Regime detector â€” identifies bull/bear/transition/stress regimes.
 
 Uses an HMM-lite approach: K-means clustering on (return, volatility) features,
 then mapping clusters to canonical regime labels by sorting on mean return.
@@ -22,7 +22,7 @@ __all__ = ["MarketRegime", "RegimeDetector", "RegimeReport"]
 
 log = get_logger(__name__)
 
-# Canonical labels — sorted from worst to best mean return
+# Canonical labels â€” sorted from worst to best mean return
 _CANONICAL_REGIMES = ("stress", "bear", "transition", "bull")
 
 
@@ -86,7 +86,7 @@ class RegimeDetector:
         # K-means (vectorized, deterministic)
         labels, centroids = self._kmeans(features_std, self._n, seed=seed)
 
-        # Sort regimes by mean return — worst (stress) to best (bull)
+        # Sort regimes by mean return â€” worst (stress) to best (bull)
         regime_means_raw = {
             i: float(rets_aligned.to_numpy()[labels == i].mean())
             for i in range(self._n)
@@ -112,7 +112,7 @@ class RegimeDetector:
             dist_to_assigned = np.linalg.norm(feat - centroids[label_id])
             other_centroids = np.delete(centroids, label_id, axis=0)
             dist_to_others = np.linalg.norm(feat - other_centroids, axis=1).min()
-            # Higher dist_to_others / dist_to_assigned → higher confidence
+            # Higher dist_to_others / dist_to_assigned â†’ higher confidence
             ratio = dist_to_others / max(dist_to_assigned, 1e-9)
             confidence = float(min(1.0, max(0.0, 1.0 - 1.0 / max(ratio, 1.0))))
             history.append(MarketRegime(
@@ -143,8 +143,8 @@ class RegimeDetector:
         )
 
     def _kmeans(
-        self, x: np.ndarray, k: int, seed: int = 42,
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, x: np.ndarray, k: int, seed: int = 42,  # type: ignore[type-arg]
+    ) -> tuple[np.ndarray, np.ndarray]:  # type: ignore[type-arg]
         """Vectorized K-means with deterministic seeding."""
         rng = np.random.default_rng(seed)
         n_obs = x.shape[0]

@@ -181,7 +181,7 @@ class PayrollFetcher:
         return n
 
 
-def _fv(series: pd.Series, idx) -> float | None:
+def _fv(series: pd.Series, idx: object) -> float | None:
     """Legge un valore float da una Series, None se NaN o assente."""
     if idx not in series.index:
         return None

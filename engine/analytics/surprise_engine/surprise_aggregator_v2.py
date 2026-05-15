@@ -1,14 +1,14 @@
-"""SurpriseAggregatorV2 — pipeline completa + accuracy tracking + auto-calibrazione.
+﻿"""SurpriseAggregatorV2 â€” pipeline completa + accuracy tracking + auto-calibrazione.
 
 Estende il surprise engine v1 (surprise_engine.py) con:
-  · Pipeline integrata: ConsensusLoader → SurpriseCalculator →
-    SectorSurpriseAggregator → SurpriseSignalGenerator
-  · SurpriseAccuracyTracker: logga previsioni vs outcome in surprise_accuracy_log
-  · AutoWeightCalibrator: aggiusta pesi indicatori per settore basandosi
+  Â· Pipeline integrata: ConsensusLoader â†’ SurpriseCalculator â†’
+    SectorSurpriseAggregator â†’ SurpriseSignalGenerator
+  Â· SurpriseAccuracyTracker: logga previsioni vs outcome in surprise_accuracy_log
+  Â· AutoWeightCalibrator: aggiusta pesi indicatori per settore basandosi
     sull'accuratezza direzionale storica (Bayesian update semplificato)
-  · Metodo run_full_pipeline(): entry point unico per il job scheduler
+  Â· Metodo run_full_pipeline(): entry point unico per il job scheduler
 
-Regola 2 (SRP): questa classe orchestra — non sostituisce le classi v1.
+Regola 2 (SRP): questa classe orchestra â€” non sostituisce le classi v1.
 Regola 8: calcoli numpy per accuracy scoring.
 Regola 29: gated da 'surprise_scheduler'.
 """
@@ -54,7 +54,7 @@ _CALIBRATION_LEARNING_RATE: float = 0.05   # aggiustamento massimo per run
 _MIN_HISTORY_FOR_CALIBRATION: int  = 12    # minimo di rilasci per calibrare
 
 
-# ─── Risultato pipeline ────────────────────────────────────────────────────────
+# â”€â”€â”€ Risultato pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class PipelineResult:
@@ -68,13 +68,13 @@ class PipelineResult:
     calibrated:      bool
 
 
-# ─── Accuracy Tracker ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Accuracy Tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class SurpriseAccuracyTracker:
     """Traccia l'accuratezza direzionale delle sorprese economiche.
 
     Per ogni indicatore, registra se la direzione della sorpresa
-    (beat o miss) si è trasmessa nella direzione attesa del mercato.
+    (beat o miss) si Ã¨ trasmessa nella direzione attesa del mercato.
     Basato su surprise_accuracy_log (migration 010).
     """
 
@@ -110,8 +110,9 @@ class SurpriseAccuracyTracker:
         try:
             df = pd.DataFrame(rows)
             with self._client.transaction() as conn:
-                conn.register("_acc_batch", df)
-                conn.execute("""
+                conn.register("_acc_batch", df)  # type: ignore[attr-defined]
+                conn.execute(  # type: ignore[attr-defined]
+                    """
                     INSERT OR REPLACE INTO surprise_accuracy_log
                     (indicator_code, release_date, predicted_beat,
                      surprise_z, recorded_at)
@@ -142,7 +143,7 @@ class SurpriseAccuracyTracker:
         ).date().isoformat()
         try:
             with self._client.transaction() as conn:
-                df = conn.execute(
+                df = conn.execute(  # type: ignore[attr-defined]
                     """
                     SELECT
                         indicator_code,
@@ -173,7 +174,7 @@ class SurpriseAccuracyTracker:
         return float(np.mean(vals))
 
 
-# ─── Auto-Weight Calibrator ───────────────────────────────────────────────────
+# â”€â”€â”€ Auto-Weight Calibrator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AutoWeightCalibrator:
     """Aggiusta i pesi degli indicatori basandosi sull'accuratezza storica.
@@ -222,13 +223,13 @@ class AutoWeightCalibrator:
         return new_weights
 
 
-# ─── Pipeline principale ─────────────────────────────────────────────────────
+# â”€â”€â”€ Pipeline principale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class SurpriseAggregatorV2:
     """Orchestratore pipeline Surprise Engine v2.
 
-    Coordina: ConsensusLoader → SurpriseCalculator →
-              SectorSurpriseAggregator → SurpriseSignalGenerator
+    Coordina: ConsensusLoader â†’ SurpriseCalculator â†’
+              SectorSurpriseAggregator â†’ SurpriseSignalGenerator
               + accuracy tracking + auto-calibrazione.
 
     Feature flag: 'surprise_scheduler' (Regola 29).
@@ -237,7 +238,7 @@ class SurpriseAggregatorV2:
     def __init__(self, client: DuckDBClient | None = None) -> None:
         if not is_enabled("surprise_scheduler"):
             raise FeatureDisabledError(
-                "Feature 'surprise_scheduler' è disabilitata. "
+                "Feature 'surprise_scheduler' Ã¨ disabilitata. "
                 "Abilita in config/feature_flags.yaml."
             )
         self._client    = client or get_duckdb_client()
@@ -333,14 +334,14 @@ class SurpriseAggregatorV2:
             calibrated=calibrated,
         )
 
-    # ─── Internals ───────────────────────────────────────────────────────────
+    # â”€â”€â”€ Internals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _load_consensus_data(self) -> pd.DataFrame:
         """Carica consensus + actual; ritorna DataFrame per SurpriseCalculator."""
         try:
             from engine.analytics.surprise_engine.consensus_loader import ConsensusLoader
             loader = ConsensusLoader(client=self._client)
-            # YAML ha priorità su FRED-derived
+            # YAML ha prioritÃ  su FRED-derived
             yaml_batch = loader.load_yaml()
             if not yaml_batch.df.empty:
                 loader.save(yaml_batch)
@@ -349,7 +350,7 @@ class SurpriseAggregatorV2:
                 loader.save(fred_batch)
             return loader.build_for_calculator()
         except FeatureDisabledError:
-            # ConsensusLoader non abilitato → usa solo economic_consensus esistente
+            # ConsensusLoader non abilitato â†’ usa solo economic_consensus esistente
             log.info("surprise_v2.using_existing_consensus")
             return self._read_existing_consensus()
         except Exception as exc:
@@ -360,7 +361,8 @@ class SurpriseAggregatorV2:
         """Fallback: legge direttamente economic_consensus DuckDB."""
         try:
             with self._client.transaction() as conn:
-                return conn.execute("""
+                return conn.execute(  # type: ignore[attr-defined]
+                    """
                     SELECT release_date, indicator_code, sector,
                            consensus_value AS consensus,
                            actual_value    AS actual,

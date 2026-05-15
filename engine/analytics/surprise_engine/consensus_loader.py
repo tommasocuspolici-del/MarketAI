@@ -1,21 +1,21 @@
-"""ConsensusLoader — carica stime consensus per Economic Surprise Engine v2.
+﻿"""ConsensusLoader â€” carica stime consensus per Economic Surprise Engine v2.
 
-Fonti supportate (in ordine di priorità):
-  1. YAML manuale (config/surprise_engine_consensus.yaml) → source='yaml_manual'
-  2. FRED-derived (previous actual value come naive consensus) → source='fred_derived'
-  3. Mock (test) → source='mock'
+Fonti supportate (in ordine di prioritÃ ):
+  1. YAML manuale (config/surprise_engine_consensus.yaml) â†’ source='yaml_manual'
+  2. FRED-derived (previous actual value come naive consensus) â†’ source='fred_derived'
+  3. Mock (test) â†’ source='mock'
 
 Dopo il caricamento, build_for_calculator() produce un DataFrame pronto
-per SurpriseCalculator.compute_from_df() — include sia consensus che actuals.
+per SurpriseCalculator.compute_from_df() â€” include sia consensus che actuals.
 
-Regola 12: fetch → clean → validate → duckdb_write → cache → return.
+Regola 12: fetch â†’ clean â†’ validate â†’ duckdb_write â†’ cache â†’ return.
 Regola 29: gated da feature flag 'surprise_consensus_loader'.
-Regola 2 (SRP): carica consensus — non calcola sorprese (SurpriseCalculator).
+Regola 2 (SRP): carica consensus â€” non calcola sorprese (SurpriseCalculator).
 
 ANTI-REGRESSIONE (v9.0 Sett.6):
-  · load_yaml() NON accetta espressioni Python nelle stime — solo scalari numerici.
-  · fred_derived consensus = valore precedente shifted(1): non è consenso reale,
-    è un placeholder per il gap strutturale. L'utente deve aggiornare il YAML.
+  Â· load_yaml() NON accetta espressioni Python nelle stime â€” solo scalari numerici.
+  Â· fred_derived consensus = valore precedente shifted(1): non Ã¨ consenso reale,
+    Ã¨ un placeholder per il gap strutturale. L'utente deve aggiornare il YAML.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ _CALCULATOR_COLS: list[str] = [
 
 
 class ConsensusBatch:
-    """Risultato di un caricamento consensus — wrapper attorno a pd.DataFrame."""
+    """Risultato di un caricamento consensus â€” wrapper attorno a pd.DataFrame."""
 
     def __init__(self, df: pd.DataFrame, source: str, loaded_at: datetime) -> None:
         self.df         = df
@@ -71,7 +71,7 @@ class ConsensusLoader:
         batch  = loader.load_yaml()
         loader.save(batch)
         df_for_calc = loader.build_for_calculator()
-        # → passa df_for_calc a SurpriseCalculator.compute_from_df()
+        # â†’ passa df_for_calc a SurpriseCalculator.compute_from_df()
 
     Feature flag: 'surprise_consensus_loader' (Regola 29).
     """
@@ -85,7 +85,7 @@ class ConsensusLoader:
         self._client = client or get_duckdb_client()
         self._indicator_map = self._load_indicator_map()
 
-    # ─── Load ────────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def load_yaml(
         self,
@@ -122,7 +122,7 @@ class ConsensusLoader:
                 log.debug("consensus_loader.yaml_entry_skip", entry=entry)
                 continue
             try:
-                # ANTI-REGRESSIONE: val deve essere scalare numerico — non espressioni
+                # ANTI-REGRESSIONE: val deve essere scalare numerico â€” non espressioni
                 consensus_float = float(val)
                 release = pd.Timestamp(str(d)).date()
             except (ValueError, TypeError) as exc:
@@ -144,7 +144,7 @@ class ConsensusLoader:
 
         Usa il valore precedente (shift +1) come consensus naive per ogni
         indicatore con fred_actual configurato in surprise_engine.yaml.
-        Non è consenso reale degli analisti — è un placeholder operativo.
+        Non Ã¨ consenso reale degli analisti â€” Ã¨ un placeholder operativo.
         """
         indicator_codes = list(self._indicator_map.keys())
         if not indicator_codes:
@@ -163,7 +163,7 @@ class ConsensusLoader:
                     return ConsensusBatch(pd.DataFrame(), source="fred_derived", loaded_at=datetime.now(UTC))
 
                 placeholders = ", ".join(["?"] * len(fred_series))
-                df_macro = conn.execute(
+                df_macro = conn.execute(  # type: ignore[attr-defined]
                     f"""
                     SELECT series_id, date, value
                     FROM macro_series
@@ -176,7 +176,7 @@ class ConsensusLoader:
             if df_macro.empty:
                 return ConsensusBatch(pd.DataFrame(), source="fred_derived", loaded_at=datetime.now(UTC))
 
-            # Reverse map: fred_series → indicator_code
+            # Reverse map: fred_series â†’ indicator_code
             fred_to_code = {
                 self._indicator_map[c]["fred_actual"]: c
                 for c in indicator_codes
@@ -206,7 +206,7 @@ class ConsensusLoader:
         log.info("consensus_loader.fred_derived_loaded", rows=len(df))
         return ConsensusBatch(df, source="fred_derived", loaded_at=datetime.now(UTC))
 
-    # ─── Save ────────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def save(self, batch: ConsensusBatch) -> int:
         """Persiste un ConsensusBatch nella tabella consensus_estimates.
@@ -223,8 +223,9 @@ class ConsensusLoader:
 
         try:
             with self._client.transaction() as conn:
-                conn.register("_consensus_batch", df)
-                conn.execute("""
+                conn.register("_consensus_batch", df)  # type: ignore[attr-defined]
+                conn.execute(  # type: ignore[attr-defined]
+                    """
                     INSERT OR REPLACE INTO consensus_estimates
                     (indicator_code, release_date, consensus_value, source, loaded_at)
                     SELECT
@@ -241,7 +242,7 @@ class ConsensusLoader:
             from shared.exceptions import DatabaseError
             raise DatabaseError(f"consensus_estimates write failed: {exc}") from exc
 
-    # ─── Build DataFrame per SurpriseCalculator ───────────────────────────────
+    # â”€â”€â”€ Build DataFrame per SurpriseCalculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def build_for_calculator(self) -> pd.DataFrame:
         """Join consensus_estimates con i valori actual da economic_consensus.
@@ -250,11 +251,12 @@ class ConsensusLoader:
           release_date, indicator_code, sector, consensus, actual, prior.
 
         Preferisce source='yaml_manual' su 'fred_derived' per lo stesso
-        (indicator_code, release_date) — priorità esplicita per il consenso reale.
+        (indicator_code, release_date) â€” prioritÃ  esplicita per il consenso reale.
         """
         try:
             with self._client.transaction() as conn:
-                df = conn.execute("""
+                df = conn.execute(  # type: ignore[attr-defined]
+                    """
                     WITH ranked_est AS (
                         SELECT
                             indicator_code,
@@ -302,11 +304,11 @@ class ConsensusLoader:
             log.warning("consensus_loader.build_error", error=str(exc)[:120])
             return pd.DataFrame(columns=_CALCULATOR_COLS)
 
-    # ─── Internals ────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Internals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _load_indicator_map() -> dict[str, dict[str, Any]]:
-        """Carica la mappa indicator_code → config da surprise_engine.yaml."""
+        """Carica la mappa indicator_code â†’ config da surprise_engine.yaml."""
         try:
             with _SURPRISE_ENGINE_YAML_PATH.open() as f:
                 raw = yaml.safe_load(f) or {}

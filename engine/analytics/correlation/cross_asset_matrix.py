@@ -1,4 +1,4 @@
-"""Cross-Asset Correlation Matrix regime-conditioned.
+﻿"""Cross-Asset Correlation Matrix regime-conditioned.
 
 Calcola correlazioni per 13 asset cross-class: equity, bond, credit, commodity, FX, VIX.
 Produce diversification score e segnale per Composite Signal v2.
@@ -49,7 +49,7 @@ _TABLE = "cross_asset_regime"
 class CrossAssetMatrixResult:
     """Output CrossAssetMatrix."""
     snapshot_date:        date
-    correlation_matrix:   np.ndarray      # N×N
+    correlation_matrix:   np.ndarray  # type: ignore[type-arg]
     asset_names:          list[str]
     avg_equity_bond_corr: float | None
     avg_equity_gold_corr: float | None
@@ -57,7 +57,7 @@ class CrossAssetMatrixResult:
     diversification_score: float           # [0,1]
     correlation_signal:   float            # [-1,+1] per Composite
     vix_regime:           str              # 'crisis_coupling'|'normal'|'divergence'
-    regime_matrices:      dict[str, np.ndarray] = field(default_factory=dict)
+    regime_matrices:      dict[str, np.ndarray] = field(default_factory=dict)  # type: ignore[type-arg]
 
 
 class CrossAssetMatrix:
@@ -65,7 +65,7 @@ class CrossAssetMatrix:
 
     Args:
         client:    DuckDBClient per persistenza.
-        universe:  Dict ticker → categoria asset.
+        universe:  Dict ticker â†’ categoria asset.
 
     Usage::
 
@@ -142,11 +142,11 @@ class CrossAssetMatrix:
 
         return result
 
-    # ─── Aggregati ────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Aggregati â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _avg_correlation(
-        matrix: np.ndarray,
+        matrix: np.ndarray,  # type: ignore[type-arg]
         names: list[str],
         group_a: list[str],
         group_b: list[str],
@@ -160,7 +160,7 @@ class CrossAssetMatrix:
         return float(np.mean(vals)) if vals else None
 
     @staticmethod
-    def _diversification_score(matrix: np.ndarray) -> float:
+    def _diversification_score(matrix: np.ndarray) -> float:  # type: ignore[type-arg]
         """D = 1 - mean(|off-diagonal correlations|).
 
         D=1: portfolio non correlato (max diversificazione).
@@ -173,7 +173,7 @@ class CrossAssetMatrix:
         return float(np.clip(1.0 - np.mean(np.abs(off_diag)), 0.0, 1.0))
 
     @staticmethod
-    def _classify_vix_regime(matrix: np.ndarray, names: list[str]) -> str:
+    def _classify_vix_regime(matrix: np.ndarray, names: list[str]) -> str:  # type: ignore[type-arg]
         """Classifica regime VIX in base alla correlazione con equity."""
         if "^VIX" not in names:
             return "normal"
@@ -191,17 +191,17 @@ class CrossAssetMatrix:
     @staticmethod
     def _compute_signal(
         diversification: float,
-        matrix: np.ndarray,
+        matrix: np.ndarray,  # type: ignore[type-arg]
         names: list[str],
     ) -> float:
         """Segnale [-1,+1] per Composite v2.
 
         Logica:
-          Alta diversificazione + bassa correlazione crisi → segnale positivo (ambiente sano)
-          Bassa diversificazione + high corr in stress → segnale negativo
+          Alta diversificazione + bassa correlazione crisi â†’ segnale positivo (ambiente sano)
+          Bassa diversificazione + high corr in stress â†’ segnale negativo
         """
         # Diversification contribuisce positivamente (alta div = buono)
-        d_signal = float(2 * diversification - 1)  # [0,1] → [-1,+1]
+        d_signal = float(2 * diversification - 1)  # [0,1] â†’ [-1,+1]
 
         # Credit-equity correlation: alta correlazione HY/SPY in rialzo = risk-on positivo
         cr_eq = CrossAssetMatrix._avg_correlation(matrix, names, ["HYG"], ["SPY"])
@@ -213,7 +213,7 @@ class CrossAssetMatrix:
         raw = 0.70 * d_signal + cr_signal
         return float(np.clip(raw, -1.0, 1.0))
 
-    # ─── Persist ─────────────────────────────────────────────────────────────
+    # â”€â”€â”€ Persist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _persist(self, result: CrossAssetMatrixResult) -> None:
         try:

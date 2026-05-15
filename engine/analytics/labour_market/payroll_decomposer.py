@@ -1,31 +1,31 @@
-"""
+﻿"""
 PayrollDecomposer: analisi NFP per settore + revisions tracker.
 
 Il NFP headline (PAYEMS) nasconde dinamiche settoriali opposte.
 Un payroll forte trainato esclusivamente da settori difensivi (governo,
-sanità) ha implicazioni molto diverse da uno trainato da manifattura
+sanitÃ ) ha implicazioni molto diverse da uno trainato da manifattura
 e servizi privati.
 
 Cyclical vs Defensive split:
-  · Ciclici:   manifattura, costruzioni, retail, tempo libero/ospitalità
-  · Difensivi: governo federale/statale, sanità, educazione
-  Rapporto ciclici/difensivi: > 1 → espansione guidata dal settore privato
+  Â· Ciclici:   manifattura, costruzioni, retail, tempo libero/ospitalitÃ 
+  Â· Difensivi: governo federale/statale, sanitÃ , educazione
+  Rapporto ciclici/difensivi: > 1 â†’ espansione guidata dal settore privato
 
 Revisions Tracker:
-  · 2-month revision: differenza cumulata tra prima stima e revisione finale
-  · Revisioni sistematicamente negative segnalano debolezza latente
-  · NFP vs ADP divergence: differenza tra NFP BLS e stima ADP
-    (ADP esce 2gg prima del NFP → leading indicator di revisioni future)
+  Â· 2-month revision: differenza cumulata tra prima stima e revisione finale
+  Â· Revisioni sistematicamente negative segnalano debolezza latente
+  Â· NFP vs ADP divergence: differenza tra NFP BLS e stima ADP
+    (ADP esce 2gg prima del NFP â†’ leading indicator di revisioni future)
 
 Serie FRED usate:
   PAYEMS    = NFP totale SA
   MANEMP    = Manifattura
   USCONS    = Costruzioni
   USTRADE   = Retail
-  AEHOUS    = Tempo libero e ospitalità
+  AEHOUS    = Tempo libero e ospitalitÃ 
   SRVPRD    = Servizi privati
   USGOVT    = Governo totale
-  EDUHITH   = Educazione e sanità
+  EDUHITH   = Educazione e sanitÃ 
 
 Regola 8: numpy per tutti i calcoli.
 Regola 13: persiste in payroll_sector (DuckDB, migration 009).
@@ -81,7 +81,7 @@ class PayrollSignal:
 class PayrollDecomposer:
     """Decompone il NFP nei settori costituenti e calcola il payroll score."""
 
-    def __init__(self, duckdb=None) -> None:
+    def __init__(self, duckdb: object = None) -> None:
         self._duckdb = duckdb
         self._client = FredSimpleClient()
 
@@ -156,7 +156,7 @@ class PayrollDecomposer:
         sector_vals: dict[str, float] = {}
         for sector, (_, is_cyclical) in _SECTOR_SERIES.items():
             df = sector_frames.get(sector, pd.DataFrame())
-            sector_vals[sector] = delta_mom(df)  # usa MoM per comparabilità
+            sector_vals[sector] = delta_mom(df)  # usa MoM per comparabilitÃ 
 
         # Cyclical vs Defensive
         cyclical_jobs  = sum(v for s, v in sector_vals.items()
@@ -170,10 +170,10 @@ class PayrollDecomposer:
 
         # Score payroll [-1, 1]
         # Componenti:
-        #   1. NFP headline MoM: normalizzato su range tipico ±300k
+        #   1. NFP headline MoM: normalizzato su range tipico Â±300k
         #   2. Cyclical ratio: > 1 positivo, < 0 negativo
         #   3. Revisions: revisioni positive = segnale rialzista
-        nfp_score    = float(np.clip(nfp_mom / 200_000, -1.0, 1.0))  # ±200k = ±1
+        nfp_score    = float(np.clip(nfp_mom / 200_000, -1.0, 1.0))  # Â±200k = Â±1
         cyclical_s   = float(np.clip((cyclical_ratio - 1.0) / 2.0, -1.0, 1.0))
         revision_s   = 0.0
         if two_month_revision is not None:
@@ -206,7 +206,7 @@ class PayrollDecomposer:
     def _compute_revision(df_total: pd.DataFrame) -> float | None:
         """Stima la revisione cumulata a 2 mesi dal trend recente.
 
-        Il FRED rilascia i dati già revisionati. Usiamo la differenza tra
+        Il FRED rilascia i dati giÃ  revisionati. Usiamo la differenza tra
         il valore attuale del mese M-2 e quello registrato al momento del
         rilascio M (che era la prima stima di M-2) come proxy della revisione.
         In pratica: confronta l'ultimo punto vs la media dei 2 precedenti.
@@ -216,7 +216,7 @@ class PayrollDecomposer:
         vals   = df_total["value"].to_numpy(dtype=np.float64)
         latest = float(vals[-1])
         prev2m = float(np.mean(vals[-3:-1]))
-        # Revisione: se latest > media 2 mesi fa → revisione positiva (dati migliorati)
+        # Revisione: se latest > media 2 mesi fa â†’ revisione positiva (dati migliorati)
         return float(latest - prev2m)
 
     def _persist(
@@ -241,7 +241,7 @@ class PayrollDecomposer:
                     jobs_yoy = float((cur - prev_y) / prev_y * 100)
 
             try:
-                self._duckdb.execute(
+                self._duckdb.execute(  # type: ignore[attr-defined]
                     """INSERT OR REPLACE INTO payroll_sector
                        (release_date, sector, jobs_added_k, two_month_revision,
                         yoy_pct, is_cyclical)

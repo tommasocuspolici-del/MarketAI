@@ -1,19 +1,19 @@
-"""
+﻿"""
 JOLTSAnalyzer: Job Openings and Labor Turnover Survey.
 
 Analizza i dati JOLTS mensili (FRED) per determinare lo stato del mercato
 del lavoro USA. Produce segnali sul regime (tight/balanced/slack/deteriorating)
 basandosi su:
 
-  · Beveridge Curve gap: openings_rate - unemployment_rate
+  Â· Beveridge Curve gap: openings_rate - unemployment_rate
     > 0 = molte offerte, poca disoccupazione = mercato surriscaldato (wage pressure)
     < 0 = poche offerte rispetto a disoccupazione = mercato rilassato
 
-  · Quits Rate (% dimissioni volontarie):
+  Â· Quits Rate (% dimissioni volontarie):
     Leading indicator di +3-6M per wage growth.
     Alto quits rate = i lavoratori hanno potere contrattuale.
 
-  · Hires vs Layoffs:
+  Â· Hires vs Layoffs:
     hires > layoffs = espansione netta occupazione
 
 Fonti FRED:
@@ -26,7 +26,7 @@ Fonti FRED:
   UNRATE  = Unemployment Rate (per Beveridge gap)
 
 Regola 8: numpy per tutti i calcoli.
-Regola 12: fetch → clean → validate → duckdb_write → cache → return
+Regola 12: fetch â†’ clean â†’ validate â†’ duckdb_write â†’ cache â†’ return
 Regola 13: persiste in jolts_monthly (DuckDB).
 """
 from __future__ import annotations
@@ -51,11 +51,11 @@ log = structlog.get_logger(__name__)
 LabourRegime = Literal["tight", "balanced", "slack", "deteriorating"]
 
 # Soglie regime calibrate su cicli JOLTS 1990-2025 (Regola 7: costanti nominate)
-_TIGHT_QUITS_RATE_MIN    = 2.5   # % dimissioni — soglia mercato molto caldo
-_TIGHT_OPENINGS_RATE_MIN = 5.0   # % aperture — soglia mercato saturo
+_TIGHT_QUITS_RATE_MIN    = 2.5   # % dimissioni â€” soglia mercato molto caldo
+_TIGHT_OPENINGS_RATE_MIN = 5.0   # % aperture â€” soglia mercato saturo
 _BALANCED_QUITS_MIN      = 2.0
 _BALANCED_OPENINGS_MIN   = 3.5
-_DETERIORATING_QUITS_MOM = -0.3  # Calo quits rate q/q > 0.3pp → deterioramento
+_DETERIORATING_QUITS_MOM = -0.3  # Calo quits rate q/q > 0.3pp â†’ deterioramento
 
 # Serie FRED per JOLTS
 _JOLTS_FRED_SERIES: dict[str, str] = {
@@ -77,7 +77,7 @@ class JOLTSSignal:
     """Segnale sintetico JOLTS per il Labour Regime Classifier."""
 
     regime:          LabourRegime
-    beveridge_gap:   float    # > 0 → più offerte che domanda; < 0 → mercato caldo
+    beveridge_gap:   float    # > 0 â†’ piÃ¹ offerte che domanda; < 0 â†’ mercato caldo
     quits_momentum:  float    # Variazione trimestrale quits rate (leading wage)
     labour_score:    float    # [-1, 1]: +1 = mercato del lavoro forte
     latest_date:     date
@@ -91,13 +91,13 @@ class JOLTSAnalyzer:
     Analisi dei dati JOLTS per determinare lo stato del mercato del lavoro.
 
     Beveridge Curve: il gap tra openings_rate e unemployment_rate misura
-    quanto il mercato del lavoro è "surriscaldato" (gap positivo = molte
+    quanto il mercato del lavoro Ã¨ "surriscaldato" (gap positivo = molte
     offerte, poca disoccupazione = wage pressure).
     """
 
     def __init__(
         self,
-        duckdb=None,   # DuckDBClient | None — None in unit test
+        duckdb: object = None,
         history_months: int = _DEFAULT_HISTORY_MONTHS,
     ) -> None:
         self._duckdb   = duckdb
@@ -151,7 +151,7 @@ class JOLTSAnalyzer:
     def _compute_signal(self, frames: dict[str, pd.DataFrame]) -> JOLTSSignal:
         """Calcola il segnale JOLTS dai DataFrame FRED.
 
-        Tutta la matematica è in numpy (Regola 8).
+        Tutta la matematica Ã¨ in numpy (Regola 8).
         """
         def last_value(field: str) -> float:
             df = frames.get(field, pd.DataFrame())
@@ -159,11 +159,11 @@ class JOLTSAnalyzer:
                 return 0.0
             return float(df["value"].iloc[-1])
 
-        def as_array(field: str) -> np.ndarray:
+        def as_array(field: str) -> np.ndarray:  # type: ignore[type-arg]
             df = frames.get(field, pd.DataFrame())
             if df.empty:
                 return np.array([], dtype=np.float64)
-            return df["value"].to_numpy(dtype=np.float64)
+            return df["value"].to_numpy(dtype=np.float64)  # type: ignore[no-any-return]
 
         quits_rate    = last_value("quits_rate")
         openings_rate = last_value("openings_rate")
@@ -172,7 +172,7 @@ class JOLTSAnalyzer:
         quits_val     = last_value("quits")
 
         # Beveridge gap: openings_rate - unemployment_rate
-        # Positivo → mercato surriscaldato; negativo → mercato lasco
+        # Positivo â†’ mercato surriscaldato; negativo â†’ mercato lasco
         beveridge_gap = float(openings_rate - unemployment)
 
         # Momentum quits (leading wage indicator +3-6M)
@@ -221,7 +221,7 @@ class JOLTSAnalyzer:
         """Persiste gli ultimi N mesi di JOLTS in DuckDB (tabella jolts_monthly).
 
         BUGFIX Regola 23: rimosso iterrows con lookup riga-per-riga.
-        Sostituito con merge vettorizzato su colonna ts — O(N log N) invece di O(N*K).
+        Sostituito con merge vettorizzato su colonna ts â€” O(N log N) invece di O(N*K).
         """
         if self._duckdb is None:
             return
@@ -253,16 +253,16 @@ class JOLTSAnalyzer:
         )
         q_arr = merged["quits"].to_numpy(dtype="float64")
         h_arr = merged["hires"].to_numpy(dtype="float64")
-        with import_np() as np:
+        with import_np() as np:  # type: ignore[no-untyped-call]
             merged["hires_quits_ratio"] = np.where(
                 q_arr > 0, h_arr / q_arr, float("nan")
             )
 
         now = datetime.now(UTC)
-        for _, row in merged.iterrows():  # loop su N righe per INSERT — accettabile, non su serie storiche
+        for _, row in merged.iterrows():  # loop su N righe per INSERT â€” accettabile, non su serie storiche
             series_date = pd.to_datetime(row["ts"]).date()
             try:
-                self._duckdb.execute(
+                self._duckdb.execute(  # type: ignore[attr-defined]
                     """INSERT OR REPLACE INTO jolts_monthly
                        (series_date, job_openings, hires, quits, layoffs_discharges,
                         quits_rate, openings_rate, beveridge_gap, hires_quits_ratio, fetched_at)
@@ -284,11 +284,11 @@ class JOLTSAnalyzer:
                 log.warning("jolts.persist_row_failed", date=str(series_date), error=str(exc))
 
 
-def import_np():
+def import_np():  # type: ignore[no-untyped-def]
     """Lazy numpy import context manager per evitare circular import."""
     import contextlib
     import numpy as _np
     @contextlib.contextmanager
-    def _ctx():
+    def _ctx():  # type: ignore[no-untyped-def]
         yield _np
     return _ctx()

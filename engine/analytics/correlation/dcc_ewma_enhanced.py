@@ -1,4 +1,4 @@
-"""EWMA Enhanced con decay ottimale stimato via MLE.
+﻿"""EWMA Enhanced con decay ottimale stimato via MLE.
 
 Miglioramento rispetto all'EWMA standard:
   1. Decay lambda ottimale per coppia: MLE su log-likelihood normale
@@ -42,13 +42,13 @@ class EWMACorrelationResult:
     ewma_correlation:   float              # Correlazione EWMA all'ultimo timestamp
     decay_lambda:       float              # Lambda ottimale stimato via MLE
     regime_correlations: dict[str, float] = field(default_factory=dict)
-    # 'bull'|'bear'|'stress'|'transition' → correlazione per quel regime
+    # 'bull'|'bear'|'stress'|'transition' â†’ correlazione per quel regime
 
 
 @dataclass
 class DCCEWMAEnhancedResult:
     """Output completo per N asset."""
-    correlation_matrix: np.ndarray         # N×N correlazione EWMA corrente
+    correlation_matrix: np.ndarray  # type: ignore[type-arg]  # N×N EWMA current
     asset_names:        list[str]
     pairwise:           list[EWMACorrelationResult]
     is_psd:             bool               # True se matrice PSD garantita
@@ -71,7 +71,7 @@ class DCCEWMAEnhanced:
 
     def __init__(
         self,
-        lambda_grid: np.ndarray | None = None,
+        lambda_grid: np.ndarray | None = None,  # type: ignore[type-arg]
         min_periods: int = 60,
     ) -> None:
         self._lambda_grid = lambda_grid if lambda_grid is not None else _LAMBDA_GRID
@@ -144,10 +144,10 @@ class DCCEWMAEnhanced:
             shrinkage_applied=shrinkage,
         )
 
-    # ─── Core EWMA ───────────────────────────────────────────────────────────
+    # â”€â”€â”€ Core EWMA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
-    def _ewma_covariance(x: np.ndarray, y: np.ndarray, lam: float) -> np.ndarray:
+    def _ewma_covariance(x: np.ndarray, y: np.ndarray, lam: float) -> np.ndarray:  # type: ignore[type-arg]
         """Covarianza EWMA per coppia di serie."""
         n = len(x)
         cov = np.zeros(n)
@@ -157,7 +157,7 @@ class DCCEWMAEnhanced:
         return cov
 
     @classmethod
-    def _ewma_correlation_last(cls, x: np.ndarray, y: np.ndarray, lam: float) -> float:
+    def _ewma_correlation_last(cls, x: np.ndarray, y: np.ndarray, lam: float) -> float:  # type: ignore[type-arg]
         """Correlazione EWMA all'ultimo punto della serie."""
         cov_xy = cls._ewma_covariance(x, y, lam)
         cov_xx = cls._ewma_covariance(x, x, lam)
@@ -167,7 +167,7 @@ class DCCEWMAEnhanced:
             return 0.0
         return float(np.clip(cov_xy[-1] / denom, -1.0, 1.0))
 
-    def _find_optimal_lambda(self, x: np.ndarray, y: np.ndarray) -> float:
+    def _find_optimal_lambda(self, x: np.ndarray, y: np.ndarray) -> float:  # type: ignore[type-arg]
         """MLE grid search per lambda ottimale."""
         best_ll = -np.inf
         best_lam = _LAMBDA_DEFAULT
@@ -184,7 +184,7 @@ class DCCEWMAEnhanced:
         return best_lam
 
     @classmethod
-    def _log_likelihood(cls, x: np.ndarray, y: np.ndarray, lam: float) -> float:
+    def _log_likelihood(cls, x: np.ndarray, y: np.ndarray, lam: float) -> float:  # type: ignore[type-arg]
         """Log-likelihood normalizzata bivariata per stima MLE lambda."""
         n = len(x)
         cov_xy = cls._ewma_covariance(x, y, lam)
@@ -199,7 +199,7 @@ class DCCEWMAEnhanced:
             ll -= 0.5 * (np.log(det) + (cov_yy[t]*x[t]**2 - 2*cov_xy[t]*x[t]*y[t] + cov_xx[t]*y[t]**2) / det)
         return ll / max(n, 1)
 
-    # ─── Regime conditioning ─────────────────────────────────────────────────
+    # â”€â”€â”€ Regime conditioning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _regime_conditioned(
@@ -223,11 +223,11 @@ class DCCEWMAEnhanced:
                 regimes[regime] = float(np.clip(corr, -1, 1))
         return regimes
 
-    # ─── Numeric stability ────────────────────────────────────────────────────
+    # â”€â”€â”€ Numeric stability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
-    def _is_psd(matrix: np.ndarray) -> bool:
-        """Verifica se la matrice è semidefinita positiva."""
+    def _is_psd(matrix: np.ndarray) -> bool:  # type: ignore[type-arg]
+        """Verifica se la matrice Ã¨ semidefinita positiva."""
         try:
             eigvals = np.linalg.eigvalsh(matrix)
             return bool(np.all(eigvals >= -1e-8))
@@ -235,8 +235,8 @@ class DCCEWMAEnhanced:
             return False
 
     @staticmethod
-    def _ledoit_wolf_shrinkage(matrix: np.ndarray, alpha: float = _SHRINKAGE_INTENSITY) -> np.ndarray:
-        """Ledoit-Wolf shrinkage verso matrice identità per garantire PSD."""
+    def _ledoit_wolf_shrinkage(matrix: np.ndarray, alpha: float = _SHRINKAGE_INTENSITY) -> np.ndarray:  # type: ignore[type-arg]
+        """Ledoit-Wolf shrinkage verso matrice identitÃ  per garantire PSD."""
         n = matrix.shape[0]
         target = np.eye(n)
         shrunk = (1 - alpha) * matrix + alpha * target

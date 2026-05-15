@@ -51,7 +51,7 @@ class ShillerCAPEFetcher:
     def __init__(
         self,
         client: DuckDBClient,
-        fred_client=None,
+        fred_client: object = None,
     ) -> None:
         self._client = client
         self._fred = fred_client
@@ -77,14 +77,14 @@ class ShillerCAPEFetcher:
         df = df[df["data_date"] >= cutoff].copy()
 
         n = self._persist(df)
-        log.info("shiller_cape_fetcher.done", rows=n, lookback_years=lookback_years)
+        log.info("shiller_cape_fetcher.done rows=%d lookback_years=%d", n, lookback_years)
         return n
 
     @apply_error_policy(level="RECOVER", fallback=None, context="ShillerCAPEFetcher._fetch_shiller_xls")
     def _fetch_shiller_xls(self) -> pd.DataFrame | None:
         """Download e parsing XLS da Shiller Yale."""
         import urllib.request
-        log.info("shiller_cape_fetcher.downloading_xls", url=_SHILLER_URL)
+        log.info("shiller_cape_fetcher.downloading_xls url=%s", _SHILLER_URL)
         with urllib.request.urlopen(_SHILLER_URL, timeout=30) as resp:
             content = resp.read()
 
@@ -145,12 +145,14 @@ class ShillerCAPEFetcher:
             return None
 
         from engine.market_data.fred_simple_client import FredSimpleClient
-        fred: FredSimpleClient = self._fred
+        fred: FredSimpleClient = self._fred  # type: ignore[assignment]
 
-        eps_df   = fred.fetch("SP500EPS",  lookback_years=lookback_years + 10)
-        cpi_df   = fred.fetch("CPIAUCSL",  lookback_years=lookback_years + 10)
-        dgs10_df = fred.fetch("DGS10",     lookback_years=lookback_years)
-        sp500_df = fred.fetch("SP500",     lookback_years=lookback_years)
+        from datetime import date, timedelta
+        start = date.today() - timedelta(days=(lookback_years + 10) * 365)
+        eps_df   = fred.fetch_series("SP500EPS",  start=start, limit=(lookback_years + 10) * 13, sort_order="asc")
+        cpi_df   = fred.fetch_series("CPIAUCSL",  start=start, limit=(lookback_years + 10) * 13, sort_order="asc")
+        dgs10_df = fred.fetch_series("DGS10",     start=date.today() - timedelta(days=lookback_years * 365), limit=lookback_years * 13, sort_order="asc")
+        sp500_df = fred.fetch_series("SP500",     start=date.today() - timedelta(days=lookback_years * 365), limit=lookback_years * 13, sort_order="asc")
 
         if eps_df is None or eps_df.empty or sp500_df is None or sp500_df.empty:
             return None
@@ -229,7 +231,7 @@ class ShillerCAPEFetcher:
                 )
                 n += 1
             except Exception as exc:
-                log.debug("shiller_cape_fetcher.persist_row_failed", error=str(exc)[:80])
+                log.debug("shiller_cape_fetcher.persist_row_failed: %s", str(exc)[:80])
         return n
 
     def get_latest_cape(self) -> float | None:
@@ -243,7 +245,7 @@ class ShillerCAPEFetcher:
         except Exception:
             return None
 
-    def get_history(self, years: int = 20) -> list:
+    def get_history(self, years: int = 20) -> list[object]:
         """Legge la serie storica CAPE come lista di ShillerCAPEPoint."""
         from engine.analytics.valuation.schemas import ShillerCAPEPoint
         df = self.get_historical(lookback_years=years)

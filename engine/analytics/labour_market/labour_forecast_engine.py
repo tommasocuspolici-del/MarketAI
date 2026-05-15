@@ -1,18 +1,18 @@
-"""Labour Market Forecast Engine (Blocco B.4).
+﻿"""Labour Market Forecast Engine (Blocco B.4).
 
 Ensemble ARIMA + Ridge per previsioni 1M/3M/6M su:
-  · UNRATE (tasso disoccupazione)
-  · NFP headline
-  · Quits Rate (leading per wage growth +3-6M)
+  Â· UNRATE (tasso disoccupazione)
+  Â· NFP headline
+  Â· Quits Rate (leading per wage growth +3-6M)
 
 Feature per Ridge:
-  · claims_4wk_ma  (t-1, t-2, t-3)
-  · jolts_quits_rate (t-1)
-  · jolts_openings_rate (t-1)
-  · macro_composite_score (t-1)   — da DuckDB se disponibile
+  Â· claims_4wk_ma  (t-1, t-2, t-3)
+  Â· jolts_quits_rate (t-1)
+  Â· jolts_openings_rate (t-1)
+  Â· macro_composite_score (t-1)   â€” da DuckDB se disponibile
 
 Regola 8: numpy per tutti i calcoli.
-Regola anti-pattern: LLM NON usato per calcoli — solo per narrativa.
+Regola anti-pattern: LLM NON usato per calcoli â€” solo per narrativa.
 Benchmark target: forecast() 3 orizzonti < 5s.
 """
 from __future__ import annotations
@@ -84,7 +84,7 @@ class LabourForecastEngine:
         X_scaled = self._scaler.fit_transform(aligned.to_numpy(dtype=np.float64))
         self._ridge.fit(X_scaled, y_train.to_numpy(dtype=np.float64))
 
-        # ARIMA con feature esogene — stepwise per velocità
+        # ARIMA con feature esogene â€” stepwise per velocitÃ 
         try:
             self._arima = pm.auto_arima(
                 y_train.to_numpy(dtype=np.float64),
@@ -96,10 +96,10 @@ class LabourForecastEngine:
                 max_p=4, max_q=4, max_d=2,
                 information_criterion="aic",
             )
-        except Exception:  # noqa: BLE001 — fallback: arima(1,1,0)
+        except Exception:  # noqa: BLE001 â€” fallback: arima(1,1,0)
             log.warning("labour_forecast.arima_auto_failed_using_fallback")
             self._arima = pm.ARIMA(order=(1, 1, 0))
-            self._arima.fit(y_train.to_numpy(dtype=np.float64))
+            self._arima.fit(y_train.to_numpy(dtype=np.float64))  # type: ignore[attr-defined]
 
         self._fitted    = True
         self._n_train   = len(y_train)
@@ -170,7 +170,7 @@ class LabourForecastEngine:
         # Ridge forecast
         ridge_pred = self._ridge.predict(X_fut)
 
-        # Bootstrap residua per CI Ridge (≥30 campioni)
+        # Bootstrap residua per CI Ridge (â‰¥30 campioni)
         resid_std = float(np.std(
             self._ridge.predict(self._X_sample) -
             self._ridge.predict(self._X_sample)   # same data = 0 if overfitted
@@ -212,10 +212,10 @@ class LabourForecastEngine:
             target_metric = target_metric,
             bundles       = tuple(bundles),
             n_train_obs   = self._n_train,
-            arima_order   = tuple(order) if order is not None else None,  # type: ignore[arg-type]
+            arima_order   = tuple(order) if order is not None else None,
         )
 
     @property
     def is_fitted(self) -> bool:
-        """True se il modello è stato addestrato."""
+        """True se il modello Ã¨ stato addestrato."""
         return self._fitted

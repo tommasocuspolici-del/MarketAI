@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, UTC, datetime
-from typing import Literal, TYPE_CHECKING
+from typing import Any, Literal, TYPE_CHECKING
 
 import numpy as np
 import structlog
@@ -67,7 +67,7 @@ class LabourRegimeClassifier:
     Aggrega JOLTSSignal + ClaimsCycleSignal in un composite score.
     """
 
-    def __init__(self, duckdb=None) -> None:
+    def __init__(self, duckdb: Any = None) -> None:
         self._duckdb = duckdb
 
     def classify(
