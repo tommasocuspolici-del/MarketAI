@@ -11,8 +11,13 @@ from engine.analytics.correlation.regime_detector import (
     RegimeDetector,
     RegimeReport,
 )
+from engine.analytics.correlation.correlation_signal_generator import (
+    CorrelationSignalGenerator,
+    CorrelationSignalResult,
+)
+from engine.analytics.correlation.dcc_garch import DCCGARCHAnalyzer
 
-__version__ = "6.0.0"
+__version__ = "8.1.0"
 
 __all__ = [
     "CorrelationAnalyzer",
@@ -21,4 +26,7 @@ __all__ = [
     "MarketRegime",
     "RegimeDetector",
     "RegimeReport",
+    "CorrelationSignalGenerator",
+    "CorrelationSignalResult",
+    "DCCGARCHAnalyzer",
 ]
