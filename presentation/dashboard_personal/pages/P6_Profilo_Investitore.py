@@ -28,6 +28,7 @@ from presentation.ui.components.metric_card import (
 )
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -167,9 +168,9 @@ def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
             "🔄 Rifai il questionario",
             "Le tue circostanze cambiano nel tempo. Rifai il test ogni 1-2 anni o quando cambiano lavoro/famiglia/orizzonte.",
         )
-        if not st.session_state.get("show_questionnaire"):
+        if not st.session_state.get(SK.SHOW_QUESTIONNAIRE):
             if st.button("🔁 Rifai il questionario", type="secondary"):
-                st.session_state["show_questionnaire"] = True
+                st.session_state[SK.SHOW_QUESTIONNAIRE] = True
                 st.rerun()
             return
     else:
@@ -202,7 +203,7 @@ def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
                 "I suggerimenti del motore potrebbero non essere personalizzati. "
                 "Verifica che le migration SQLite siano state applicate."
             )
-        st.session_state.pop("show_questionnaire", None)
+        st.session_state.pop(SK.SHOW_QUESTIONNAIRE, None)
         if bridge_ok:
             st.success(
                 f"✅ Profilo salvato: {_PROFILE_LABELS[result.profile]} · "

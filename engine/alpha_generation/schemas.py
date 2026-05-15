@@ -7,11 +7,8 @@ Regola 8: scores numerici usano float (np.float64 nei calcoli interni).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import StrEnum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class ClaimsRegime(StrEnum):
@@ -147,3 +144,38 @@ class MacroConvictionResult:
     series_available:  int
     series_required:   int             = 10
     weight_breakdown:  dict[str, float] = field(default_factory=dict)
+    is_degraded:       bool            = False
+
+    @classmethod
+    def degraded(cls, sources_failed: list[str] | None = None) -> MacroConvictionResult:
+        """Costruisce un risultato sentinel quando il calcolo non è possibile."""
+        _claims = ClaimsInflationOutput(
+            regime=ClaimsRegime.NEUTRAL, regime_score=0.0,
+            icsa_4wk_ma=0.0, icsa_yoy_pct=None, cpi_yoy=None,
+            stagflation_signal=False, goldilocks_signal=False,
+            overheating_signal=False, recession_watch=False,
+        )
+        _yield = YieldCurveOutput(
+            curve_regime=CurveRegime.NORMAL, regime_score=0.0,
+            recession_prob_12m=None, spread_10y_2y=None, spread_10y_3m=None,
+            y_10y=None, breakeven_10y=None, inversion_detected=False,
+        )
+        _credit = CreditStressOutput(
+            stress_level=CreditStressLevel.LOW, stress_score=0.0,
+            hy_oas=None, ig_oas=None, hy_ig_ratio=None, ted_spread=None, nfci=None,
+        )
+        return cls(
+            macro_score=0.0,
+            confidence="LOW",
+            computed_at=datetime.now(timezone.utc),
+            claims_output=_claims,
+            yield_output=_yield,
+            credit_output=_credit,
+            labour_score=0.0,
+            inflation_score=0.0,
+            rates_score=0.0,
+            credit_score=0.0,
+            growth_score=0.0,
+            series_available=0,
+            is_degraded=True,
+        )

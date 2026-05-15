@@ -63,6 +63,7 @@ from presentation.ui.components.metric_card import (
 )
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -224,7 +225,7 @@ def _render_import_tab(st_module) -> None:  # pragma: no cover -- Streamlit
                 with st.spinner("Sto contattando l'API eToro..."):
                     try:
                         result = importer.import_via_api()
-                        st.session_state["etoro_import_result_api"] = result
+                        st.session_state[SK.ETORO_IMPORT_RESULT_API] = result
                     except EtoroImportError as exc:
                         st.error(f"❌ {exc}")
                     except Exception as exc:  # pragma: no cover  # noqa: BLE001
@@ -233,7 +234,7 @@ def _render_import_tab(st_module) -> None:  # pragma: no cover -- Streamlit
                             f"{type(exc).__name__}: {exc}"
                         )
 
-            api_result = st.session_state.get("etoro_import_result_api")
+            api_result = st.session_state.get(SK.ETORO_IMPORT_RESULT_API)
             if api_result is not None:
                 _render_review_and_import(st, api_result)
 
@@ -260,10 +261,12 @@ def _render_import_tab(st_module) -> None:  # pragma: no cover -- Streamlit
         else:
             try:
                 result = importer.import_via_xlsx(uploaded)
-                st.session_state["etoro_import_result_xlsx"] = result
+                st.session_state[SK.ETORO_IMPORT_RESULT_XLSX] = result
             except EtoroImportError as exc:
                 st.error(f"❌ {exc}")
-            xlsx_result = st.session_state.get("etoro_import_result_xlsx")
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"❌ Errore inatteso durante il caricamento del file: {type(exc).__name__}")
+            xlsx_result = st.session_state.get(SK.ETORO_IMPORT_RESULT_XLSX)
             if xlsx_result is not None:
                 _render_review_and_import(st, xlsx_result)
 

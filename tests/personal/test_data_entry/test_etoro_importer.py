@@ -38,7 +38,7 @@ def test_no_credentials_falls_back_to_xlsx_only(
     monkeypatch.delenv("ETORO_USER_KEY", raising=False)
     importer = EtoroImporter()
     assert importer.has_api_credentials is False
-    assert "non trovate" in importer.credential_status_message
+    assert "assenti" in importer.credential_status_message
 
 
 def test_with_credentials_detected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -291,7 +291,7 @@ def test_import_open_positions_no_creds_no_xlsx_raises(
     monkeypatch.delenv("ETORO_USER_KEY", raising=False)
 
     importer = EtoroImporter()
-    with pytest.raises(EtoroImportError, match="Nessuna credenziale"):
+    with pytest.raises(EtoroImportError, match="Nessuna fonte"):
         importer.import_open_positions()
 
 

@@ -96,11 +96,25 @@ class MacroConvictionCalculator:
 
         Returns:
             MacroConvictionResult con score, breakdown categorie, sub-output.
+            Se il DB non è raggiungibile, restituisce MacroConvictionResult.degraded()
+            con is_degraded=True invece di propagare l'eccezione.
 
         Notes:
             Se una categoria ha tutte le serie mancanti, il suo peso
             viene ridistribuito proporzionalmente alle altre categorie presenti.
         """
+        try:
+            return self._compute_internal()
+        except Exception as exc:  # noqa: BLE001
+            log.error(
+                "[DEGRADE] macro_conviction.compute_failed: %s: %s",
+                type(exc).__name__, str(exc)[:200],
+                exc_info=True,
+            )
+            return MacroConvictionResult.degraded()
+
+    def _compute_internal(self) -> MacroConvictionResult:
+        """Implementazione interna del calcolo (chiamata da compute())."""
         t_start = datetime.now(UTC)
 
         # ── 1. Leggi tutte le 15 serie dal DB ─────────────────────────────

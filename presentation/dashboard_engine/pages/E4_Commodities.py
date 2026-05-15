@@ -18,6 +18,7 @@ from presentation.ui.components.metric_card import (
 )
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -41,7 +42,7 @@ def body_commodities(tokens: DesignTokens) -> None:  # pragma: no cover -- Strea
     import streamlit as st
 
     svc = get_live_market_service()
-    if st.session_state.pop("commodity_force_refresh", False):
+    if st.session_state.pop(SK.COMMODITY_FORCE_REFRESH, False):
         snapshot = svc.refresh_now()
     else:
         snapshot = svc.get_kpi_snapshot()
@@ -54,7 +55,7 @@ def body_commodities(tokens: DesignTokens) -> None:  # pragma: no cover -- Strea
     cols = st.columns([3, 1])
     with cols[1]:
         if st.button("🔄 Aggiorna ora", key="commodity_refresh", use_container_width=True):
-            st.session_state["commodity_force_refresh"] = True
+            st.session_state[SK.COMMODITY_FORCE_REFRESH] = True
             st.rerun()
 
     commodities = _filter_commodities(snapshot.kpis)

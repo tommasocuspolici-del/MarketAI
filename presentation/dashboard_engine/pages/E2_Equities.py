@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components.candlestick_pro import render_candlestick_pro
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
@@ -114,7 +115,7 @@ def _cached_fetch(ticker: str, period: str) -> pd.DataFrame:
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=300, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)
         def _fn(t: str, p: str) -> pd.DataFrame:
             return fetch_ohlcv_yfinance(t, p)
 

@@ -182,6 +182,7 @@ markers = [
     "slow: test lenti (eseguire con --runslow)",
     "integration: test integrazione (richiede rete/API)",
     "benchmark: test benchmark performance",
+    "regression: test di non-regressione per bug storici (pytest -m regression)",
 ]
 
 [tool.coverage.run]

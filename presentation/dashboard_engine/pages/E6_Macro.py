@@ -28,6 +28,7 @@ from engine.market_data.fred_simple_client import (
     FredSimpleClient,
     FredSimpleError,
 )
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 from shared.glossary import get_glossary
@@ -202,7 +203,7 @@ def _cached_fetch_macro_rows() -> list[dict]:
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=3600, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION, show_spinner=False)
         def _fn() -> list[dict]:
             return _build_macro_rows()
 

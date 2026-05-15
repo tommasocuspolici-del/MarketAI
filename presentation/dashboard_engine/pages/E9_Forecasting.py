@@ -24,6 +24,7 @@ import numpy as np
 
 from engine.forecasting import ForecastResult, SimpleForecaster
 from presentation.dashboard_engine.pages.E2_Equities import fetch_ohlcv_yfinance
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -61,7 +62,7 @@ def _cached_forecast(
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=900, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.BACKTESTING, show_spinner=False)
         def _fn(t: str, h: int) -> tuple[ForecastResult | None, str | None]:
             return _forecast_inner(t, h)
 

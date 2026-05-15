@@ -9,6 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from presentation.ui.session_keys import SK
+
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -92,7 +94,7 @@ def main() -> None:  # pragma: no cover
             with st.expander(group, expanded=False):
                 for label, module_name in pages:
                     if st.button(label, key=module_name, use_container_width=True):
-                        st.session_state["active_page"] = module_name
+                        st.session_state[SK.ACTIVE_PAGE] = module_name
 
         st.divider()
         try:
@@ -118,7 +120,7 @@ def main() -> None:  # pragma: no cover
         except Exception:
             st.caption("⚪ DB non connesso")
 
-    active = st.session_state.get("active_page", "K1_Market_Overview")
+    active = st.session_state.get(SK.ACTIVE_PAGE, "K1_Market_Overview")
     _render_page(active)
 
 

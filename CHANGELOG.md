@@ -6,6 +6,67 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [8.1.0] — 2026-05-15 — Code Quality Release
+
+> ROADMAP_CODE_QUALITY_v1.0 completata (10 settimane, 5 blocchi, 0 feature nuove).
+> Baseline v8.0.0 → v8.1.0: 827 test → 1545+ test, coverage invariata.
+
+### Rimosso
+- Codice debug `etoro_client.py` (`get_real_portfolio` non scrive più
+  `etoro_raw_payload.json` su disco in produzione). Variabile d'ambiente
+  `ETORO_DEBUG_PAYLOAD=1` attiva il dump opzionale.
+- 12+ magic numbers hardcoded nei moduli (`1.27`, `1.08`, `60`, `15.0`, ecc.)
+  — ora tutti in `config/operational_defaults.yaml`.
+- `try/except ImportError` silenziosi da 14 moduli pagina Streamlit.
+- 4 `except Exception: pass` silenziosi in `live_market_service.py` e
+  `etoro_importer.py` — sostituiti con logging strutturato.
+- `_INSTRUMENT_ID_TO_REAL_TICKER` hardcoded da `etoro_importer.py` — ora su DuckDB.
+
+### Centralizzato
+- **`engine/market_data/currency_converter.py`** — unico punto per conversioni
+  GBX/EUR/USD (prima duplicato in `etoro_importer.py` e assente in
+  `live_market_service.py` causando BUG attivo).
+- **`engine/market_data/instrument_registry.py`** — mapping `instrument_id →
+  ticker` persistito su DuckDB (tabella `instrument_registry`, migration 017).
+  5 mapping storici nel seed; UI P2 per aggiungerne di nuovi.
+- **`config/operational_defaults.yaml`** + **`shared/config/operational_config.py`**
+  — tutte le costanti operative leggibili e modificabili senza toccare il codice.
+
+### Standardizzato
+- **`shared/resilience/error_policy.py`** — `ErrorPolicy` + `@apply_error_policy`
+  decorator. Livelli: RECOVER / DEGRADE / FATAL. Usato sistematicamente in
+  `etoro_importer.py` e `live_market_service.py`.
+- **`presentation/ui/session_keys.py`** — `SK.*` sostituisce 13 stringhe literal
+  `session_state["..."]` in 9 pagine Streamlit.
+- **`presentation/ui/cache_policy.py`** — `CACHE_TTL.*` sostituisce tutti i TTL
+  numerici in 10 pagine Streamlit.
+
+### Graceful Degradation (BLOCCO C)
+- `MacroConvictionResult.degraded()` — classmethod sentinel per fallimento DB.
+- `CompositeSignalOutput.degraded()` — classmethod sentinel con `is_degraded` flag.
+- `MarketSnapshot.empty()` + campo `is_unavailable` — snapshot sentinella.
+- `InstrumentRegistry.get()` — fallback ai 5 mapping seed quando DuckDB non disponibile.
+- `MacroConvictionCalculator.compute()` — try/except esterno, non propaga mai.
+- `P2_Portafoglio_eToro.py` XLSX tab — generic `except Exception` con `st.error()`.
+
+### Split Moduli (BLOCCO D)
+- `etoro_importer.py` (777 → 163 righe) → `etoro_position_builder.py` +
+  `etoro_aggregator.py` + facade.
+- `live_market_service.py` (870 → 229 righe) → `kpi_computer.py` +
+  `delta_windows.py` + facade.
+- `tests/architecture/test_layer_boundaries.py` — verifica automatica confini
+  `personal/ → engine/` (0 violazioni).
+
+### Bug di Regressione Testati (BUG-004 → BUG-008)
+- **BUG-004**: `_extract_kpi` non usava `_get_ticker_frame` per MultiIndex
+  yfinance ≥ 0.2.x — 8 test di regressione dedicati.
+- **BUG-005**: #3040 mappato a EUNL.DE invece di SWDA.L — test seed + registry.
+- **BUG-006**: openRate GBX trattato come USD (costo base ×100) — 4 test.
+- **BUG-007**: currency hardcoded "USD" prima della conversione — 3 test.
+- **BUG-008**: `_get_current_price_yf` restituiva GBX grezzo in P2 — 4 test.
+
+---
+
 ## [7.2.0] — 2026-05-05 — 🐛 BUGFIX_PRIORITARIO: 10 bug risolti
 
 ### Contesto

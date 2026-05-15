@@ -9,6 +9,8 @@ Tab:  ⚡ Scenari | 📈 Equity Curves | 📋 Storia
 """
 from __future__ import annotations
 
+from presentation.ui.session_keys import SK
+
 __version__ = "9.0.0"
 __all__ = ["body_t2_stress_test"]
 
@@ -100,9 +102,9 @@ def _render_scenarios(st, tokens) -> None:  # pragma: no cover
             results = runner.run_all_scenarios(strat_obj, df, ticker=ticker)
             compare = runner.compare_scenarios(results)
 
-        st.session_state["t2_results"] = results
-        st.session_state["t2_compare"] = compare
-        st.session_state["t2_ticker"]  = ticker
+        st.session_state[SK.T2_RESULTS] = results
+        st.session_state[SK.T2_COMPARE] = compare
+        st.session_state[SK.T2_TICKER]  = ticker
 
         # Tabella comparativa
         st.markdown("**Tabella comparativa (ordinata per Sharpe)**")
@@ -125,7 +127,7 @@ def _render_scenarios(st, tokens) -> None:  # pragma: no cover
 
 def _render_equity(st, tokens) -> None:  # pragma: no cover
     """Mostra le equity curve sovrapposte per tutti gli scenari."""
-    results = st.session_state.get("t2_results")
+    results = st.session_state.get(SK.T2_RESULTS)
     if not results:
         st.info("Esegui prima lo stress test dalla tab **⚡ Scenari**.")
         return
@@ -150,7 +152,7 @@ def _render_equity(st, tokens) -> None:  # pragma: no cover
         )
 
     fig.update_layout(
-        title=f"Equity Curve per Scenario — {st.session_state.get('t2_ticker', '')}",
+        title=f"Equity Curve per Scenario — {st.session_state.get(SK.T2_TICKER, '')}",
         height=420,
         template=tokens.plotly.template,
         paper_bgcolor=tokens.plotly.paper_bgcolor,
@@ -163,7 +165,7 @@ def _render_equity(st, tokens) -> None:  # pragma: no cover
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    compare = st.session_state.get("t2_compare")
+    compare = st.session_state.get(SK.T2_COMPARE)
     if compare is not None and not compare.empty:
         st.subheader("Metriche per scenario")
         for _, row in compare.iterrows():

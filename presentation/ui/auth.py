@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import os
 
+from presentation.ui.session_keys import SK
 from shared.exceptions import AuthenticationError
 from shared.logger import get_logger
 
@@ -103,7 +104,7 @@ def require_auth() -> None:
         return
 
     # Già autenticato in questa session?
-    if st.session_state.get("authenticated", False):
+    if st.session_state.get(SK.AUTHENTICATED, False):
         return
 
     # Form di login
@@ -114,7 +115,7 @@ def require_auth() -> None:
 
     if submitted:
         if verify_password(password, password_hash):
-            st.session_state["authenticated"] = True
+            st.session_state[SK.AUTHENTICATED] = True
             log.info("auth.login_success")
             st.rerun()
         else:

@@ -13,6 +13,8 @@ Regola 20: zero colori hardcoded — tutti da DESIGN_TOKENS.
 """
 from __future__ import annotations
 
+from presentation.ui.cache_policy import CACHE_TTL
+
 try:
     import pandas as pd
 except ImportError:
@@ -99,7 +101,7 @@ def _render_chart(st, tokens, ticker: str) -> None:  # pragma: no cover
         from shared.db.prices_repo import get_prices_repository
         from shared.types import TimeFrame
 
-        @st.cache_data(ttl=300, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)
         def _fetch(t: str):
             return get_prices_repository().read_prices(ticker=t, timeframe=TimeFrame.D1)
 
@@ -140,7 +142,7 @@ def _render_fundamentals(st, tokens, ticker: str) -> None:  # pragma: no cover
     try:
         from shared.db.fundamentals_repo import get_fundamentals_repository
 
-        @st.cache_data(ttl=3600, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION, show_spinner=False)
         def _fetch(t: str):
             return get_fundamentals_repository().read_latest_valuation(t)
 
@@ -178,9 +180,9 @@ def _render_balance(st, tokens, ticker: str) -> None:  # pragma: no cover
         import plotly.graph_objects as go
         from shared.db.fundamentals_repo import get_fundamentals_repository
 
-        @st.cache_data(ttl=3600, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION, show_spinner=False)
         def _fi(t): return get_fundamentals_repository().read_income(t, limit=8)
-        @st.cache_data(ttl=3600, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION, show_spinner=False)
         def _fb(t): return get_fundamentals_repository().read_balance_sheet(t, limit=8)
 
         inc = _fi(ticker)
@@ -245,7 +247,7 @@ def _render_score(st, tokens, ticker: str, sector: str) -> None:  # pragma: no c
         import plotly.graph_objects as go
         from engine.fundamentals.fundamentals_analyzer import FundamentalsAnalyzer
 
-        @st.cache_data(ttl=1800, show_spinner=True)
+        @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY, show_spinner=True)
         def _compute(t: str, s: str):
             return FundamentalsAnalyzer().compute(t, sector=s)
 
@@ -352,7 +354,7 @@ def _render_indicators(st, tokens, ticker: str) -> None:  # pragma: no cover
         # Preview live prima del salvataggio
         if ind_expr.strip():
             try:
-                @st.cache_data(ttl=300, show_spinner=False)
+                @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)
                 def _ohlcv(t):
                     return get_prices_repository().read_ohlcv(
                         ticker=t, exchange="NASDAQ", timeframe=TimeFrame.D1, limit=120

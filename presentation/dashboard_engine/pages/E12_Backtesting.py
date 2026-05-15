@@ -28,6 +28,7 @@ from engine.backtesting.strategies import (
 )
 from engine.backtesting.strategy import Strategy
 from presentation.dashboard_engine.pages.E2_Equities import fetch_ohlcv_yfinance
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components.backtest_report import render_backtest_report
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
@@ -90,7 +91,7 @@ def _cached_fetch(ticker: str, period: str) -> pd.DataFrame:
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=900, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.BACKTESTING, show_spinner=False)
         def _fn(t: str, p: str) -> pd.DataFrame:
             return fetch_ohlcv_yfinance(t, p)
 

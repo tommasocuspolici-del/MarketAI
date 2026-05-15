@@ -21,6 +21,7 @@ from engine.market_data.live_market_service import (
     MarketKpi,
     get_live_market_service,
 )
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -137,7 +138,7 @@ def _cached_fetch_fx() -> tuple[np.ndarray | None, dict[str, float]]:
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=1800, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY, show_spinner=False)
         def _fn() -> tuple[np.ndarray | None, dict[str, float]]:
             changes = _fetch_fx_changes_weekly()
             matrix = _build_cross_matrix(changes)

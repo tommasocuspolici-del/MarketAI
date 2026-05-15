@@ -23,6 +23,7 @@ from presentation.ui.components.regime_badge import render_regime_badge
 from presentation.ui.components.sentiment_radar import render_sentiment_radar
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -116,12 +117,12 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
     svc = get_live_market_service()
 
     # Pulizia forzata della cache di Streamlit se necessario (risolve "vista vuota" persistente)
-    if st.session_state.get("clear_cache", False):
+    if st.session_state.get(SK.CLEAR_CACHE, False):
         st.cache_data.clear()
-        st.session_state["clear_cache"] = False
+        st.session_state[SK.CLEAR_CACHE] = False
 
     # Force-refresh flag tramite session_state
-    if st.session_state.pop("force_refresh", False):
+    if st.session_state.pop(SK.FORCE_REFRESH, False):
         snapshot = svc.refresh_now()
         # Dopo un refresh manuale, cancella anche la cache Streamlit per sicurezza
         st.cache_data.clear()
@@ -134,7 +135,7 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
     )
 
     if _render_refresh_bar(st, snapshot):
-        st.session_state["force_refresh"] = True
+        st.session_state[SK.FORCE_REFRESH] = True
         st.rerun()
 
     metrics = _snapshot_to_metrics(snapshot)

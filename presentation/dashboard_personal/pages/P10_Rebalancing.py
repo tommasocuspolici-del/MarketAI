@@ -22,6 +22,8 @@ from bridge.personal_client import PersonalClient
 from engine.portfolio.rebalancing_engine import RebalancingEngine
 from engine.risk.risk_contribution import RiskContributionAnalyzer
 from presentation.ui.auth import require_auth
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.session_keys import SK
 from shared.db.duckdb_client import get_duckdb_client
 from shared.db.sqlite_client import get_sqlite_client
 from shared.feature_flags import is_enabled
@@ -139,16 +141,16 @@ def render() -> None:
                     portfolio_value_eur=portfolio_eur,
                     profile_id="me",
                 )
-                st.session_state["last_rebalancing_report"] = report
+                st.session_state[SK.LAST_REBALANCING_REPORT] = report
             except Exception as exc:
                 st.error(f"❌ Errore nel calcolo: {exc}")
                 return
 
-    if "last_rebalancing_report" not in st.session_state:
+    if SK.LAST_REBALANCING_REPORT not in st.session_state:
         st.info("ℹ️ Premi il pulsante per calcolare il piano ottimale.")
         return
 
-    report = st.session_state["last_rebalancing_report"]
+    report = st.session_state[SK.LAST_REBALANCING_REPORT]
 
     # ── Summary ────────────────────────────────────────────────────────────
     col1, col2, col3, col4 = st.columns(4)
@@ -236,7 +238,7 @@ def render() -> None:
     _render_history()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
 def _load_current_portfolio() -> tuple[dict[str, float], float]:
     """
     Carica posizioni correnti da SQLite e calcola pesi.
@@ -291,7 +293,7 @@ def _get_profile_risk() -> str:
         return "moderate"
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)
 def _render_history() -> None:
     st.subheader("📋 Storico Piani di Ribilanciamento")
     try:

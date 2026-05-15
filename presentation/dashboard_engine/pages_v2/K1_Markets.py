@@ -15,6 +15,8 @@ REGOLA 32: richiede autenticazione Streamlit (require_auth).
 """
 from __future__ import annotations
 
+from presentation.ui.cache_policy import CACHE_TTL
+
 __version__ = "9.0.0"
 __all__ = ["body_k1_markets"]
 
@@ -51,7 +53,7 @@ def _render_composite_v3(st, tokens) -> None:  # pragma: no cover
         from shared.db.duckdb_client import get_duckdb_client
         from engine.analytics.composite_signal_v3 import CompositeSignalAggregatorV3
 
-        @st.cache_data(ttl=300, show_spinner=False)  # type: ignore[misc]
+        @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)  # type: ignore[misc]
         def _compute():
             db = get_duckdb_client()
             return CompositeSignalAggregatorV3(duckdb=db).compute()
@@ -116,7 +118,7 @@ def _render_active_signals(st, tokens) -> None:  # pragma: no cover
 
         repo = get_pattern_signals_repo()
 
-        @st.cache_data(ttl=300, show_spinner=False)  # type: ignore[misc]
+        @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)  # type: ignore[misc]
         def _active_patterns():
             return repo.read_by_type(pattern_type="", limit=20)
 
@@ -148,7 +150,7 @@ def _render_active_signals(st, tokens) -> None:  # pragma: no cover
     try:
         from shared.db.duckdb_client import get_duckdb_client
 
-        @st.cache_data(ttl=900, show_spinner=False)  # type: ignore[misc]
+        @st.cache_data(ttl=CACHE_TTL.BACKTESTING, show_spinner=False)  # type: ignore[misc]
         def _surprise_signal():
             db = get_duckdb_client()
             rows = db.query(
@@ -189,7 +191,7 @@ def _render_dsl_multi_chart(st, tokens) -> None:  # pragma: no cover
         from shared.types import TimeFrame
         from engine.technical.indicator_registry import get_indicator_registry
 
-        @st.cache_data(ttl=300, show_spinner=False)  # type: ignore[misc]
+        @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS, show_spinner=False)  # type: ignore[misc]
         def _ohlcv(t: str):
             return get_prices_repository().read_ohlcv(
                 ticker=t, exchange="NASDAQ", timeframe=TimeFrame.D1, limit=200
@@ -272,7 +274,7 @@ def _render_kpi_grid(st, tokens) -> None:  # pragma: no cover
 
         for col, (label, ticker) in zip(cols, kpi_tickers):
             try:
-                @st.cache_data(ttl=120, show_spinner=False)  # type: ignore[misc]
+                @st.cache_data(ttl=CACHE_TTL.ALERT_HISTORY, show_spinner=False)  # type: ignore[misc]
                 def _px(t=ticker):
                     return repo.read_prices(ticker=t, timeframe=TimeFrame.D1)
 

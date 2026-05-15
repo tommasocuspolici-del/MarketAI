@@ -25,6 +25,7 @@ from engine.market_data.fred_simple_client import (
     FredSimpleClient,
     FredSimpleError,
 )
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -49,7 +50,7 @@ def _cached_fetch_yield_curve() -> tuple[pd.DataFrame, str | None]:
     try:
         import streamlit as st
 
-        @st.cache_data(ttl=_CACHE_TTL_S, show_spinner=False)
+        @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION, show_spinner=False)
         def _fn() -> tuple[pd.DataFrame, str | None]:
             return _fetch_yield_curve_inner()
 

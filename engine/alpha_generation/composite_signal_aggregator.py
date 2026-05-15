@@ -99,6 +99,32 @@ class CompositeSignalOutput:
     claims_regime:        str | None
     yield_curve_regime:   str | None
     breakdown_json:       str
+    is_degraded:          bool = False
+
+    @classmethod
+    def degraded(cls, error_reason: str = "unavailable") -> CompositeSignalOutput:
+        """Costruisce un output sentinel quando il calcolo non è possibile."""
+        from datetime import datetime, timezone
+        return cls(
+            computed_at=datetime.now(timezone.utc),
+            composite_score=0.0,
+            recommended_action="HOLD",
+            confidence="LOW",
+            vix_component=0.0,
+            macro_component=0.0,
+            yield_curve_component=0.0,
+            credit_component=0.0,
+            claims_component=0.0,
+            labour_market_component=0.0,
+            surprise_component=0.0,
+            components_used=[],
+            regime=None,
+            credit_stress=None,
+            claims_regime=None,
+            yield_curve_regime=None,
+            breakdown_json=f'{{"error": "{error_reason}"}}',
+            is_degraded=True,
+        )
 
 
 class CompositeSignalAggregator:

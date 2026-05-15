@@ -24,6 +24,7 @@ from engine.market_data.live_market_service import get_live_market_service
 from personal.data_entry.override_store import ManualOverrideStore
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 from shared.env_loader import get_api_key_statuses, load_environment
 
 if TYPE_CHECKING:
@@ -55,8 +56,8 @@ def _render_sources_status(st_module) -> None:  # pragma: no cover -- Streamlit
 
     # Cache risultati ping in session_state per non rifare 4 chiamate
     # HTTP a ogni rerender (ad es. quando l'utente modifica un override).
-    if "api_health_results" not in st.session_state:
-        st.session_state["api_health_results"] = None
+    if SK.API_HEALTH_RESULTS not in st.session_state:
+        st.session_state[SK.API_HEALTH_RESULTS] = None
 
     cols = st.columns([1, 1, 3])
     with cols[0]:
@@ -69,16 +70,16 @@ def _render_sources_status(st_module) -> None:  # pragma: no cover -- Streamlit
         ):
             with st.spinner("Ping in corso..."):
                 checker = ApiHealthChecker(timeout=5.0)
-                st.session_state["api_health_results"] = checker.check_all()
+                st.session_state[SK.API_HEALTH_RESULTS] = checker.check_all()
             st.rerun()
 
     # Primo accesso: ping automatico
-    if st.session_state["api_health_results"] is None:
+    if st.session_state[SK.API_HEALTH_RESULTS] is None:
         with st.spinner("Verifica stato sorgenti API..."):
             checker = ApiHealthChecker(timeout=5.0)
-            st.session_state["api_health_results"] = checker.check_all()
+            st.session_state[SK.API_HEALTH_RESULTS] = checker.check_all()
 
-    statuses: list[ApiSourceStatus] = st.session_state["api_health_results"]
+    statuses: list[ApiSourceStatus] = st.session_state[SK.API_HEALTH_RESULTS]
 
     # Aggiungi anche Yahoo Finance via LiveMarketService cache (per coerenza
     # con altre pagine: stato del fetch reale dei KPI, non solo ping).
