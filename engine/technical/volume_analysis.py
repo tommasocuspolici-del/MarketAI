@@ -44,7 +44,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandera.pandas as pa
+import pandera as pa
 import structlog
 
 from shared.exceptions import InsufficientDataError

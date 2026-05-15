@@ -33,6 +33,9 @@ class TestSchedulerRegistry:
             "claims_cross", "yield_curve", "credit_spreads",
             "vix_strategy", "analysis_pipeline",
             "daily_backup", "monthly_retention",
+            # Roadmap v3.0 Sett.1+6: fundamentals + surprise engine jobs
+            "edgar_fundamentals", "av_fundamentals",
+            "surprise_consensus_load", "surprise_engine_v2",
         }
         assert expected == job_ids
 
