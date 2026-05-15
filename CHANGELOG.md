@@ -6,6 +6,97 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [8.3.0] — 2026-05-15 — Roadmap Analisi Mercato v4 (Blocchi 1–6)
+
+> Trasformazione MarketAI in strumento di analisi professionale investment-bank grade.
+> Baseline v8.1.0 (1592 test) → v8.3.0 (1899 test passing), coverage engine/analytics ≥ 73%.
+> mypy: 0 errori su tutti i nuovi moduli engine/analytics.
+
+### Aggiunto — Blocco 1: Labour Market Engine
+
+- **`engine/analytics/labour_market/jolts_fetcher.py`** — JOLTSFetcher: fetch 8 serie
+  FRED (JTSJOL, JTSHIL, JTSQUL, JTSLAL, JTSQUR, JTSJOR, JTSHIR, UNRATE).
+  Calcola Beveridge gap e hires/quits ratio automaticamente.
+- **`engine/analytics/labour_market/claims_fetcher.py`** — ClaimsFetcher: fetch ICSA,
+  CCSA, IURSA con 4wk MA, YoY/MoM e classificazione regime 4-stati.
+- **`engine/analytics/labour_market/payroll_fetcher.py`** — PayrollFetcher: fetch 11
+  settori FRED con jobs_added_k, YoY, share_of_total, flag cyclical/defensive.
+- **`presentation/dashboard_engine/pages_v2/M3_Labour_Market.py`** — aggiornato v8.3:
+  4 tab completi (JOLTS / Claims / Payrolls / Regime) con KPI e chart storici.
+- **`presentation/dashboard_engine/pages_v2/Q9_Labour_Forecasting.py`** — nuova pagina:
+  previsioni ARIMA+Ridge 1M/3M/6M per UNRATE, NFP, Quits Rate, Claims 4wk MA.
+
+### Aggiunto — Blocco 2: Economic Surprise Engine
+
+- **`engine/analytics/surprise_engine/`** — SurpriseCalculator (z-score CESI-style),
+  SectorSurpriseAggregator (EMA 4 settori), SurpriseSignalGenerator ([-1,+1]),
+  SurpriseMomentum (accelerazione/decelerazione), ConsensusLoader (YAML + FRED).
+- **`presentation/dashboard_engine/pages_v2/M5_Economic_Surprise.py`** — nuova pagina:
+  ESI composite, tabella 20 indicatori, momentum EMA settori, segnale Composite.
+- **`presentation/dashboard_engine/pages_v2/Q10_Surprise_Heatmap.py`** — nuova pagina:
+  heatmap z-score indicatori×mese, ranking filtrato per settore, trend EMA.
+
+### Aggiunto — Blocco 3: Valuation Engine
+
+- **`engine/analytics/valuation/pe_calculator.py`** — Trailing PE, Forward PE, Shiller
+  CAPE, PEG ratio, ERP (Earnings Yield − DGS10). Legge da DuckDB, fallback yfinance.
+- **`engine/analytics/valuation/shiller_cape_fetcher.py`** — download dataset Shiller
+  Yale (XLS 1881–oggi), fallback FRED SP500EPS + CPIAUCSL.
+- **`engine/analytics/valuation/pe_context_builder.py`** — z-score e percentile storico
+  20 anni; composite valuation score [-1,+1] con label (deep_value→bubble_warning).
+- **`engine/analytics/valuation/valuation_signal_generator.py`** — segnale valutation
+  composito con 4 componenti pesate per Composite Signal v2.
+- **`engine/analytics/valuation/schemas.py`** — PEMetrics, ValuationSignalResult, ShillerCAPEPoint.
+- **`presentation/dashboard_engine/pages_v2/M6_Valuation_PE.py`** — nuova pagina:
+  4 tab (Overview KPI / Storia PE-CAPE / ERP / Segnale Composito).
+- DB migration `20261001_018_valuation_pe.sql` — tabelle pe_metrics, valuation_signal,
+  shiller_cape_historical.
+
+### Aggiunto — Blocco 4: Correlation Engine v2
+
+- **`engine/analytics/correlation/dcc_ewma_enhanced.py`** — EWMA con decay ottimale
+  stimato via MLE (grid λ 0.90–0.99), regime-conditioning (bull/bear/stress/transition),
+  Ledoit-Wolf shrinkage per garantire PSD. Performance < 200ms su 20 asset/5 anni.
+- **`engine/analytics/correlation/lead_lag_analyzer.py`** — Granger causality test su
+  coppie asset; lag ottimale MLE + cross-correlazione; segnale bullish/bearish_lead.
+  Winsorizzazione IQR-based robusta (fix: MAD degenerava a 0 su dati uniformi).
+- **`engine/analytics/correlation/cross_asset_matrix.py`** — matrice 13 asset × 4 regimi,
+  diversification score D=[0,1], segnale correlazione per Composite v2.
+- **`presentation/dashboard_engine/pages_v2/Q3_Correlations.py`** — aggiornato v8.2:
+  5 tab (Cross-Asset Matrix / Lead-Lag Granger / Regime / EWMA Pairwise / Segnale).
+- DB migration `20261015_019_correlation_v2.sql` — tabelle lead_lag_signals, cross_asset_regime.
+
+### Aggiunto — Blocco 5: UI Integration
+
+- **`presentation/dashboard_engine/pages_v2/K1_Market_Overview.py`** — aggiornato v8.3:
+  Composite Signal v2 con 7 progress bar pesate + breakdown componenti + trend 30gg.
+
+### Aggiunto — Blocco 6: Hardening
+
+- **`config/feature_flags.yaml`** — 14 nuovi flag Roadmap v4: `labour_market_fetcher`,
+  `valuation_pe_engine`, `shiller_cape_fetcher`, `dcc_ewma_enhanced`, `dcc_garch_full`
+  (default false), `lead_lag_granger`, `cross_asset_matrix`, `composite_signal_v2`, ecc.
+- Test suite: +307 test (1592 → 1899 passing). Nuovi test per SurpriseMomentum,
+  PayrollDecomposer._compute_signal, ShillerCAPEFetcher fetch paths, JOLTSFetcher,
+  ClaimsFetcher, PayrollFetcher (91 test labour_market, 69 valuation, 69 correlation).
+- Fix conflitto pycache `test_labour_market` / `test_surprire_engine` — aggiunto
+  `__init__.py` in entrambe le directory.
+- mypy: 72 → 0 errori su engine/analytics (log kwargs, ndarray type-arg, fred.fetch bug,
+  attr-defined su .execute(), no-untyped-def).
+
+### Corretto
+
+- `ShillerCAPEFetcher.get_latest_cape()` — metodo mancante (AttributeError a runtime).
+- `ShillerCAPEFetcher._fetch_from_fred()` — chiamava `fred.fetch()` inesistente;
+  corretto in `fred.fetch_series()`.
+- `log.warning("msg", key=val)` → `log.warning("msg key=%s", val)` in 6 moduli
+  (stdlib `logging` non accetta kwargs, a differenza di structlog).
+- `LeadLagAnalyzer._preprocess()` — winsorizzazione con σ=0 (distribuzione degenere);
+  sostituito MAD con IQR + fallback percentile.
+- `test_ui_redesign.py` — rimosso check `__version__ == "8.0.0"` hardcoded.
+
+---
+
 ## [8.1.0] — 2026-05-15 — Code Quality Release
 
 > ROADMAP_CODE_QUALITY_v1.0 completata (10 settimane, 5 blocchi, 0 feature nuove).
