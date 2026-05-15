@@ -13,6 +13,15 @@
 -- scenario: NULL per run non-stress; nome scenario per stress test.
 -- =============================================================================
 
+-- Drop ALL indexes on backtest_results (DuckDB ALTER TABLE richiede nessuna dipendenza)
+DROP INDEX IF EXISTS idx_backtest_strategy;
+DROP INDEX IF EXISTS idx_backtest_strategy_ticker;
+DROP INDEX IF EXISTS idx_backtest_run_type_scenario;
+-- Aggiunge colonne mancanti
+ALTER TABLE backtest_results ADD COLUMN IF NOT EXISTS run_type VARCHAR;
+ALTER TABLE backtest_results ADD COLUMN IF NOT EXISTS scenario VARCHAR;
+UPDATE backtest_results SET run_type = 'single' WHERE run_type IS NULL;
+
 CREATE TABLE IF NOT EXISTS backtest_results (
     run_id          VARCHAR      NOT NULL DEFAULT gen_random_uuid()::VARCHAR,
     strategy_name   VARCHAR      NOT NULL,

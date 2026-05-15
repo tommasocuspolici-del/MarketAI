@@ -1,0 +1,45 @@
+# Correlation Engine v2 — EWMA Enhanced + Lead-Lag + Cross-Asset
+# Blocco 4 — ROADMAP_ANALISI_MERCATO_v4
+
+dcc_ewma_enhanced:
+  enabled: true
+  lambda_grid_start: 0.90
+  lambda_grid_stop:  1.00
+  lambda_grid_step:  0.01
+  lambda_default:    0.94   # RiskMetrics
+  min_periods:       60
+  shrinkage_intensity: 0.05
+
+lead_lag:
+  candidate_lags: [1, 2, 5, 10, 21]   # giorni trading
+  pvalue_threshold: 0.05
+  min_cross_corr: 0.30
+  default_pairs:
+    - [HYG, SPY]    # credit → equity lead
+    - [TLT, SPY]    # bonds → equity
+    - [GLD, SPY]    # gold → equity
+    - [UUP, SPY]    # dollar → equity
+    - [^VIX, SPY]   # VIX → equity
+
+cross_asset_matrix:
+  universe:
+    SPY:   us_equity_large
+    IWM:   us_equity_small
+    QQQ:   us_equity_tech
+    TLT:   bond_long
+    IEF:   bond_medium
+    HYG:   credit_hy
+    LQD:   credit_ig
+    GLD:   commodity_gold
+    USO:   commodity_oil
+    COPX:  commodity_copper
+    UUP:   fx_dollar
+    FXE:   fx_euro
+    "^VIX": volatility
+  vix_crisis_threshold: -0.6    # VIX/equity corr < -0.6 = crisis
+  vix_divergence_threshold: -0.3
+  history_years: 5
+
+regime_conditioning:
+  regimes: [bull, bear, stress, transition]
+  min_observations_per_regime: 20

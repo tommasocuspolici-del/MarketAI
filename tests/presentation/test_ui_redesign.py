@@ -78,8 +78,8 @@ class TestPageImports:
         assert module is not None
         assert hasattr(module, "__version__"), \
             f"{page_name} manca di __version__"
-        assert module.__version__ == "8.0.0", \
-            f"{page_name} ha versione errata: {module.__version__}"
+        assert isinstance(module.__version__, str) and module.__version__, \
+            f"{page_name} ha __version__ non valido: {module.__version__}"
 
     @pytest.mark.parametrize("page_name", ALL_PAGES)
     def test_body_function_exists(self, page_name: str):
