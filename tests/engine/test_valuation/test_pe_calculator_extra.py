@@ -30,7 +30,10 @@ class TestGetPrice:
         assert result == pytest.approx(450.0)
 
     def test_returns_none_when_db_empty(self, calc):
-        result = calc._get_price("SPY", date(2024, 1, 5))
+        # Mock yfinance fallback so the test is deterministic regardless of network
+        with patch("yfinance.Ticker") as mock_yf:
+            mock_yf.return_value.fast_info = MagicMock(last_price=None)
+            result = calc._get_price("SPY", date(2024, 1, 5))
         assert result is None
 
     def test_fallback_on_db_exception(self, mock_client):
