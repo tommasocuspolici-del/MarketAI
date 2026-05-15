@@ -116,3 +116,28 @@ fundamentals_ui_k2: true              # Mostra sezione fondamentali in K2_Equity
 # ─── Blocco A — Data Quality avanzata (Roadmap v3.0 Settimana 2) ─────────────
 data_quality_alerting: true        # DataQualityAlerter: alert automatici su score basso
 cross_source_validation: true      # CrossSourceValidator: confronto yfinance vs AV
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP ANALISI MERCATO v4.0 — Flag aggiuntivi (v8.2/v8.3)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco 1: Labour Market Fetchers ────────────────────────────────────
+labour_market_fetcher: true        # JOLTSFetcher + ClaimsFetcher + PayrollFetcher (FRED)
+labour_beveridge_analysis: true    # Beveridge gap calcolato automaticamente
+
+# ─── Blocco 3: Valuation Engine ──────────────────────────────────────────
+valuation_pe_engine: true          # PECalculator + PEContextBuilder + ValuationSignalGenerator
+shiller_cape_fetcher: true         # Download dataset Shiller Yale (1 req/giorno)
+forward_pe_estimates: true         # Forward EPS da Alpha Vantage / YAML fallback
+valuation_sector_pe: false         # PE settoriale (richiede dati aggiuntivi)
+
+# ─── Blocco 4: Correlation Engine v2 ─────────────────────────────────────
+dcc_ewma_enhanced: true            # EWMA enhanced con decay ottimale MLE (sempre attivo)
+dcc_garch_full: false              # DCC-GARCH(1,1) via arch library (default OFF: costoso)
+lead_lag_granger: true             # Granger causality test su 10 coppie chiave
+cross_asset_matrix: true           # Matrice 13 asset × 4 regimi
+correlation_signal_composite: true # Segnale correlazioni → Composite Signal v2
+
+# ─── Blocco 2: Composite Signal v2 ───────────────────────────────────────
+composite_signal_v2: true          # Aggregatore 7 componenti (labour/valuation/surprise)
+surprise_consensus_scraping: false # Scraping Investing.com (default OFF: fragile)
