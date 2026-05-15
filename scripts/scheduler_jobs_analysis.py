@@ -25,6 +25,7 @@ __all__ = [
     "_job_vix_strategy", "_job_analysis_pipeline",
     "_job_edgar_fundamentals", "_job_av_fundamentals",
     "_job_surprise_consensus_loader", "_job_surprise_engine_v2",
+    "_job_labour_regime", "_job_labour_forecast",
     "_job_backup", "_job_retention",
 ]
 
@@ -358,6 +359,179 @@ def _check_error_budget() -> None:
         log.warning("scheduler.error_budget_tripped",
                     error_rate_pct=status.error_rate_pct,
                     threshold_pct=status.threshold_pct)
+
+
+# ─── JOB: Labour Regime Classifier (venerdì 18:00 UTC) ──────────────────────
+# REGOLA 29: Gated da labour_market_scheduler.
+# Legge da jolts_monthly + claims_cycle in DuckDB, classifica il regime
+# aggregato e persiste in labour_regime.
+# Deve girare DOPO _job_labour_jolts e _job_labour_claims_cycle.
+
+def _job_labour_regime() -> None:
+    """Classifica il regime aggregato del mercato del lavoro da DB e persiste."""
+    import time
+    t0 = time.monotonic()
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        from shared.feature_flags import is_enabled
+        from engine.analytics.labour_market.jolts_analyzer import JOLTSAnalyzer
+        from engine.analytics.labour_market.claims_cycle_detector import ClaimsCycleDetector
+        from engine.analytics.labour_market.payroll_decomposer import PayrollDecomposer
+        from engine.analytics.labour_market.labour_regime_classifier import LabourRegimeClassifier
+
+        if not is_enabled("labour_market_scheduler"):
+            log.debug("scheduler.labour_regime.flag_disabled")
+            return
+
+        db = get_duckdb_client()
+
+        # Leggi segnali più recenti da DuckDB (no fetch API)
+        jolts_signal  = JOLTSAnalyzer(duckdb=db).analyze()
+        claims_signal = ClaimsCycleDetector(duckdb=db).detect()
+
+        # Payroll score da PayrollDecomposer (0 se dati mancanti)
+        try:
+            payroll_score = PayrollDecomposer(duckdb=db).decompose().payroll_score
+        except Exception:
+            payroll_score = 0.0
+
+        classifier = LabourRegimeClassifier(duckdb=db)
+        result = classifier.classify(jolts_signal, claims_signal, payroll_score)
+
+        error_budget.record_success()
+        log.info(
+            "scheduler.labour_regime.done",
+            regime=result.regime,
+            score=round(result.composite_score, 3),
+            confidence=round(result.confidence, 3),
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:
+        error_budget.record_error()
+        log.error("scheduler.labour_regime.failed", error=str(exc)[:200])
+
+
+# ─── JOB: Labour Forecast (lunedì 10:00 UTC) ────────────────────────────────
+# REGOLA 29: Gated da labour_market_forecasting.
+# Legge serie storiche da DuckDB, fitta ARIMA+Ridge, genera forecast
+# 1M/3M/6M e persiste in labour_forecasts.
+
+def _job_labour_forecast() -> None:
+    """Genera forecast 1M/3M/6M per UNRATE e Claims e persiste in labour_forecasts."""
+    import time
+    from datetime import datetime, UTC
+    t0 = time.monotonic()
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        from shared.feature_flags import is_enabled
+        from engine.analytics.labour_market.labour_forecast_engine import LabourForecastEngine
+
+        import numpy as np
+        import pandas as pd
+
+        if not is_enabled("labour_market_forecasting"):
+            log.debug("scheduler.labour_forecast.flag_disabled")
+            return
+
+        db = get_duckdb_client()
+
+        # ── Carica serie storiche da DuckDB ──────────────────────────────────
+        def _load_series(query: str, col: str) -> pd.Series:
+            rows = db.query(query)
+            if not rows:
+                return pd.Series([], dtype=float)
+            df = pd.DataFrame(rows, columns=["date", col])
+            df["date"] = pd.to_datetime(df["date"])
+            return df.set_index("date")[col].dropna().sort_index()
+
+        unrate_series = _load_series(
+            "SELECT ts, value FROM macro_series "
+            "WHERE series_id='UNRATE' ORDER BY ts ASC",
+            "unrate",
+        )
+        claims_ma_series = _load_series(
+            "SELECT week_ending, claims_4wk_ma FROM claims_cycle "
+            "WHERE claims_4wk_ma IS NOT NULL ORDER BY week_ending ASC",
+            "claims_4wk_ma",
+        )
+        quits_series = _load_series(
+            "SELECT series_date, quits_rate FROM jolts_monthly "
+            "WHERE quits_rate IS NOT NULL ORDER BY series_date ASC",
+            "quits_rate",
+        )
+
+        total_persisted = 0
+
+        for target_name, target_series in [
+            ("unemployment_rate", unrate_series),
+            ("claims_4wk_ma",     claims_ma_series),
+            ("quits_rate",        quits_series),
+        ]:
+            if len(target_series) < 24:   # min 24 obs per fit stabile
+                log.debug("scheduler.labour_forecast.skip_insufficient",
+                          metric=target_name, n=len(target_series))
+                continue
+
+            # Features: lag 1-3 della stessa serie (auto-regressive)
+            n = len(target_series)
+            feat_df = pd.DataFrame({
+                "lag1": target_series.shift(1),
+                "lag2": target_series.shift(2),
+                "lag3": target_series.shift(3),
+            }).dropna()
+            aligned = target_series.iloc[-len(feat_df):]
+
+            try:
+                engine = LabourForecastEngine()
+                engine.fit(target=aligned, features=feat_df)
+
+                # Future features: ultima riga features (shift forward)
+                last_feat = feat_df.iloc[[-1]].copy()
+                last_feat.columns = feat_df.columns
+                result = engine.forecast(
+                    horizons=["1M", "3M", "6M"],
+                    future_features=last_feat,
+                    target_metric=target_name,
+                )
+
+                # Persist ogni bundle in labour_forecasts
+                for bundle in result.bundles:
+                    db.execute(
+                        """
+                        INSERT INTO labour_forecasts
+                            (generated_at, horizon, target_metric,
+                             forecast_value, forecast_lower, forecast_upper,
+                             model_used, arima_forecast, ridge_forecast)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (generated_at, horizon, target_metric)
+                        DO UPDATE SET
+                            forecast_value = excluded.forecast_value,
+                            model_used     = excluded.model_used
+                        """,
+                        [
+                            datetime.now(UTC).isoformat(),
+                            bundle.horizon, bundle.target_metric,
+                            bundle.point_forecast, bundle.lower_10,
+                            bundle.upper_90, bundle.model_used,
+                            bundle.arima_forecast, bundle.ridge_forecast,
+                        ],
+                    )
+                    total_persisted += 1
+
+            except Exception as exc:
+                log.warning("scheduler.labour_forecast.metric_failed",
+                            metric=target_name, error=str(exc)[:120])
+                continue
+
+        error_budget.record_success()
+        log.info(
+            "scheduler.labour_forecast.done",
+            bundles_persisted=total_persisted,
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:
+        error_budget.record_error()
+        log.error("scheduler.labour_forecast.failed", error=str(exc)[:200])
 
 
 # ═══════════════════════════════════════════════════════════════════════════

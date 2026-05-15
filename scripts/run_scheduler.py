@@ -33,11 +33,13 @@ from shared.logger import configure_logging, get_logger
 from scripts.scheduler_jobs_data import (
     _job_market_prices, _job_futures_prices, _job_macro_fred,
     _job_claims_inflation, _job_yield_curve, _job_credit_spreads,
+    _job_labour_jolts, _job_labour_claims_cycle, _job_labour_payroll,
 )
 from scripts.scheduler_jobs_analysis import (
     _job_vix_strategy, _job_analysis_pipeline,
     _job_edgar_fundamentals, _job_av_fundamentals,
     _job_surprise_consensus_loader, _job_surprise_engine_v2,
+    _job_labour_regime, _job_labour_forecast,
     _job_backup, _job_retention,
 )
 
@@ -102,6 +104,32 @@ _JOB_REGISTRY: list[dict] = [
      "trigger": CronTrigger(day_of_week="mon", hour=8, minute=0),
      "fn": _job_surprise_engine_v2,
      "name": "Surprise Engine v2 pipeline (lunedì 08:00)"},
+
+    # ── Labour Market (Roadmap v4 Blocco 1) ───────────────────────────────
+    {"id": "labour_jolts",       "flag": "labour_market_fetcher",
+     "trigger": CronTrigger(day_of_week="wed", hour=17, minute=0),
+     "fn": _job_labour_jolts,
+     "name": "JOLTS mensile da FRED (mercoledì 17:00)"},
+
+    {"id": "labour_claims",      "flag": "labour_market_fetcher",
+     "trigger": CronTrigger(day_of_week="thu", hour=8, minute=30),
+     "fn": _job_labour_claims_cycle,
+     "name": "Initial Claims ciclo settimanale (giovedì 08:30)"},
+
+    {"id": "labour_payroll",     "flag": "labour_market_fetcher",
+     "trigger": CronTrigger(day_of_week="fri", hour=8, minute=30),
+     "fn": _job_labour_payroll,
+     "name": "NFP settoriale PayrollDecomposer (venerdì 08:30)"},
+
+    {"id": "labour_regime",      "flag": "labour_market_scheduler",
+     "trigger": CronTrigger(day_of_week="fri", hour=18, minute=0),
+     "fn": _job_labour_regime,
+     "name": "Labour Regime Classifier (venerdì 18:00)"},
+
+    {"id": "labour_forecast",    "flag": "labour_market_forecasting",
+     "trigger": CronTrigger(day_of_week="mon", hour=10, minute=0),
+     "fn": _job_labour_forecast,
+     "name": "Labour Forecast ARIMA+Ridge 1M/3M/6M (lunedì 10:00)"},
 
     # ── Manutenzione ──────────────────────────────────────────────────────
     {"id": "daily_backup",      "flag": "auto_backup_daily",

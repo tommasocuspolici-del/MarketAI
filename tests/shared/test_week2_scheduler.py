@@ -24,7 +24,7 @@ class TestSchedulerRegistry:
     """Verifica il registro completo dei job."""
 
     def test_all_job_ids_present(self):
-        """I 10 job della Roadmap Unificata devono essere nel registro."""
+        """I 19 job della Roadmap (Unificata + v3.0 + v4 Blocco 1) devono essere nel registro."""
         from scripts.run_scheduler import _JOB_REGISTRY
 
         job_ids = {j["id"] for j in _JOB_REGISTRY}
@@ -36,6 +36,9 @@ class TestSchedulerRegistry:
             # Roadmap v3.0 Sett.1+6: fundamentals + surprise engine jobs
             "edgar_fundamentals", "av_fundamentals",
             "surprise_consensus_load", "surprise_engine_v2",
+            # Roadmap v4 Blocco 1: Labour Market pipeline
+            "labour_jolts", "labour_claims", "labour_payroll",
+            "labour_regime", "labour_forecast",
         }
         assert expected == job_ids
 

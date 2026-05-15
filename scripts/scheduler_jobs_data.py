@@ -23,6 +23,7 @@ __all__ = [
     "_job_market_prices", "_job_futures_prices",
     "_job_macro_fred", "_job_claims_inflation",
     "_job_yield_curve", "_job_credit_spreads",
+    "_job_labour_jolts", "_job_labour_claims_cycle", "_job_labour_payroll",
 ]
 
 def _job_market_prices() -> None:
@@ -334,4 +335,102 @@ def _job_credit_spreads() -> None:
     except Exception as exc:
         error_budget.record_error()
         log.error("scheduler.credit_spreads.failed", error=str(exc)[:200])
+
+
+# ─── JOB: Labour Market JOLTS (3° mercoledì mese, 17:00 UTC) ────────────────
+# REGOLA 29: Gated da labour_market_fetcher.
+# JOLTSAnalyzer fetcha da FRED e persiste in jolts_monthly.
+# Richiede FRED_API_KEY in .env.
+
+def _job_labour_jolts() -> None:
+    """Fetcha dati JOLTS da FRED e persiste in jolts_monthly."""
+    t0 = time.monotonic()
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        from engine.analytics.labour_market.jolts_analyzer import JOLTSAnalyzer
+        from shared.feature_flags import is_enabled
+
+        if not is_enabled("labour_market_fetcher"):
+            log.debug("scheduler.labour_jolts.flag_disabled")
+            return
+
+        db     = get_duckdb_client()
+        jolts  = JOLTSAnalyzer(duckdb=db)
+        signal = jolts.analyze()
+        error_budget.record_success()
+        log.info(
+            "scheduler.labour_jolts.done",
+            regime=signal.regime,
+            score=round(signal.labour_score, 3),
+            beveridge_gap=round(signal.beveridge_gap, 2),
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:
+        error_budget.record_error()
+        log.error("scheduler.labour_jolts.failed", error=str(exc)[:200])
+
+
+# ─── JOB: Labour Market Claims Cycle (ogni giovedì, 08:30 UTC) ──────────────
+# REGOLA 29: Gated da labour_market_fetcher.
+# ClaimsCycleDetector fetcha ICSA da FRED e persiste in claims_cycle.
+
+def _job_labour_claims_cycle() -> None:
+    """Fetcha Initial Claims da FRED, rileva il regime e persiste in claims_cycle."""
+    t0 = time.monotonic()
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        from engine.analytics.labour_market.claims_cycle_detector import ClaimsCycleDetector
+        from shared.feature_flags import is_enabled
+
+        if not is_enabled("labour_market_fetcher"):
+            log.debug("scheduler.labour_claims.flag_disabled")
+            return
+
+        db     = get_duckdb_client()
+        det    = ClaimsCycleDetector(duckdb=db)
+        signal = det.detect()
+        error_budget.record_success()
+        log.info(
+            "scheduler.labour_claims.done",
+            regime=signal.cycle_regime,
+            claims=signal.initial_claims,
+            ma_4wk=round(signal.claims_4wk_ma, 0),
+            strength=round(signal.signal_strength, 3),
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:
+        error_budget.record_error()
+        log.error("scheduler.labour_claims.failed", error=str(exc)[:200])
+
+
+# ─── JOB: Labour Market Payroll (1° venerdì mese, 08:30 UTC) ────────────────
+# REGOLA 29: Gated da labour_market_fetcher.
+# PayrollDecomposer fetcha NFP settoriale da FRED e persiste in payroll_sector.
+
+def _job_labour_payroll() -> None:
+    """Fetcha NFP settoriale da FRED, decompone e persiste in payroll_sector."""
+    t0 = time.monotonic()
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        from engine.analytics.labour_market.payroll_decomposer import PayrollDecomposer
+        from shared.feature_flags import is_enabled
+
+        if not is_enabled("labour_market_fetcher"):
+            log.debug("scheduler.labour_payroll.flag_disabled")
+            return
+
+        db     = get_duckdb_client()
+        decomp = PayrollDecomposer(duckdb=db)
+        signal = decomp.decompose()
+        error_budget.record_success()
+        log.info(
+            "scheduler.labour_payroll.done",
+            nfp_k=round(signal.nfp_total, 1),
+            cyclical_ratio=round(signal.cyclical_ratio, 3),
+            score=round(signal.payroll_score, 3),
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
+    except Exception as exc:
+        error_budget.record_error()
+        log.error("scheduler.labour_payroll.failed", error=str(exc)[:200])
 
