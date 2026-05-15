@@ -82,85 +82,98 @@ class SurpriseAccuracyTracker:
         self._client = client
 
     def record_predictions(self, computed: pd.DataFrame) -> int:
-        """Registra le previsioni direzionali correnti in surprise_accuracy_log.
+        """Aggiorna surprise_accuracy_log con accuratezza aggregata per indicatore.
+
+        Calcola per ogni indicatore:
+          · hit_rate_direction: % sorprese con z-score > 0 (beat)
+          · mean_abs_surprise: media |surprise_z|
+
+        Schema tabella (migration 010):
+          (indicator_code, period_start, period_end,
+           mean_abs_surprise, hit_rate_direction)
 
         Args:
             computed: DataFrame da SurpriseCalculator.compute_from_df().
 
         Returns:
-            Numero di record inseriti.
+            Numero di indicatori aggiornati.
         """
         if computed.empty:
             return 0
-        rows: list[dict[str, object]] = []
-        for _, row in computed.iterrows():
-            z = float(row.get("surprise_z", 0) or 0)
-            if abs(z) < 0.3:   # sorprese marginali: non predittive
-                continue
-            rows.append({
-                "indicator_code":    str(row["indicator_code"]),
-                "release_date":      pd.Timestamp(str(row["release_date"])).date(),
-                "predicted_beat":    bool(z > 0),
-                "surprise_z":        z,
-                "recorded_at":       datetime.now(UTC).isoformat(),
-                "outcome_beat":      None,  # aggiornato dal job successivo
-            })
-        if not rows:
+
+        # Filtra sorprese marginali (non informative)
+        significant = computed[computed["surprise_z"].abs() >= 0.3].copy()
+        if significant.empty:
             return 0
-        try:
-            df = pd.DataFrame(rows)
-            with self._client.transaction() as conn:
-                conn.register("_acc_batch", df)  # type: ignore[attr-defined]
-                conn.execute(  # type: ignore[attr-defined]
+
+        # Aggrega per indicatore
+        agg_rows: list[tuple] = []
+        for code, grp in significant.groupby("indicator_code"):
+            z_vals = grp["surprise_z"].to_numpy(dtype=np.float64)
+            dates  = pd.to_datetime(grp["release_date"])
+            agg_rows.append((
+                str(code),
+                dates.min().date().isoformat(),
+                dates.max().date().isoformat(),
+                float(np.mean(np.abs(z_vals))),
+                float(np.mean(z_vals > 0)),   # hit_rate_direction
+            ))
+
+        if not agg_rows:
+            return 0
+
+        inserted = 0
+        for row in agg_rows:
+            try:
+                self._client.execute(
                     """
-                    INSERT OR REPLACE INTO surprise_accuracy_log
-                    (indicator_code, release_date, predicted_beat,
-                     surprise_z, recorded_at)
-                    SELECT
-                        indicator_code,
-                        release_date::DATE,
-                        predicted_beat,
-                        surprise_z,
-                        recorded_at::TIMESTAMPTZ
-                    FROM _acc_batch
-                """)
-            return len(rows)
-        except Exception as exc:
-            log.warning("accuracy_tracker.record_error", error=str(exc)[:100])
-            return 0
+                    INSERT INTO surprise_accuracy_log
+                        (indicator_code, period_start, period_end,
+                         mean_abs_surprise, hit_rate_direction)
+                    VALUES (?, ?::DATE, ?::DATE, ?, ?)
+                    ON CONFLICT (indicator_code, period_start) DO UPDATE SET
+                        period_end          = excluded.period_end,
+                        mean_abs_surprise   = excluded.mean_abs_surprise,
+                        hit_rate_direction  = excluded.hit_rate_direction
+                    """,
+                    list(row),
+                )
+                inserted += 1
+            except Exception as exc:
+                log.warning("accuracy_tracker.record_error",
+                            indicator=row[0], error=str(exc)[:100])
+        return inserted
 
     def get_accuracy_by_indicator(
         self, lookback_months: int = 12
     ) -> dict[str, float]:
-        """Calcola l'accuratezza direzionale per indicatore nell'ultimo anno.
+        """Legge l'accuratezza direzionale per indicatore da surprise_accuracy_log.
 
         Returns:
-            {indicator_code: accuracy_pct [0.0, 1.0]}. Solo indicatori con
-            almeno _MIN_HISTORY_FOR_CALIBRATION record.
+            {indicator_code: hit_rate_direction [0.0, 1.0]}
         """
         cutoff = (
             pd.Timestamp.now(tz="UTC") - pd.DateOffset(months=lookback_months)
         ).date().isoformat()
         try:
-            with self._client.transaction() as conn:
-                df = conn.execute(  # type: ignore[attr-defined]
-                    """
-                    SELECT
-                        indicator_code,
-                        COUNT(*) AS total,
-                        SUM(CASE WHEN predicted_beat = outcome_beat THEN 1 ELSE 0 END) AS correct
-                    FROM surprise_accuracy_log
-                    WHERE outcome_beat IS NOT NULL
-                    AND release_date >= ?::DATE
-                    GROUP BY indicator_code
-                    HAVING COUNT(*) >= ?
-                    """,
-                    [cutoff, _MIN_HISTORY_FOR_CALIBRATION],
-                ).df()
-            if df.empty:
+            rows = self._client.query(
+                """
+                SELECT indicator_code, hit_rate_direction
+                FROM surprise_accuracy_log
+                WHERE hit_rate_direction IS NOT NULL
+                  AND period_end >= ?::DATE
+                ORDER BY period_end DESC
+                """,
+                [cutoff],
+            )
+            if not rows:
                 return {}
-            df["accuracy"] = df["correct"].astype(np.float64) / df["total"].astype(np.float64)
-            return dict(zip(df["indicator_code"], df["accuracy"].round(3)))
+            # Per ogni indicatore prendi il record più recente
+            seen: dict[str, float] = {}
+            for code, rate in rows:
+                if str(code) not in seen and rate is not None:
+                    seen[str(code)] = round(float(rate), 3)
+            return seen
         except Exception as exc:
             log.warning("accuracy_tracker.get_accuracy_error", error=str(exc)[:100])
             return {}
