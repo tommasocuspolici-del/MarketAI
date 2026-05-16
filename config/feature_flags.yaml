@@ -180,3 +180,13 @@ walk_forward_validation: true          # WalkForwardValidator mandatory (QC)
 ensemble_signals: true                 # ICWeightedEnsembleComposer active
 ensemble_ic_weighted: true             # IC-weighted ensemble (QC upgrade)
 genetic_optimization: false            # DEAP genetic optimizer (costly — opt-in)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Technical Analysis Avanzata (Blocco F)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco F — Core ─────────────────────────────────────────────────────
+multi_timeframe_analysis: true         # MultiTimeframeAnalyzer D/W/M confluence
+volume_profile: true                   # VolumeProfileCalculator VPVR/POC/VAH/VAL
+cycle_analysis: true                   # CycleAnalyzer Hurst + FFT dominant cycle
+order_flow_analysis: false             # OrderFlowAnalyzer CVD (L2 data: opt-in)
