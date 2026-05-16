@@ -1,17 +1,17 @@
 -- Migration 021 — Custom Indicators Framework (Blocco C, ROADMAP v5)
 
 CREATE TABLE IF NOT EXISTS custom_indicator_results (
-    computed_at   TIMESTAMPTZ NOT NULL,
-    indicator_id  VARCHAR     NOT NULL,
-    ticker        VARCHAR,
-    value         DOUBLE      NOT NULL,
-    output_type   VARCHAR     NOT NULL,
+    computed_at    TIMESTAMPTZ NOT NULL,
+    indicator_id   VARCHAR     NOT NULL,
+    ticker         VARCHAR     NOT NULL DEFAULT '__global__',
+    value          DOUBLE      NOT NULL,
+    output_type    VARCHAR     NOT NULL,
     regime_context VARCHAR,
-    params_hash   VARCHAR     NOT NULL,
+    params_hash    VARCHAR     NOT NULL,
     -- QC-1: quality tracking
-    ic_estimate   DOUBLE,
-    quality_flag  VARCHAR     DEFAULT 'ok',
-    PRIMARY KEY (computed_at, indicator_id, COALESCE(ticker, '__global__'))
+    ic_estimate    DOUBLE,
+    quality_flag   VARCHAR     DEFAULT 'ok',
+    PRIMARY KEY (computed_at, indicator_id, ticker)
 );
 
 CREATE TABLE IF NOT EXISTS custom_indicator_backtest (
