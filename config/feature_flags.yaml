@@ -169,3 +169,14 @@ custom_indicator_dsl: true             # DSL expression evaluator (sandboxed)
 custom_indicator_optuna: false         # Optuna-based auto-calibration (heavy — off)
 custom_indicator_scheduler: true       # Refresh job every 30 min on business days
 composite_signal_v3: true              # CompositeSignalAggregatorV3 now active (Blocco C)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Strategy Lab v2 (Blocco E)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco E — Core ─────────────────────────────────────────────────────
+regime_aware_backtest: true            # RegimeAwareBacktestEngine active
+walk_forward_validation: true          # WalkForwardValidator mandatory (QC)
+ensemble_signals: true                 # ICWeightedEnsembleComposer active
+ensemble_ic_weighted: true             # IC-weighted ensemble (QC upgrade)
+genetic_optimization: false            # DEAP genetic optimizer (costly — opt-in)
