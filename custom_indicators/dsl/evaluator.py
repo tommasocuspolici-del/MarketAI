@@ -50,7 +50,7 @@ class DSLEvaluator:
     def __init__(
         self,
         decay_monitor: AlphaDecayMonitor | None = None,
-        weights_config: dict | None = None,
+        weights_config: dict[str, Any] | None = None,
     ) -> None:
         self._parser    = DSLParser()
         self._validator = DSLValidator()
@@ -95,6 +95,8 @@ class DSLEvaluator:
             ) from exc
 
         log.debug("dsl.evaluated", expression=expression[:80], result=result)
+        if not isinstance(result, (bool, float, int, type(None))):
+            return None
         return result
 
     def is_safe(self, expression: str) -> bool:

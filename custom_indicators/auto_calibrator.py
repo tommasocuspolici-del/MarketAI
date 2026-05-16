@@ -55,8 +55,8 @@ class AutoCalibrator:
         self,
         indicator_id:    str,
         compute_fn:      Callable[[dict[str, Any]], list[float]],
-        signal_values:   np.ndarray,
-        forward_returns: np.ndarray,
+        signal_values:   np.ndarray[Any, Any],
+        forward_returns: np.ndarray[Any, Any],
         param_grid:      dict[str, list[Any]],
     ) -> CalibrationResult:
         """Grid-search the param_grid for maximum IC.

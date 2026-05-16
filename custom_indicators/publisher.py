@@ -17,5 +17,5 @@ def publish_indicator_signal(signal: Signal, ttl_seconds: int = 1800) -> None:
         ttl_seconds: TTL for the SignalRegistry entry (default 30 min).
     """
     bus = get_signal_bus()
-    bus._registry.publish(signal, ttl_seconds=ttl_seconds)   # type: ignore[attr-defined]
+    bus._registry.publish(signal, ttl_seconds=ttl_seconds)
     bus.publish(signal)

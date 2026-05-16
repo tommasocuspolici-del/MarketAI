@@ -22,6 +22,7 @@ Functions available in DSL expressions:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -119,7 +120,9 @@ def _count_agreeing(threshold: float = 0.2) -> int:
     return sum(1 for n in core if abs(snap.get(n, 0.0)) >= threshold)
 
 
-def _make_ic_fn(decay_monitor: AlphaDecayMonitor | None):
+def _make_ic_fn(
+    decay_monitor: AlphaDecayMonitor | None,
+) -> "Callable[[str], float]":
     def _get_ic(signal_name: str) -> float:
         if decay_monitor is None:
             return 0.0
@@ -128,7 +131,9 @@ def _make_ic_fn(decay_monitor: AlphaDecayMonitor | None):
     return _get_ic
 
 
-def _make_quality_fn(decay_monitor: AlphaDecayMonitor | None):
+def _make_quality_fn(
+    decay_monitor: AlphaDecayMonitor | None,
+) -> "Callable[[str], str]":
     def _get_quality_flag(signal_name: str) -> str:
         if decay_monitor is None:
             return "insufficient_data"
@@ -137,7 +142,9 @@ def _make_quality_fn(decay_monitor: AlphaDecayMonitor | None):
     return _get_quality_flag
 
 
-def _make_regime_weight_fn(weights_config: dict):
+def _make_regime_weight_fn(
+    weights_config: dict[str, Any],
+) -> "Callable[[str], float]":
     def _get_regime_weight(component: str) -> float:
         regime = _get_regime()
         regime_weights = weights_config.get("regime_signal_weights", {})
@@ -150,7 +157,7 @@ def _make_regime_weight_fn(weights_config: dict):
 
 def build_namespace(
     decay_monitor: AlphaDecayMonitor | None = None,
-    weights_config: dict | None = None,
+    weights_config: dict[str, Any] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the safe execution namespace for DSL expression evaluation.

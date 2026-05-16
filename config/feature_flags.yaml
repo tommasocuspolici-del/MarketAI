@@ -148,7 +148,7 @@ surprise_consensus_scraping: false # Scraping Investing.com (default OFF: fragil
 
 # ─── Blocco B — Signal Bus (Lean) ────────────────────────────────────────
 signal_bus_enabled: true               # SignalBus pub/sub in-process
-signal_persistence_duckdb: false       # Persist signal_snapshots to DuckDB (costly)
+signal_persistence_duckdb: true        # Persist signal_snapshots to DuckDB (abilitato in v10.0.0)
 signal_dag_enabled: false              # Signal dependency DAG (advanced — off by default)
 composite_signal_v3: false             # CompositeSignalAggregatorV3 (off until C ready)
 
@@ -199,3 +199,19 @@ order_flow_analysis: false             # OrderFlowAnalyzer CVD (L2 data: opt-in)
 options_analytics: false               # BS + IV + VolSurface + StrategyBuilder (off by default)
 options_live_chain: false              # Finnhub live option chain (opt-in: requires FINNHUB_API_KEY)
 options_strategy_suggestions: true    # Collar suggestion in P2 if portfolio_beta > 1.3 (always ON)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Quality Cross-Cut flags (Blocco G, v10.0.0)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── IC Tracking & Quality Gate (Blocco C) ───────────────────────────────
+indicator_ic_tracking: true            # ★ IC tracking su ogni custom indicator (sempre ON)
+indicator_quality_gate: true           # ★ Auto-decay se IC < 0.02 (AlphaDecayMonitor)
+
+# ─── Source Deduplication (Blocco A) ─────────────────────────────────────
+source_deduplication: true             # ★ Dedup eventi stesso notizia da N fonti
+
+# ─── Global Quality Monitor (Cross-Cut) ───────────────────────────────────
+alpha_decay_monitor_global: true       # ★ IC monitoring su tutti i segnali
+consensus_validator_alerts: true       # ★ Gate consensus prima di ogni alert BUY/SELL
+regime_adaptive_weights: true          # ★ Pesi da regime_weights.yaml (non hardcoded)

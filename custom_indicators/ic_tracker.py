@@ -5,6 +5,8 @@ forward returns, then updates AlphaDecayMonitor for automatic weight decay.
 """
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from scipy import stats
 
@@ -35,8 +37,8 @@ class CustomIndicatorICTracker:
 
     def compute_ic(
         self,
-        signal_values:   np.ndarray,
-        forward_returns: np.ndarray,
+        signal_values:   np.ndarray[Any, Any],
+        forward_returns: np.ndarray[Any, Any],
         indicator_id:    str,
     ) -> float:
         """Compute Spearman IC between signal and forward returns.
@@ -100,8 +102,8 @@ class CustomIndicatorICTracker:
 
     def batch_update(
         self,
-        signal_values:   np.ndarray,
-        forward_returns: np.ndarray,
+        signal_values:   np.ndarray[Any, Any],
+        forward_returns: np.ndarray[Any, Any],
         indicator_id:    str,
         horizon_days:    int = 5,
     ) -> None:

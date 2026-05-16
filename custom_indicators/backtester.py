@@ -5,6 +5,8 @@ walk-forward approach to avoid look-ahead bias.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -51,8 +53,8 @@ class IndicatorBacktester:
     def run(
         self,
         indicator_id:    str,
-        signal_values:   np.ndarray,
-        forward_returns: np.ndarray,
+        signal_values:   np.ndarray[Any, Any],
+        forward_returns: np.ndarray[Any, Any],
         horizon_days:    int = 5,
         min_train:       int = _MIN_TRAIN,
     ) -> BacktestResult:

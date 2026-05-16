@@ -117,8 +117,73 @@ class BlackScholesCalculator:
         self,
         options: list[dict[str, Any]],
     ) -> list[BSResult]:
-        """Price a batch of options. Target: 200 options < 200ms."""
-        return [self.price(**opt) for opt in options]
+        """Price a batch of options via vectorised numpy. Target: 200 options < 200ms."""
+        if not options:
+            return []
+
+        # Vectorised path — extract arrays, call norm once for the whole batch
+        n   = len(options)
+        S   = np.array([float(o.get("S", 0))     for o in options])
+        K   = np.array([float(o.get("K", 0))     for o in options])
+        T   = np.array([float(o.get("T", 0))     for o in options])
+        r   = np.array([float(o.get("r", 0))     for o in options])
+        sig = np.array([float(o.get("sigma", 0)) for o in options])
+        q   = np.array([float(o.get("q", 0.0))  for o in options])
+        types = [str(o.get("option_type", "call")) for o in options]
+
+        valid = (T > 0) & (sig > 0) & (S > 0) & (K > 0)
+        d1  = np.where(valid,
+                       (np.log(np.where(valid, S / K, 1.0)) +
+                        (r - q + 0.5 * sig ** 2) * T) /
+                       np.where(valid, sig * np.sqrt(T), 1.0),
+                       0.0)
+        d2  = d1 - sig * np.where(valid, np.sqrt(T), 0.0)
+
+        nd1  = norm.cdf(d1);   nd2  = norm.cdf(d2)
+        nnd1 = norm.cdf(-d1);  nnd2 = norm.cdf(-d2)
+        pdf1 = norm.pdf(d1)
+
+        eq  = np.exp(-q * T);   er = np.exp(-r * T)
+
+        results: list[BSResult] = []
+        for i in range(n):
+            if not valid[i]:
+                results.append(self._zero_result(types[i]))
+                continue
+
+            s, k, t, ri, si, qi = S[i], K[i], T[i], r[i], sig[i], q[i]
+            sqt = float(np.sqrt(t))
+            if types[i] == "call":
+                price   = float(s * eq[i] * nd1[i] - k * er[i] * nd2[i])
+                delta   = float(eq[i] * nd1[i])
+                rho_    = float(k * t * er[i] * nd2[i] * 0.01)
+                theta_  = float((
+                    -s * eq[i] * pdf1[i] * si / (2.0 * sqt)
+                    - ri * k * er[i] * nd2[i]
+                    + qi * s * eq[i] * nd1[i]
+                ) / 365.0)
+            else:
+                price   = float(k * er[i] * nnd2[i] - s * eq[i] * nnd1[i])
+                delta   = float(-eq[i] * nnd1[i])
+                rho_    = float(-k * t * er[i] * nnd2[i] * 0.01)
+                theta_  = float((
+                    -s * eq[i] * pdf1[i] * si / (2.0 * sqt)
+                    + ri * k * er[i] * nnd2[i]
+                    - qi * s * eq[i] * nnd1[i]
+                ) / 365.0)
+
+            gamma_ = float(pdf1[i] * eq[i] / (s * si * sqt))
+            vega_  = float(s * eq[i] * pdf1[i] * sqt * 0.01)
+
+            results.append(BSResult(
+                price       = price,
+                greeks      = BSGreeks(delta=delta, gamma=gamma_,
+                                       vega=vega_, theta=theta_, rho=rho_),
+                option_type = types[i],
+                d1          = float(d1[i]),
+                d2          = float(d2[i]),
+            ))
+        return results
 
     # ── Internal ───────────────────────────────────────────────────────────
 

@@ -18,7 +18,10 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
+import streamlit as st
+
 from personal.cashflow import CashFlowDirection, CashFlowEngine, CashFlowEntry
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components.cash_flow_waterfall import (
     render_cash_flow_waterfall,
 )
@@ -75,7 +78,8 @@ def _list_entries_for_month(
         return []
 
 
-def _entries_to_rows(entries: list[CashFlowEntry]) -> list[dict[str, object]]:
+@st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)
+def _entries_to_rows(entries: list[CashFlowEntry]) -> list[dict[str, object]]:  # pragma: no cover
     """Converte entries in lista di dict per st.dataframe."""
     return [
         {

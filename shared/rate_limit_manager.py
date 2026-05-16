@@ -195,6 +195,54 @@ class RateLimitManager:
             daily=tracker.day_count,
         )
 
+    def acquire_sync(self, source: str) -> None:
+        """Synchronous rate-limit acquire for non-async callers (e.g. EtoroClient).
+
+        Uses time.sleep() instead of asyncio.sleep(). Does not require an event loop.
+        Functionally equivalent to acquire() for single-threaded sync HTTP clients.
+        """
+        if source not in self._trackers:
+            log.warning("rate_limiter.unknown_source", source=source)
+            return
+
+        tracker = self._trackers[source]
+        budget  = tracker.budget
+        now     = time.monotonic()
+
+        if now - tracker.day_reset_ts > _SECONDS_PER_DAY:
+            tracker.day_count    = 0
+            tracker.day_reset_ts = now
+
+        if budget.requests_per_day is not None and tracker.day_count >= budget.requests_per_day:
+            raise RateLimitExceededError(source=source, limit_type="daily")
+
+        cutoff = now - _SECONDS_PER_MINUTE
+        while tracker.minute_window and tracker.minute_window[0] < cutoff:
+            tracker.minute_window.popleft()
+
+        if len(tracker.minute_window) >= budget.requests_per_minute:
+            oldest   = tracker.minute_window[0]
+            wait_sec = _SECONDS_PER_MINUTE - (now - oldest) + 0.05
+            if wait_sec > 0:
+                log.debug("rate_limiter.throttling_sync", source=source, wait=wait_sec)
+                time.sleep(wait_sec)
+                now = time.monotonic()
+                cutoff = now - _SECONDS_PER_MINUTE
+                while tracker.minute_window and tracker.minute_window[0] < cutoff:
+                    tracker.minute_window.popleft()
+
+        elapsed = now - tracker.last_request_ts
+        if tracker.last_request_ts > 0 and elapsed < budget.min_interval_secs:
+            time.sleep(budget.min_interval_secs - elapsed)
+            now = time.monotonic()
+
+        tracker.minute_window.append(now)
+        tracker.last_request_ts = now
+        tracker.day_count      += 1
+
+        log.debug("rate_limiter.acquired_sync", source=source,
+                  rpm=len(tracker.minute_window), daily=tracker.day_count)
+
     # ─── Introspection ───────────────────────────────────────────────────
     def get_status(self, source: str) -> dict[str, object]:
         """Return current utilization for a source (for metrics / health)."""

@@ -24,6 +24,7 @@ from personal.data_entry.etoro_models import (
     parse_portfolio_response,
 )
 from shared.config.operational_config import OP_CONFIG
+from shared.rate_limit_manager import get_rate_limiter
 
 __version__ = "7.1.3"
 
@@ -204,6 +205,8 @@ class EtoroClient:
         return url
 
     def _get_json(self, path: str, *, params: dict[str, str] | None = None) -> Any:
+        # Rule 28: coordinate rate limiting via shared RateLimitManager
+        get_rate_limiter().acquire_sync("etoro")
         url = self._build_url(path, params)
         last_exc: Exception | None = None
         for attempt in range(self._config.max_retries):

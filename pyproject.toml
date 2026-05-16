@@ -85,6 +85,11 @@ prophet = "^1.1"
 # Backtesting & ottimizzazione
 vectorbt = "^0.26"
 cvxpy = "^1.5"
+optuna = "^3.6"
+
+# NLP avanzato (FinBERT, Blocco A — optional: richiede ~2GB)
+transformers = { version = "^4.40", optional = true }
+torch = { version = "^2.3", optional = true }
 
 # Grafi
 networkx = "^3.3"
@@ -110,6 +115,14 @@ plyer = "^2.1"
 weasyprint = "^62.0"
 jinja2 = "^3.1"
 openpyxl = "^3.1.5"
+
+# Algoritmi genetici (DEAP — optional: costoso, opt-in)
+deap = { version = "^1.4", optional = true }
+
+[tool.poetry.extras]
+genetic = ["deap"]
+nlp     = ["transformers", "torch"]
+full    = ["deap", "transformers", "torch"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1"

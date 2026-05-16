@@ -18,9 +18,12 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
+import streamlit as st
+
 from personal.cashflow import CashFlowEngine
 from personal.data_entry.networth_editor import net_worth_summary
 from personal.goals import Goal, GoalManager, GoalStatus
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components.goal_tracker import render_goals_list
 from presentation.ui.components.kpi_card import render_kpi_row
 from presentation.ui.layout import render_section_header
@@ -59,7 +62,8 @@ def _get_ytd_savings_rate(
     return max(0.0, (total_income - total_expense) / total_income)
 
 
-def _safe_load_top_goals(profile_id: str, max_n: int = 3) -> list[Goal]:
+@st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)
+def _safe_load_top_goals(profile_id: str, max_n: int = 3) -> list[Goal]:  # pragma: no cover
     """Carica top N obiettivi attivi del profilo. Lista vuota se DB non pronto."""
     try:
         manager = GoalManager()
