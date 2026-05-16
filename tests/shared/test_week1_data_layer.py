@@ -503,7 +503,8 @@ class TestNewFeatureFlags:
         assert is_enabled("cot_data") is False
         assert is_enabled("breadth_indicators") is False
         assert is_enabled("factor_model") is False
-        assert is_enabled("alpha_decay_monitor") is False
+        # alpha_decay_monitor abilitato in ROADMAP v5 Blocco B (QC-2)
+        assert is_enabled("alpha_decay_monitor") is True
 
     def test_vix_futures_term_structure_disabled(self):
         """vix_futures_term_structure disabilitato (richiede API dedicata)."""
