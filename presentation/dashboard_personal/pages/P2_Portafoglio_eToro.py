@@ -679,6 +679,68 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
             "Drawdown > 20% significa bear market; > 40% = crisi sistemica."
         )
 
+    _render_collar_suggestion_section(st)
+
+
+def _render_collar_suggestion_section(st_module) -> None:  # pragma: no cover -- Streamlit
+    """Mostra suggerimento collar se portfolio_beta > 1.3 (Blocco D, ROADMAP v5)."""
+    st = st_module
+    try:
+        from shared.feature_flags import is_enabled
+        if not is_enabled("options_strategy_suggestions"):
+            return
+
+        from engine.options.collar_advisor import CollarAdvisor
+        # Demo beta dal portafoglio (in produzione: calcolato da bridge)
+        portfolio_beta: float = 0.82    # valore demo — TODO: leggere da DB quando disponibile
+
+        advisor    = CollarAdvisor()
+        suggestion = advisor.evaluate(
+            portfolio_beta=portfolio_beta,
+            spot=500.0,    # SPY come proxy benchmark
+            iv=0.18,
+            t_years=0.25,
+        )
+
+        st.divider()
+        st.subheader("🛡️ Protezione Portafoglio — Collar Strategy")
+
+        if not suggestion.suggested:
+            st.success(
+                f"**Beta: {portfolio_beta:.2f}** — Rischio sistemico nella norma. "
+                f"Non e' necessaria protezione aggiuntiva (soglia: {suggestion.beta_threshold:.1f})."
+            )
+        else:
+            st.warning(
+                f"**Beta: {portfolio_beta:.2f} > {suggestion.beta_threshold:.1f}** — "
+                f"Il portafoglio e' piu' volatile del benchmark. "
+                f"Suggerita strategia **collar** per limitare il rischio di ribasso."
+            )
+            if suggestion.strategy is not None:
+                strat = suggestion.strategy
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Floor (Put Strike)",  f"{suggestion.k_put:.0f}")
+                col2.metric("Cap (Call Strike)",   f"{suggestion.k_call:.0f}")
+                col3.metric("Costo Netto (per share)",
+                            f"{strat.net_premium:+.2f}",
+                            help="Positivo = costo, Negativo = incasso")
+
+                with st.expander("📖 Come funziona il collar?", expanded=False):
+                    st.markdown(
+                        "Un **collar** combina tre posizioni:\n\n"
+                        "1. **Long Stock** — posizione lunga sul benchmark o ETF da proteggere\n"
+                        "2. **Long Put** (floor) — acquisto di una put: limita la perdita massima "
+                        f"a {suggestion.k_put:.0f}\n"
+                        "3. **Short Call** (cap) — vendita di una call: finanzia parte della put "
+                        f"ma limita il guadagno massimo a {suggestion.k_call:.0f}\n\n"
+                        "Il **costo netto** e' quasi zero per collari simmetrici "
+                        "(zero-cost collar). Ideale quando il beta e' elevato e "
+                        "si vuole ridurre l'esposizione a un mercato ribassista "
+                        "senza liquidare le posizioni."
+                    )
+    except Exception:
+        pass    # suggestions are best-effort
+
 
 def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     """Body Streamlit della pagina P2 (v7.3.0)."""

@@ -167,6 +167,7 @@ module = [
     "yfinance.*", "pandas_datareader.*", "duckdb.*",
     "apscheduler.*", "diskcache.*", "pandas.*", "pandera.*",
     "pyarrow.*", "bcrypt.*", "streamlit.*", "plotly.*",
+    "scipy.*",
 ]
 ignore_missing_imports = true
 

@@ -190,3 +190,12 @@ multi_timeframe_analysis: true         # MultiTimeframeAnalyzer D/W/M confluence
 volume_profile: true                   # VolumeProfileCalculator VPVR/POC/VAH/VAL
 cycle_analysis: true                   # CycleAnalyzer Hurst + FFT dominant cycle
 order_flow_analysis: false             # OrderFlowAnalyzer CVD (L2 data: opt-in)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Options Analytics Lean MVP (Blocco D)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco D — Core ─────────────────────────────────────────────────────
+options_analytics: false               # BS + IV + VolSurface + StrategyBuilder (off by default)
+options_live_chain: false              # Finnhub live option chain (opt-in: requires FINNHUB_API_KEY)
+options_strategy_suggestions: true    # Collar suggestion in P2 if portfolio_beta > 1.3 (always ON)
