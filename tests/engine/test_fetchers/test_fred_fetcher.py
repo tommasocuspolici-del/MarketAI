@@ -126,3 +126,65 @@ class TestFREDFetcherPipeline:
         deps = {k: v for k, v in fred_deps.items() if k != "api_key"}
         fetcher = FREDFetcher(**deps)  # type: ignore[arg-type]
         assert fetcher._api_key == "env_key_xxx"
+
+
+class TestFREDFetcherDownloadSync:
+    def test_download_sync_calls_pdr_with_dates(self, fred_deps: dict[str, object]) -> None:
+        """_download_sync formats dates correctly for pandas-datareader."""
+        fetcher = FREDFetcher(**fred_deps)  # type: ignore[arg-type]
+        from datetime import datetime, timezone
+        mock_df = _fred_raw(3)
+        with patch("pandas_datareader.data.DataReader", return_value=mock_df) as mock_pdr:
+            result = fetcher._download_sync(
+                series_id="UNRATE",
+                start=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                end=datetime(2024, 6, 1, tzinfo=timezone.utc),
+            )
+        assert result is not None
+        mock_pdr.assert_called_once()
+        kwargs = mock_pdr.call_args.kwargs
+        assert kwargs["name"] == "UNRATE"
+        assert kwargs["data_source"] == "fred"
+        assert "start" in kwargs
+        assert "end" in kwargs
+
+    def test_download_sync_without_dates(self, fred_deps: dict[str, object]) -> None:
+        """No start/end provided → no date kwargs sent to pdr."""
+        fetcher = FREDFetcher(**fred_deps)  # type: ignore[arg-type]
+        mock_df = _fred_raw(3)
+        with patch("pandas_datareader.data.DataReader", return_value=mock_df) as mock_pdr:
+            fetcher._download_sync(series_id="UNRATE", start=None, end=None)
+        kwargs = mock_pdr.call_args.kwargs
+        assert "start" not in kwargs
+        assert "end" not in kwargs
+
+    def test_download_sync_includes_api_key(self, fred_deps: dict[str, object]) -> None:
+        """api_key passed to pdr.DataReader as kwarg."""
+        fetcher = FREDFetcher(**fred_deps)  # type: ignore[arg-type]
+        mock_df = _fred_raw(3)
+        with patch("pandas_datareader.data.DataReader", return_value=mock_df) as mock_pdr:
+            fetcher._download_sync(series_id="UNRATE", start=None, end=None)
+        kwargs = mock_pdr.call_args.kwargs
+        assert kwargs.get("api_key") == "test_key_fake"
+
+
+class TestFREDFetcherNormalizationEdgeCases:
+    def test_normalize_already_tz_aware(self) -> None:
+        """Frame con timestamp già UTC-aware viene mantenuto come UTC."""
+        idx = pd.date_range("2024-01-01", periods=3, freq="MS", tz="US/Eastern")
+        raw = pd.DataFrame({"UNRATE": [3.5, 3.6, 3.7]}, index=idx)
+        out = FREDFetcher._normalize_fred_frame(raw, "UNRATE")
+        # Should be converted to UTC
+        assert str(out["ts"].dt.tz) == "UTC"
+
+    def test_normalize_raises_on_single_col_frame(self) -> None:
+        """Frame con solo timestamp e nessuna colonna valore → FetchError."""
+        # Pandas-datareader returns df with index as date and 1 value col,
+        # but if reset_index gives only one column, that's an unexpected frame
+        df = pd.DataFrame({"DATE": pd.date_range("2024-01-01", periods=3)})
+        df.set_index("DATE", inplace=True)
+        # df has no value columns after reset → triggers FetchError path
+        # But _normalize_fred_frame uses reset_index first; with no value cols
+        # the "DATE" col is the only one and there's no value_col_candidate
+        with pytest.raises(FetchError):
+            FREDFetcher._normalize_fred_frame(df, "UNRATE")

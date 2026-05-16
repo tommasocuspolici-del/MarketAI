@@ -261,3 +261,205 @@ class TestValuation:
         df = pd.DataFrame({"pe_ttm": [28.5]})  # mancano ticker, computed_at
         with pytest.raises(ValueError, match="missing required columns"):
             in_memory_repo.write_valuation(df)
+
+
+# ─── Test: read_balance_sheet + read_latest_edgar (missing coverage) ──────────
+
+class TestReadBalanceSheet:
+    """Tests per read_balance_sheet."""
+
+    def test_read_after_write(self, in_memory_repo) -> None:
+        in_memory_repo.write_edgar(_make_edgar_df())
+        df = in_memory_repo.read_balance_sheet("AAPL")
+        assert not df.empty
+        assert df.iloc[0]["total_assets"] == pytest.approx(364_840.0)
+
+    def test_returns_empty_for_unknown(self, in_memory_repo) -> None:
+        df = in_memory_repo.read_balance_sheet("UNKNOWN_TICKER")
+        assert df.empty
+
+    def test_respects_limit(self, in_memory_repo) -> None:
+        q1 = _make_edgar_df(report_date=[pd.Timestamp("2024-03-31", tz="UTC")], period=["Q1"])
+        q2 = _make_edgar_df(report_date=[pd.Timestamp("2024-06-30", tz="UTC")], period=["Q2"])
+        in_memory_repo.write_edgar(q1)
+        in_memory_repo.write_edgar(q2)
+        result = in_memory_repo.read_balance_sheet("AAPL", limit=1)
+        assert len(result) == 1
+
+
+class TestReadLatestEdgar:
+    """Tests per read_latest_edgar."""
+
+    def test_returns_dict_after_write(self, in_memory_repo) -> None:
+        in_memory_repo.write_edgar(_make_edgar_df())
+        result = in_memory_repo.read_latest_edgar("AAPL")
+        assert isinstance(result, dict)
+        assert "revenue" in result
+
+    def test_returns_none_when_no_data(self, in_memory_repo) -> None:
+        result = in_memory_repo.read_latest_edgar("UNKNOWN")
+        assert result is None
+
+    def test_returns_most_recent(self, in_memory_repo) -> None:
+        q1 = _make_edgar_df(report_date=[pd.Timestamp("2024-03-31", tz="UTC")], period=["Q1"])
+        q2 = _make_edgar_df(report_date=[pd.Timestamp("2024-06-30", tz="UTC")], period=["Q2"])
+        in_memory_repo.write_edgar(q1)
+        in_memory_repo.write_edgar(q2)
+        result = in_memory_repo.read_latest_edgar("AAPL")
+        assert result["period"] == "Q2"
+
+
+# ─── Test: error paths (DatabaseError) ────────────────────────────────────────
+
+class TestErrorPaths:
+    def test_write_edgar_database_error_propagated(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+        from shared.exceptions import DatabaseError
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            conn = MagicMock()
+            conn.register = MagicMock()
+            conn.execute = MagicMock(side_effect=RuntimeError("DB fail"))
+            yield conn
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        with pytest.raises(DatabaseError):
+            repo.write_edgar(_make_edgar_df())
+
+    def test_write_valuation_database_error_propagated(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+        from shared.exceptions import DatabaseError
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            conn = MagicMock()
+            conn.register = MagicMock()
+            conn.execute = MagicMock(side_effect=RuntimeError("DB fail"))
+            yield conn
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        with pytest.raises(DatabaseError):
+            repo.write_valuation(_make_valuation_df())
+
+    def test_read_income_db_error_returns_empty(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            raise RuntimeError("query fail")
+            yield  # noqa
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        df = repo.read_income("AAPL")
+        assert df.empty
+
+    def test_read_balance_sheet_db_error_returns_empty(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            raise RuntimeError("query fail")
+            yield  # noqa
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        df = repo.read_balance_sheet("AAPL")
+        assert df.empty
+
+    def test_read_latest_edgar_db_error_returns_none(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            raise RuntimeError("fail")
+            yield  # noqa
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        assert repo.read_latest_edgar("AAPL") is None
+
+    def test_read_valuation_db_error_returns_empty(self) -> None:
+        from contextlib import contextmanager
+        from unittest.mock import MagicMock
+
+        bad_client = MagicMock()
+
+        @contextmanager
+        def _bad_tx():
+            raise RuntimeError("fail")
+            yield  # noqa
+
+        bad_client.transaction = _bad_tx
+        repo = FundamentalsRepository(client=bad_client)
+        df = repo.read_valuation("AAPL")
+        assert df.empty
+
+
+class TestPreparedFiltersInvalidRows:
+    def test_edgar_drops_rows_with_missing_keys(self, in_memory_repo) -> None:
+        df = _make_edgar_df(
+            ticker=["AAPL", None],  # type: ignore[list-item]
+            report_date=[pd.Timestamp("2024-12-31", tz="UTC"), pd.Timestamp("2024-12-31", tz="UTC")],
+            period=["FY", "FY"],
+            revenue=[100.0, 200.0],
+            gross_profit=[50.0, 100.0],
+            ebit=[40.0, 80.0],
+            net_income=[30.0, 60.0],
+            eps_diluted=[1.0, 2.0],
+            total_assets=[400.0, 800.0],
+            total_debt=[100.0, 200.0],
+            equity=[200.0, 400.0],
+            fcf=[80.0, 160.0],
+            source=["edgar_xbrl", "edgar_xbrl"],
+        )
+        n = in_memory_repo.write_edgar(df)
+        # Only 1 row written; None ticker row dropped
+        assert n == 1
+
+
+class TestSingleton:
+    def test_get_returns_instance(self) -> None:
+        from unittest.mock import patch
+        from shared.db.fundamentals_repo import get_fundamentals_repository
+        with patch("shared.db.fundamentals_repo.get_duckdb_client"):
+            repo = get_fundamentals_repository()
+            assert isinstance(repo, FundamentalsRepository)
+
+    def test_singleton_same_instance(self) -> None:
+        from unittest.mock import patch
+        from shared.db.fundamentals_repo import get_fundamentals_repository
+        with patch("shared.db.fundamentals_repo.get_duckdb_client"):
+            r1 = get_fundamentals_repository()
+            r2 = get_fundamentals_repository()
+            assert r1 is r2
+
+    def test_reset_clears_singleton(self) -> None:
+        from unittest.mock import patch
+        from shared.db.fundamentals_repo import (
+            get_fundamentals_repository,
+            reset_fundamentals_repository,
+        )
+        with patch("shared.db.fundamentals_repo.get_duckdb_client"):
+            r1 = get_fundamentals_repository()
+            reset_fundamentals_repository()
+            r2 = get_fundamentals_repository()
+            assert r1 is not r2
