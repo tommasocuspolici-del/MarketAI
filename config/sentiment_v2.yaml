@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# SENTIMENT ENGINE v2 CONFIG — v10.0.0 (ROADMAP v5 Blocco A)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# FinBERT model config
+finbert:
+  model_id:    "ProsusAI/finbert"
+  batch_size:  32
+  max_length:  512
+
+# Source deduplicator
+deduplicator:
+  tfidf_max_features: 500
+  dbscan_eps:         0.25
+  dbscan_min_samples: 2
+
+# Rule 26: minimum unique events for a reliable composite
+min_unique_events: 3
+
+# Source credibility weights (updated weekly via IC tracking)
+source_credibility:
+  reuters:       0.90
+  bloomberg:     0.88
+  wsj:           0.85
+  ft:            0.82
+  cnbc:          0.75
+  finnhub:       0.72
+  marketwatch:   0.68
+  seekingalpha:  0.65
+  reddit:        0.40
+  twitter:       0.35
+  unknown:       0.50
+
+# Sentiment velocity
+velocity:
+  stable_threshold: 0.05    # |velocity_1d| below = "stable" regime
+
+# Scheduler
+scheduler:
+  refresh_interval_minutes: 30
+  run_on_days: [0, 1, 2, 3, 4]    # Mon-Fri

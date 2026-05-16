@@ -156,7 +156,8 @@ composite_signal_v3: false             # CompositeSignalAggregatorV3 (off until 
 alpha_decay_monitor: true              # AlphaDecayMonitor enabled (was false in v4)
 consensus_validator: true              # ConsensusValidator before BUY/SELL alerts
 regime_aware_weighting: true           # Regime-adaptive weights from regime_weights.yaml
-sentiment_finbert: false               # FinBERT sentiment scorer (enabled in Blocco A)
+sentiment_finbert: true                # FinBERT scorer DEFAULT ON (Blocco A QC — +25-30% accuracy vs VADER)
+                                       # Set false if RAM < 4GB or transformers not installed (auto-falls back to VADER)
 
 # ══════════════════════════════════════════════════════════════════════════
 # ROADMAP v5.0 — Custom Indicators Framework (Blocco C)
