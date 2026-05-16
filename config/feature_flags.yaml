@@ -141,3 +141,19 @@ correlation_signal_composite: true # Segnale correlazioni → Composite Signal v
 # ─── Blocco 2: Composite Signal v2 ───────────────────────────────────────
 composite_signal_v2: true          # Aggregatore 7 componenti (labour/valuation/surprise)
 surprise_consensus_scraping: false # Scraping Investing.com (default OFF: fragile)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Signal Bus + QC Layer (Blocco B)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco B — Signal Bus (Lean) ────────────────────────────────────────
+signal_bus_enabled: true               # SignalBus pub/sub in-process
+signal_persistence_duckdb: false       # Persist signal_snapshots to DuckDB (costly)
+signal_dag_enabled: false              # Signal dependency DAG (advanced — off by default)
+composite_signal_v3: false             # CompositeSignalAggregatorV3 (off until C ready)
+
+# ─── QC Layer ─────────────────────────────────────────────────────────────
+alpha_decay_monitor: true              # AlphaDecayMonitor enabled (was false in v4)
+consensus_validator: true              # ConsensusValidator before BUY/SELL alerts
+regime_aware_weighting: true           # Regime-adaptive weights from regime_weights.yaml
+sentiment_finbert: false               # FinBERT sentiment scorer (enabled in Blocco A)

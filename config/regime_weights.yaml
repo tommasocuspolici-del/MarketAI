@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# REGIME SIGNAL WEIGHTS — v10.0.0 (QC-4)
+# ═══════════════════════════════════════════════════════════════════════════
+# Used by CompositeSignalAggregatorV3. All weights per regime must sum to 1.0.
+# Edited here — NEVER hardcode in Python (Rule 7).
+#
+# Regimes: bull | bear | stress | transition
+# Components: technical | macro | labour | sentiment | valuation | surprise | volatility
+# ═══════════════════════════════════════════════════════════════════════════
+
+regime_signal_weights:
+
+  bull:
+    technical:  0.20     # trend-following reliable in bull
+    macro:      0.15
+    labour:     0.10
+    sentiment:  0.15
+    valuation:  0.15
+    surprise:   0.10
+    volatility: 0.15
+
+  bear:
+    technical:  0.10     # less reliable in bear — macro dominates
+    macro:      0.25
+    labour:     0.20
+    sentiment:  0.05     # contrarian in bear, lower weight
+    valuation:  0.20
+    surprise:   0.10
+    volatility: 0.10
+
+  stress:
+    technical:  0.05
+    macro:      0.20
+    labour:     0.15
+    sentiment:  0.05     # noise increases in stress
+    valuation:  0.15
+    surprise:   0.05
+    volatility: 0.35     # volatility dominates in stress
+
+  transition:            # base weights (used when regime uncertain)
+    technical:  0.15
+    macro:      0.20
+    labour:     0.15
+    sentiment:  0.10
+    valuation:  0.15
+    surprise:   0.10
+    volatility: 0.15

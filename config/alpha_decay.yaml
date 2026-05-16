@@ -1,0 +1,24 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ALPHA DECAY MONITOR CONFIG — v10.0.0 (QC-2)
+# ═══════════════════════════════════════════════════════════════════════════
+# Thresholds for IC-based signal quality monitoring.
+# Edited here — NEVER hardcode in Python (Rule 7).
+# ═══════════════════════════════════════════════════════════════════════════
+
+# IC (Spearman rank correlation signal vs forward return) thresholds
+ic_min_threshold: 0.02      # IC below → quality_flag = "low_ic", weight drastically reduced
+ic_soft_warning:  0.05      # IC below → log warning but don't reduce weight yet
+
+# Rolling window for IC estimation (trading days)
+default_lookback_days: 126   # ~6 months
+
+# Minimum observations before IC is computed (avoids small-sample noise)
+min_observations: 30
+
+# Weight multipliers applied by CompositeSignalAggregatorV3
+weight_full:     1.0         # IC >= ic_soft_warning
+weight_low_ic:   0.5         # IC in [ic_min, ic_soft_warning)
+weight_degraded: 0.1         # IC < ic_min_threshold
+
+# Forward return horizon for IC tracking (trading days)
+forward_return_horizon_days: 5
