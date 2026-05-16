@@ -157,3 +157,14 @@ alpha_decay_monitor: true              # AlphaDecayMonitor enabled (was false in
 consensus_validator: true              # ConsensusValidator before BUY/SELL alerts
 regime_aware_weighting: true           # Regime-adaptive weights from regime_weights.yaml
 sentiment_finbert: false               # FinBERT sentiment scorer (enabled in Blocco A)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP v5.0 — Custom Indicators Framework (Blocco C)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Blocco C — Core ─────────────────────────────────────────────────────
+custom_indicators_enabled: true        # CustomIndicatorRegistry + pre-built library
+custom_indicator_dsl: true             # DSL expression evaluator (sandboxed)
+custom_indicator_optuna: false         # Optuna-based auto-calibration (heavy — off)
+custom_indicator_scheduler: true       # Refresh job every 30 min on business days
+composite_signal_v3: true              # CompositeSignalAggregatorV3 now active (Blocco C)

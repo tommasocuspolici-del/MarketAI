@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CUSTOM INDICATORS — v10.0.0 (ROADMAP v5 Blocco C)
+# ═══════════════════════════════════════════════════════════════════════════
+# 10 indicators: 6 classic pre-built + 4 quality-oriented (QC)
+# Edit here — NEVER hardcode in Python (Rule 7).
+# ═══════════════════════════════════════════════════════════════════════════
+
+indicators:
+
+  # ── PRE-BUILT LIBRARY #1-6 ───────────────────────────────────────────────
+
+  - id: "personal_risk_budget"
+    name: "Budget Rischio Personale"
+    library_class: "PersonalRiskBudgetIndicator"
+    output_type: "float"
+    params: { max_var_pct: 0.15, lookback_days: 252 }
+    active: true
+
+  - id: "portfolio_momentum"
+    name: "Momentum Portafoglio"
+    library_class: "PortfolioMomentumIndicator"
+    output_type: "float"
+    params: { window_days: 63 }
+    active: true
+
+  - id: "macro_alignment_score"
+    name: "Allineamento Macro"
+    library_class: "MacroAlignmentScore"
+    output_type: "float"
+    params: { macro_weight: 0.50, yield_weight: 0.30, credit_weight: 0.20 }
+    active: true
+
+  - id: "entry_window"
+    name: "Finestra di Ingresso"
+    library_class: "EntryWindowIndicator"
+    output_type: "float"
+    params:
+      macro_threshold:  0.0
+      sentiment_max:    0.70
+      rsi_weekly_max:   55.0
+      vix_min:          16.0
+      vix_max:          32.0
+      min_score:        0.65
+    active: true
+
+  - id: "stress_exposure"
+    name: "Esposizione allo Stress"
+    library_class: "StressExposureIndicator"
+    output_type: "float"
+    params:
+      stress_weight_gfc:    0.25
+      stress_weight_covid:  0.35
+      stress_weight_rate:   0.25
+      stress_weight_custom: 0.15
+    active: true
+
+  - id: "liquidity_reserve"
+    name: "Riserva Liquidità"
+    library_class: "LiquidityReserveSignal"
+    output_type: "float"
+    params: { min_months: 3.0, target_months: 6.0 }
+    active: true
+
+  # ── PRE-BUILT LIBRARY #7-10 (QUALITY-ORIENTED) ───────────────────────────
+
+  - id: "signal_confidence_tracker"
+    name: "Qualità Sistema Segnali"
+    description: >
+      Monitora l'IC rolling di tutti i segnali principali. Output basso
+      significa che i segnali sono meno affidabili in questo momento.
+    library_class: "SignalConfidenceTracker"
+    output_type: "float"
+    params: {}
+    active: true
+
+  - id: "regime_signal_filter"
+    name: "Filtro Segnali per Regime"
+    description: >
+      Composite pesato per IC: usa solo segnali che hanno dimostrato
+      predittività nel regime corrente (bull/bear/stress).
+    library_class: "RegimeSignalFilter"
+    output_type: "float"
+    params: { ic_regime_threshold: 0.03 }
+    active: true
+
+  - id: "consensus_signal_validator"
+    name: "Validatore Consenso Multi-Fonte"
+    description: >
+      Emette segnale solo se almeno 3 segnali indipendenti concordano.
+      Output = 0 significa assenza di consenso, non segnale neutro.
+    library_class: "ConsensusSignalValidator"
+    output_type: "float"
+    params: { min_agreeing: 3, direction_threshold: 0.15 }
+    active: true
+
+  - id: "volatility_adjusted_signal"
+    name: "Segnale Regolato per Volatilità"
+    description: >
+      Attenua il composite in alta volatilità (VIX > 25) per ridurre
+      i falsi positivi tipici dei picchi di volatilità.
+    library_class: "VolatilityAdjustedSignal"
+    output_type: "float"
+    params: {}
+    active: true
+
+  # ── DSL INDICATORS (user-customisable templates) ──────────────────────────
+
+  - id: "cash_deployment_signal"
+    name: "Segnale Impiego Liquidità"
+    description: >
+      Quando impiegare la liquidità: entry window aperta + budget disponibile
+      + consenso raggiunto + qualità segnali buona.
+    expression: |
+      signal("custom.entry_window") > 0.3 and
+      signal("custom.personal_risk_budget") > 0.2 and
+      signal("custom.consensus_signal_validator") > 0.15 and
+      signal("custom.signal_confidence_tracker") > 0.5
+    output_type: "boolean"
+    active: true
