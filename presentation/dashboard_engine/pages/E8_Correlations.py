@@ -23,20 +23,72 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.0"
+__version__ = "7.2.0"
 
 __all__ = ["body_correlations", "build_mock_correlation_matrix"]
 
+# Mapping asset label → ticker yfinance
+_ASSET_TICKERS: dict[str, str] = {
+    "SPX":   "^GSPC",
+    "NDX":   "^NDX",
+    "Gold":  "GC=F",
+    "BTC":   "BTC-USD",
+    "Bonds": "TLT",      # iShares 20+ Year Treasury Bond ETF
+    "USD":   "DX-Y.NYB", # DXY Index
+}
+
 
 def build_mock_correlation_matrix() -> pd.DataFrame:
-    """Mock correlation matrix tra 6 asset class (riproducibile)."""
+    """Fallback: mock correlation matrix tra 6 asset class (riproducibile)."""
     rng = np.random.default_rng(11)
-    assets = ["SPX", "NDX", "Gold", "BTC", "Bonds", "USD"]
+    assets = list(_ASSET_TICKERS.keys())
     n = len(assets)
     raw = rng.uniform(-0.5, 0.9, (n, n))
     matrix = (raw + raw.T) / 2
     np.fill_diagonal(matrix, 1.0)
     return pd.DataFrame(matrix, index=assets, columns=assets)
+
+
+def _fetch_live_correlation_matrix(window_days: int = 90) -> tuple[pd.DataFrame, bool]:
+    """Calcola matrice correlazione reale su rendimenti daily da yfinance.
+
+    Returns:
+        (matrix, is_live) — is_live=False indica fallback mock.
+    """
+    try:
+        import yfinance as yf
+        raw = yf.download(
+            list(_ASSET_TICKERS.values()),
+            period=f"{window_days + 10}d",
+            interval="1d",
+            progress=False,
+            auto_adjust=True,
+            threads=False,
+        )
+        if raw is None or raw.empty:
+            return build_mock_correlation_matrix(), False
+
+        closes = pd.DataFrame()
+        for name, ticker in _ASSET_TICKERS.items():
+            try:
+                col = raw["Close"][ticker] if isinstance(raw.columns, pd.MultiIndex) else raw["Close"]
+                closes[name] = col
+            except (KeyError, TypeError):
+                pass
+
+        if len(closes.columns) < 2:
+            return build_mock_correlation_matrix(), False
+
+        returns = closes.pct_change().dropna(how="all").tail(window_days)
+        if len(returns) < 10:
+            return build_mock_correlation_matrix(), False
+
+        corr = returns.corr().fillna(0.0)
+        np.fill_diagonal(corr.values, 1.0)
+        return corr, True
+
+    except Exception:
+        return build_mock_correlation_matrix(), False
 
 
 # Spiegazioni narrative per pair "tipici" — quando una correlazione e' alta o
@@ -94,12 +146,18 @@ def body_correlations(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
             st.cache_data.clear()
             st.rerun()
 
-    st.warning(
-        "⚠️ **DATI DEMO** — la matrice di correlazione è simulata con valori pseudo-casuali "
-        "(seed fisso, non dati di mercato reali). Collegare dati di prezzo live per correlazioni reali."
-    )
+    window = st.selectbox("Finestra (giorni)", [30, 90, 252], index=1, key="e8_window")
 
-    matrix = build_mock_correlation_matrix()
+    with st.spinner("Caricamento dati di prezzo da yfinance..."):
+        matrix, is_live = _fetch_live_correlation_matrix(window_days=int(window))
+
+    if is_live:
+        st.success(f"✅ Correlazioni calcolate su rendimenti reali ({window}gg · fonte: yfinance)")
+    else:
+        st.warning(
+            "⚠️ **DATI DEMO** — yfinance non disponibile o dati insufficienti. "
+            "La matrice mostrata è simulata (seed fisso)."
+        )
 
     render_section_header(
         "🕸️ Correlation Network",
@@ -172,10 +230,9 @@ def body_correlations(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
 
     st.divider()
     render_section_header("📊 Rolling Correlations")
-    window = st.selectbox("Finestra (giorni)", [30, 90, 252], index=1)
     st.caption(
-        f"DCC-GARCH conditional correlations su finestra mobile di {window} "
-        f"giorni (modello di Engle, 2002 — implementazione lite via EWMA)."
+        f"Correlazioni di Pearson calcolate su rendimenti daily — finestra {window}gg. "
+        "Per correlazioni condizionali alla volatilità usa DCC-GARCH (Engle 2002)."
     )
 
 

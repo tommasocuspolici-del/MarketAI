@@ -693,6 +693,12 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
         "Ogni metrica ha una spiegazione dettagliata: clicca su 'ⓘ Cos'è?'.",
     )
 
+    st.warning(
+        "⚠️ **DATI DEMO** — le metriche di performance (TWR, Sharpe, VaR, ecc.) richiedono "
+        "lo storico NAV giornaliero del portafoglio. Importa le posizioni da eToro e aggiungi "
+        "lo storico dei prezzi per attivare i calcoli reali."
+    )
+
     perf, risk = _kpi_specs_demo()
 
     st.markdown("**Performance** — quanto rende il portafoglio")

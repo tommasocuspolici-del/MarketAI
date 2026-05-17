@@ -155,6 +155,7 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
 
     with col_sentiment:
         render_section_header("📡 Sentiment Composite — 8 fonti")
+        st.caption("⚠️ DATI DEMO — connetti API esterne per scores live (Finnhub, AAII, CNN F&G)")
         sentiment_scores = {
             "CNN F&G": 0.45,
             "AAII": 0.25,
