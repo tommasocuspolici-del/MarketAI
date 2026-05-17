@@ -155,17 +155,22 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
 
     with col_sentiment:
         render_section_header("📡 Sentiment Composite — 8 fonti")
-        st.caption("⚠️ DATI DEMO — connetti API esterne per scores live (Finnhub, AAII, CNN F&G)")
-        sentiment_scores = {
-            "CNN F&G": 0.45,
-            "AAII": 0.25,
-            "Crypto F&G": -0.15,
-            "Put/Call": 0.10,
-            "COT": 0.30,
-            "Insider": -0.05,
-            "Short Int": 0.15,
-            "Finnhub": 0.40,
-        }
+
+        @st.cache_data(ttl=900)
+        def _cached_e1_sentiment() -> tuple[dict[str, float], list[str]]:
+            from engine.analytics.sentiment.live_sentiment_service import (
+                _DEMO_SCORES,
+                get_live_sentiment_service,
+            )
+            svc = get_live_sentiment_service()
+            result = svc.fetch_all()
+            return result.to_display_dict(fallbacks=_DEMO_SCORES), result.live_sources
+
+        sentiment_scores, live_srcs = _cached_e1_sentiment()
+        if live_srcs:
+            st.caption(f"✅ Live: {', '.join(live_srcs)} · resto DEMO")
+        else:
+            st.caption("⚠️ DATI DEMO — connetti API esterne per scores live (Finnhub, AAII, CNN F&G)")
         try:
             render_sentiment_radar(tokens, sentiment_scores)
         except (ImportError, AttributeError, TypeError):
@@ -195,11 +200,56 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
             )
 
     render_section_header("Top Risk Factors")
-    st.info(
-        "1. Yield curve flattening (10Y-2Y at +18bp)  \n"
-        "2. Inflation surprise risk (next CPI)  \n"
-        "3. Geopolitical tensions"
-    )
+
+    @st.cache_data(ttl=3600)
+    def _cached_risk_factors() -> list[str]:
+        from engine.market_data.fred_simple_client import FredSimpleClient
+        import yfinance as yf
+
+        factors: list[str] = []
+        try:
+            fred = FredSimpleClient()
+            if fred.has_api_key:
+                t10 = fred.fetch_latest("DGS10")
+                t2  = fred.fetch_latest("DGS2")
+                if t10 is not None and t2 is not None:
+                    spread_bp = round((t10 - t2) * 100, 0)
+                    label = "invertita" if spread_bp < 0 else f"+{int(spread_bp)}bp"
+                    factors.append(f"Yield curve 10Y-2Y: {label} — {'⚠️ inversione attiva' if spread_bp < 0 else 'normale'}")
+        except Exception:
+            pass
+        try:
+            vix_hist = yf.Ticker("^VIX").history(period="2d")
+            if not vix_hist.empty:
+                vix_now = float(vix_hist["Close"].iloc[-1])
+                if vix_now > 30:
+                    factors.append(f"VIX elevato: {vix_now:.1f} — stress di mercato (soglia critica 30)")
+                elif vix_now > 20:
+                    factors.append(f"VIX in rialzo: {vix_now:.1f} — volatilità moderata")
+                else:
+                    factors.append(f"VIX basso: {vix_now:.1f} — mercato tranquillo")
+        except Exception:
+            pass
+        try:
+            fred = FredSimpleClient()
+            if fred.has_api_key:
+                cpi_df = fred.fetch_series("CPIAUCSL", limit=13)
+                if cpi_df is not None and len(cpi_df) >= 13:
+                    latest = float(cpi_df["value"].iloc[-1])
+                    year_ago = float(cpi_df["value"].iloc[-13])
+                    cpi_yoy = (latest / year_ago - 1) * 100
+                    factors.append(f"CPI YoY: {cpi_yoy:.1f}% — {'⚠️ sopra target Fed 2%' if cpi_yoy > 2.5 else 'vicino al target'}")
+        except Exception:
+            pass
+        if not factors:
+            factors = [
+                "Dati risk factor non disponibili — configura FRED_API_KEY in .env",
+            ]
+        return factors
+
+    risk_factors = _cached_risk_factors()
+    for i, factor in enumerate(risk_factors, 1):
+        st.info(f"{i}. {factor}")
 
 
 if __name__ == "__main__":  # pragma: no cover

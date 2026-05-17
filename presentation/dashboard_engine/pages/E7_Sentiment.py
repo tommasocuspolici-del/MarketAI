@@ -1,13 +1,17 @@
 # ruff: noqa: N999
-"""E7 — Sentiment (v7.1).
+"""E7 — Sentiment (v8.0).
 
-Risolve "Sentiment Radar non spiegato" della v6: ogni delle 8 fonti
-ha la sua spiegazione integrata + interpretazione del pattern composito.
+v8.0: Live sentiment da API gratuite (CNN F&G, Crypto F&G, CBOE Put/Call, Finnhub).
+Fonti senza API gratuita (AAII, COT, Insider, Short Int) mostrano demo con banner.
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from engine.analytics.sentiment.live_sentiment_service import (
+    _DEMO_SCORES,
+    get_live_sentiment_service,
+)
 from shared.glossary import get_glossary
 from presentation.ui.components.sentiment_radar import render_sentiment_radar
 from presentation.ui.layout import render_section_header
@@ -16,17 +20,12 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.0"
+__version__ = "8.0.0"
 
 __all__ = ["body_sentiment"]
 
 
 def _classify_pattern(scores: dict[str, float]) -> tuple[str, str]:
-    """Classifica il pattern composito (avg, dispersion).
-
-    Returns:
-        (titolo, descrizione) della narrativa interpretativa.
-    """
     if not scores:
         return ("Nessun dato", "Sentiment non disponibile.")
     avg = sum(scores.values()) / len(scores)
@@ -64,8 +63,6 @@ def _classify_pattern(scores: dict[str, float]) -> tuple[str, str]:
 
 
 def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
-    # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
     glossary = get_glossary()
@@ -81,35 +78,44 @@ def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
             st.cache_data.clear()
             st.rerun()
 
-    st.warning(
-        "⚠️ **DATI DEMO** — i valori mostrati sono placeholder statici. "
-        "Collega le API (Finnhub, AAII, CNN Fear & Greed) per scores live."
-    )
+    @st.cache_data(ttl=900)
+    def _cached_sentiment() -> tuple[dict[str, float], list[str], list[str], dict[str, str]]:
+        svc = get_live_sentiment_service()
+        result = svc.fetch_all()
+        display = result.to_display_dict(fallbacks=_DEMO_SCORES)
+        return display, result.live_sources, result.demo_sources, result.errors
 
-    scores = {
-        "CNN F&G": 0.45,
-        "AAII": 0.25,
-        "Crypto F&G": -0.15,
-        "Put/Call": 0.10,
-        "COT": 0.30,
-        "Insider": -0.05,
-        "Short Int": 0.15,
-        "Finnhub": 0.40,
-    }
+    scores, live_srcs, demo_srcs, fetch_errors = _cached_sentiment()
+
+    # Status banner
+    if live_srcs:
+        st.success(
+            f"✅ **{len(live_srcs)} fonti live**: {', '.join(live_srcs)}"
+            + (f" · ⚠️ **{len(demo_srcs)} demo**: {', '.join(demo_srcs)}" if demo_srcs else "")
+        )
+    else:
+        st.warning(
+            "⚠️ **DATI DEMO** — tutte le fonti sono offline o non configurate. "
+            "Aggiungi `FINNHUB_API_KEY` in `.env` per sbloccare Finnhub. "
+            "CNN F&G e Crypto F&G richiedono connessione internet."
+        )
+
+    if fetch_errors:
+        with st.expander(f"🔍 Dettaglio errori fetch ({len(fetch_errors)})", expanded=False):
+            for src, err in fetch_errors.items():
+                st.write(f"- **{src}**: {err}")
 
     try:
         render_sentiment_radar(tokens, scores)
     except (ImportError, AttributeError, TypeError):
         st.info("Sentiment radar non disponibile.")
 
-    # Interpretazione narrativa del pattern complessivo
     pattern_title, pattern_desc = _classify_pattern(scores)
     st.divider()
     render_section_header("🧭 Cosa significa questo pattern?")
     st.markdown(f"### {pattern_title}")
     st.info(pattern_desc)
 
-    # Decomposizione: per ogni sorgente, valore + spiegazione completa
     st.divider()
     render_section_header(
         "🔍 Le 8 fonti in dettaglio",
@@ -117,15 +123,16 @@ def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
     )
     for source, score in scores.items():
         entry = glossary.get_or_stub(source)
-        # Etichetta del valore
+        is_live = source in live_srcs
         if score > 0.3:
             badge = "🟢 BULLISH"
         elif score < -0.3:
             badge = "🔴 BEARISH"
         else:
             badge = "⚪ NEUTRO"
+        live_label = "🔴 DEMO" if not is_live else "🟢 LIVE"
         with st.expander(
-            f"**{entry.term}** · {entry.full_name} → score {score:+.2f} · {badge}",
+            f"**{entry.term}** · {entry.full_name} → score {score:+.2f} · {badge} · {live_label}",
             expanded=False,
         ):
             st.markdown(f"**Cosa rappresenta:** {entry.description}")
@@ -133,6 +140,9 @@ def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
                 st.markdown(f"**Come si legge:** {entry.interpretation}")
             if entry.typical_range:
                 st.markdown(f"**Range tipico:** {entry.typical_range}")
+            if not is_live:
+                error_msg = fetch_errors.get(source, "API non disponibile gratuitamente")
+                st.caption(f"⚠️ Demo — {error_msg}")
 
     st.divider()
     render_section_header("⚡ Contrarian Signals")

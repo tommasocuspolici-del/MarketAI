@@ -74,7 +74,7 @@ __all__ = ["body_portafoglio_etoro"]
 
 
 def _kpi_specs_demo() -> tuple[list[MetricSpec], list[MetricSpec]]:
-    """Costruisce la riga di metriche performance e risk con valori demo."""
+    """Metriche demo — usate come fallback se i dati reali non sono disponibili."""
     perf = [
         MetricSpec(term="TWR", value=0.0940, format_spec=".2%", delta=0.094, delta_pct=False),
         MetricSpec(term="MWR", value=0.0870, format_spec=".2%", delta=0.087, delta_pct=False),
@@ -88,6 +88,114 @@ def _kpi_specs_demo() -> tuple[list[MetricSpec], list[MetricSpec]]:
         MetricSpec(term="Max DD", value=-0.124, format_spec=".2%"),
     ]
     return perf, risk
+
+
+def _compute_real_portfolio_metrics() -> tuple[list[MetricSpec], list[MetricSpec], bool]:
+    """Calcola metriche reali dal portafoglio posizioni + yfinance.
+
+    Returns:
+        (perf_specs, risk_specs, is_live) — is_live=False se < 3 posizioni.
+    """
+    import numpy as np
+    import yfinance as yf
+    from personal.data_entry.position_form import list_positions
+
+    positions = list_positions()
+    if len(positions) < 3:
+        perf, risk = _kpi_specs_demo()
+        return perf, risk, False
+
+    # Fetch 1y history for each ticker
+    tickers_weights: dict[str, float] = {}
+    for pos in positions:
+        t = pos.ticker
+        if t.startswith("#"):
+            continue
+        cost_basis = pos.quantity * pos.avg_cost
+        tickers_weights[t] = tickers_weights.get(t, 0.0) + cost_basis
+
+    if not tickers_weights:
+        perf, risk = _kpi_specs_demo()
+        return perf, risk, False
+
+    total_cost = sum(tickers_weights.values())
+    ticker_list = list(tickers_weights.keys())
+    try:
+        raw = yf.download(ticker_list, period="1y", auto_adjust=True, progress=False)
+        if raw.empty:
+            perf, risk = _kpi_specs_demo()
+            return perf, risk, False
+
+        closes = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw[["Close"]]
+        if isinstance(closes, pd.Series):
+            closes = closes.to_frame(name=ticker_list[0])
+
+        # Build weighted portfolio daily returns
+        port_returns = pd.Series(0.0, index=closes.index[1:])
+        for t in ticker_list:
+            if t not in closes.columns:
+                continue
+            w = tickers_weights[t] / total_cost
+            r = closes[t].pct_change().dropna()
+            common = port_returns.index.intersection(r.index)
+            port_returns.loc[common] += w * r.loc[common]
+
+        port_returns = port_returns.dropna()
+        if len(port_returns) < 50:
+            perf, risk = _kpi_specs_demo()
+            return perf, risk, False
+
+        # --- Performance metrics ---
+        total_ret = float((1 + port_returns).prod() - 1)
+        ann_ret = float((1 + total_ret) ** (252 / len(port_returns)) - 1)
+        ann_vol = float(port_returns.std() * np.sqrt(252))
+        sharpe = ann_ret / ann_vol if ann_vol > 0 else 0.0
+
+        # Beta vs SPY
+        try:
+            spy_raw = yf.download("SPY", period="1y", auto_adjust=True, progress=False)
+            spy_ret = spy_raw["Close"].pct_change().dropna()
+            common = port_returns.index.intersection(spy_ret.index)
+            if len(common) >= 50:
+                cov = float(np.cov(port_returns.loc[common], spy_ret.loc[common])[0][1])
+                var_spy = float(spy_ret.loc[common].var())
+                beta = cov / var_spy if var_spy > 0 else 1.0
+                spy_ann_ret = float((1 + spy_ret.loc[common]).prod() - 1)
+                spy_ann_ret = float((1 + spy_ann_ret) ** (252 / len(common)) - 1)
+                alpha = ann_ret - beta * spy_ann_ret
+            else:
+                beta, alpha = 1.0, 0.0
+        except Exception:
+            beta, alpha = 1.0, 0.0
+
+        # VaR / CVaR (historical simulation, 95%)
+        sorted_ret = port_returns.sort_values()
+        cutoff_idx = max(1, int(len(sorted_ret) * 0.05))
+        var_95 = float(sorted_ret.iloc[cutoff_idx])
+        cvar_95 = float(sorted_ret.iloc[:cutoff_idx].mean())
+
+        # Max Drawdown
+        cum = (1 + port_returns).cumprod()
+        roll_max = cum.cummax()
+        dd = (cum - roll_max) / roll_max
+        max_dd = float(dd.min())
+
+        perf = [
+            MetricSpec(term="TWR", value=total_ret, format_spec=".2%"),
+            MetricSpec(term="MWR", value=ann_ret, format_spec=".2%"),
+            MetricSpec(term="Alpha", value=alpha, format_spec=".2%"),
+            MetricSpec(term="Sharpe", value=sharpe, format_spec=".2f"),
+        ]
+        risk = [
+            MetricSpec(term="VaR 95%", value=var_95, format_spec=".2%"),
+            MetricSpec(term="CVaR 95%", value=cvar_95, format_spec=".2%"),
+            MetricSpec(term="Beta vs S&P", value=beta, format_spec=".2f"),
+            MetricSpec(term="Max DD", value=max_dd, format_spec=".2%"),
+        ]
+        return perf, risk, True
+    except Exception:
+        perf, risk = _kpi_specs_demo()
+        return perf, risk, False
 
 
 def _render_review_and_import(
@@ -693,13 +801,20 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
         "Ogni metrica ha una spiegazione dettagliata: clicca su 'ⓘ Cos'è?'.",
     )
 
-    st.warning(
-        "⚠️ **DATI DEMO** — le metriche di performance (TWR, Sharpe, VaR, ecc.) richiedono "
-        "lo storico NAV giornaliero del portafoglio. Importa le posizioni da eToro e aggiungi "
-        "lo storico dei prezzi per attivare i calcoli reali."
-    )
+    @st.cache_data(ttl=300)
+    def _cached_metrics() -> tuple[list, list, bool]:
+        return _compute_real_portfolio_metrics()
 
-    perf, risk = _kpi_specs_demo()
+    with st.spinner("Calcolo metriche dal portafoglio..."):
+        perf, risk, is_live = _cached_metrics()
+
+    if is_live:
+        st.success("✅ Metriche calcolate da portafoglio reale (1y history yfinance)")
+    else:
+        st.warning(
+            "⚠️ **DATI DEMO** — serve un portafoglio con almeno 3 posizioni con ticker standard "
+            "per calcolare metriche reali. Importa da eToro o aggiungi posizioni manualmente."
+        )
 
     st.markdown("**Performance** — quanto rende il portafoglio")
     render_metric_row(tokens, perf)
