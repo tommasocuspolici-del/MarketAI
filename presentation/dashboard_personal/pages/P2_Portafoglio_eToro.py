@@ -868,14 +868,40 @@ def _render_collar_suggestion_section(st_module) -> None:  # pragma: no cover --
             return
 
         from engine.options.collar_advisor import CollarAdvisor
-        # Demo beta dal portafoglio (in produzione: calcolato da bridge)
-        portfolio_beta: float = 0.82    # valore demo — TODO: leggere da DB quando disponibile
+        from shared.db.duckdb_client import get_duckdb_client
+        import yfinance as yf
+
+        # Legge beta reale da DB (composite_signal_v2) o calcola vs SPY
+        portfolio_beta: float = 1.0
+        try:
+            db = get_duckdb_client()
+            rows = db.query(
+                "SELECT beta FROM portfolio_risk_metrics ORDER BY computed_at DESC LIMIT 1"
+            )
+            if rows and rows[0][0]:
+                portfolio_beta = float(rows[0][0])
+        except Exception:
+            pass
+
+        # Spot SPY e IV reali da yfinance
+        spot: float = 500.0
+        iv: float = 0.18
+        try:
+            spy = yf.Ticker("SPY")
+            info = spy.fast_info
+            spot = float(info.last_price) if hasattr(info, "last_price") and info.last_price else 500.0
+            hist = spy.history(period="30d")
+            if not hist.empty and len(hist) >= 5:
+                returns = hist["Close"].pct_change().dropna()
+                iv = float(returns.std() * (252 ** 0.5))
+        except Exception:
+            pass
 
         advisor    = CollarAdvisor()
         suggestion = advisor.evaluate(
             portfolio_beta=portfolio_beta,
-            spot=500.0,    # SPY come proxy benchmark
-            iv=0.18,
+            spot=spot,
+            iv=iv,
             t_years=0.25,
         )
 

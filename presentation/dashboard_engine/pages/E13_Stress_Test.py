@@ -38,10 +38,31 @@ def _build_equity_curve(n: int = 252, start: float = 10_000.0) -> pd.Series:
 
 
 def build_mock_stress_report() -> StressTestReport:
-    """Fallback: stress report con equity sintetica e contesto neutro."""
+    """Fallback: stress report con equity sintetica e contesto letto da DB/yfinance."""
     equity = _build_equity_curve()
+
+    # Legge VIX reale e yield curve reale; usa valori neutri solo se non disponibili
+    vix_val: float = 20.0
+    yc_val: float = 0.0
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        db = get_duckdb_client()
+        vix_rows = db.query(
+            "SELECT close FROM ohlcv_data WHERE ticker='^VIX' ORDER BY date DESC LIMIT 1"
+        )
+        if vix_rows and vix_rows[0][0]:
+            vix_val = float(vix_rows[0][0])
+        yc_rows = db.query(
+            "SELECT value FROM macro_data WHERE series_id IN ('DGS10','DGS2') "
+            "ORDER BY series_date DESC LIMIT 2"
+        )
+        if len(yc_rows) >= 2:
+            yc_val = float(yc_rows[0][0]) - float(yc_rows[1][0])
+    except Exception:
+        pass
+
     ctx = MarketContext(
-        vix=20.0, yield_curve_2y_10y=0.0,
+        vix=vix_val, yield_curve_2y_10y=yc_val,
         sentiment_composite=0.1, regime="transition",
     )
     tester = StressTester()

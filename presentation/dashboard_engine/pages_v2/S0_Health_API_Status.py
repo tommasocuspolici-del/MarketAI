@@ -6,7 +6,7 @@ Sostituisce E0_API_Health.py.
 """
 from __future__ import annotations
 
-__version__ = "8.0.0"
+__version__ = "8.1.0"
 __all__ = ["body_s0_health_api_status"]
 
 
@@ -89,6 +89,48 @@ def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
             st.info(f"VIX Strategy: {vix_rows[0][1]} — {vix_rows[0][0]}")
     except Exception as exc:
         st.error(f"DB non raggiungibile: {exc}")
+
+    st.divider()
+
+    # ── LLM Status ────────────────────────────────────────────────────────────
+    st.subheader("🤖 LLM Status")
+    try:
+        from shared.llm.llm_gateway import get_llm_gateway
+        from engine.llm.hardware_detector import detect_hardware
+
+        gateway = get_llm_gateway()
+        status = gateway.status()
+        hw = detect_hardware()
+
+        status_icons = {
+            "disabled":  "⚫ DISABLED",
+            "available": "✅ AVAILABLE",
+            "degraded":  "🟡 DEGRADED",
+            "down":      "🔴 DOWN",
+        }
+        col_llm1, col_llm2, col_llm3 = st.columns(3)
+        col_llm1.metric("LLM Status", status_icons.get(status.value, status.value))
+        col_llm2.metric("RAM Disponibile", f"{hw.available_ram_gb:.1f} GB")
+        col_llm3.metric("Disco Libero", f"{hw.free_disk_gb:.1f} GB")
+
+        if hw.recommended_model:
+            st.info(f"🎯 Modello raccomandato per il tuo hardware: **{hw.recommended_model}**")
+        elif hw.errors:
+            for err in hw.errors:
+                st.warning(err)
+
+        if status.value == "disabled":
+            st.caption(
+                "LLM disabilitato (default). "
+                "Per attivarlo: S2_Impostazioni → sezione LLM → abilita Master Switch."
+            )
+        elif status.value == "available":
+            st.success("Ollama risponde correttamente.")
+        elif status.value == "down":
+            from engine.llm.hardware_detector import LLM_ERROR_MESSAGES, LLMErrorCode
+            st.error(LLM_ERROR_MESSAGES[LLMErrorCode.OLLAMA_UNAVAILABLE])
+    except Exception as exc:
+        st.warning(f"LLM status non disponibile: {exc}")
 
     # ── Bottone refresh ────────────────────────────────────────────────────
     if st.button("🔄 Aggiorna stato"):
