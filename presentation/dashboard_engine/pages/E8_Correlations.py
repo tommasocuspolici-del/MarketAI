@@ -88,6 +88,17 @@ def body_correlations(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="e8_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    st.warning(
+        "⚠️ **DATI DEMO** — la matrice di correlazione è simulata con valori pseudo-casuali "
+        "(seed fisso, non dati di mercato reali). Collegare dati di prezzo live per correlazioni reali."
+    )
+
     matrix = build_mock_correlation_matrix()
 
     render_section_header(

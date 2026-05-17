@@ -23,6 +23,12 @@ def body_labour_forecasting(tokens: DesignTokens) -> None:
     render_section_header("🔬 Labour Forecasting — Dettaglio Modello",
         "Feature importance Ridge · Ordine ARIMA · Walk-forward accuracy · Scenario sensitivity")
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q9_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     try:
         db = DuckDBClient(path=DUCKDB_PATH)
         rows = db.query(

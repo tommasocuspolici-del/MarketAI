@@ -66,6 +66,27 @@ def body_economic_surprise(tokens: DesignTokens) -> None:
     render_section_header("⚡ Economic Surprise Engine",
         "Misura lo scarto tra previsioni consensus e dati effettivi per settore.")
 
+    # ── Controlli ─────────────────────────────────────────────────────────
+    cols_top = st.columns([3, 1, 1])
+    with cols_top[1]:
+        if st.button("📥 Carica consensus", key="m5_load_consensus",
+                     help="Esegue ConsensusLoader: carica stime consensus da YAML e FRED nel DB"):
+            with st.spinner("Caricamento consensus..."):
+                try:
+                    from engine.analytics.surprise_engine.consensus_loader import ConsensusLoader
+                    loader = ConsensusLoader()
+                    batch = loader.load_yaml()
+                    loader.save(batch)
+                    st.success(f"✅ Consensus caricato: {batch.row_count} righe (fonte: {batch.source})")
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"❌ Errore ConsensusLoader: {type(exc).__name__}: {exc}")
+    with cols_top[2]:
+        if st.button("🔄 Aggiorna", key="m5_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     try:
         db = DuckDBClient(path=DUCKDB_PATH)
     except Exception:

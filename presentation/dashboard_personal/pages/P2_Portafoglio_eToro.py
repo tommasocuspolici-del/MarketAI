@@ -318,6 +318,8 @@ def _extract_display_name(position: PositionInput) -> str:
     I ticker come '#3040' sono instrument_id eToro (fallback quando
     il lookup /instruments API fallisce). Il nome leggibile viene salvato nelle
     note come 'name=<display_name>' durante l'import.
+
+    Fallback: InstrumentRegistry per ticker numerici senza nome nelle note.
     """
     ticker = position.ticker
     # Cerca nome salvato nelle note (formato: source=api;name=iShares MSCI World...)
@@ -327,23 +329,46 @@ def _extract_display_name(position: PositionInput) -> str:
                 name = part[5:].strip()
                 if name:
                     return name
+    # Fallback: InstrumentRegistry per ticker #ID
+    if ticker.startswith("#"):
+        iid_str = ticker[1:]
+        if iid_str.isdigit():
+            try:
+                from engine.market_data.instrument_registry import InstrumentRegistry
+                registry = InstrumentRegistry()
+                mapping = registry.get(int(iid_str))
+                if mapping and mapping.display_name:
+                    return mapping.display_name
+            except Exception:
+                pass
     return ticker
 
 
 def _get_current_price_yf(ticker: str) -> float | None:
     """Recupera prezzo corrente in USD via yfinance.
 
-    v7.3.0 — FIX: ora delega a get_live_price_usd (etoro_importer v7.4.0)
-    che converte correttamente:
+    v7.4.0 — FIX: risolve ticker #ID numerici tramite InstrumentRegistry per
+    ottenere il ticker reale (es. #3040 → SWDA.L) e applicare la corretta
+    conversione GBX→USD. Il ticker numerico eToro non ha suffisso .L, quindi
+    senza risoluzione _get_instrument_currency restituisce "USD" (errato).
+
+    v7.3.0 — delega a get_live_price_usd (etoro_importer v7.4.0):
       · GBX → USD per ticker *.L  (es. SWDA.L: 10 426 GBX / 100 * 1.27 ≈ 132 USD)
       · EUR → USD per ticker *.DE (es. EUN5.DE: 118.88 EUR * 1.08 ≈ 128 USD)
-
-    Problema v7.2.1: questa funzione chiamava direttamente yf.Ticker(ticker)
-    e restituiva il prezzo GREZZO in valuta nativa (GBX per LSE). Il valore
-    10 426 GBX veniva poi trattato come USD in _build_grouped_portfolio,
-    producendo "Valore corrente" ~100x gonfiato per SWDA.L/CSPX.L/EIMI.L.
     """
-    if ticker.startswith("#") or ticker == "UNKNOWN":
+    if ticker == "UNKNOWN":
+        return None
+    if ticker.startswith("#"):
+        iid_str = ticker[1:]
+        if iid_str.isdigit():
+            try:
+                from engine.market_data.instrument_registry import InstrumentRegistry
+                registry = InstrumentRegistry()
+                real_ticker = registry.get_ticker(int(iid_str))
+                if real_ticker:
+                    return get_live_price_usd(real_ticker)  # GBX/EUR→USD corretto
+            except Exception:
+                pass
         return None
     return get_live_price_usd(ticker)   # ← conversione GBX/EUR→USD inclusa
 
@@ -565,6 +590,37 @@ def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
         )
         st.dataframe(df_grouped, use_container_width=True, hide_index=True)
 
+        # ── Eliminazione multipla ──────────────────────────────────────────
+        st.markdown("#### 🗑️ Eliminazione multipla")
+        pos_options = {
+            f"{_extract_display_name(p)} | {p.direction} | qty {p.quantity:.4f} | {p.currency}": p.position_id
+            for p in positions
+        }
+        selected_labels = st.multiselect(
+            "Seleziona posizioni da eliminare",
+            options=list(pos_options.keys()),
+            key="multi_delete_select",
+            placeholder="Seleziona una o più posizioni...",
+        )
+        col_del_all, col_sel_all = st.columns([2, 2])
+        with col_sel_all:
+            if st.button("☑️ Seleziona tutte", key="select_all_positions"):
+                st.session_state["multi_delete_select"] = list(pos_options.keys())
+                st.rerun()
+        with col_del_all:
+            if selected_labels:
+                if st.button(
+                    f"🗑️ Elimina {len(selected_labels)} posizion{'e' if len(selected_labels) == 1 else 'i'}",
+                    type="primary",
+                    key="multi_delete_confirm",
+                ):
+                    ids_to_delete = [pos_options[lbl] for lbl in selected_labels]
+                    for pid in ids_to_delete:
+                        delete_position(pid)
+                    st.success(f"✅ Eliminate {len(ids_to_delete)} posizioni.")
+                    st.rerun()
+
+        st.divider()
         # ── Gestione posizioni singole: elimina inline + modifica ──────────
         st.markdown("#### ✏️ Posizioni singole — Modifica / Elimina")
         st.caption("Ogni riga ha un pulsante 🗑️ di eliminazione rapida. Clicca ✏️ per modificare.")

@@ -75,6 +75,17 @@ def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
         "Ogni asse e' una fonte di sentiment indipendente · -1 (bearish) ÷ +1 (bullish)",
     )
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="e7_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    st.warning(
+        "⚠️ **DATI DEMO** — i valori mostrati sono placeholder statici. "
+        "Collega le API (Finnhub, AAII, CNN Fear & Greed) per scores live."
+    )
+
     scores = {
         "CNN F&G": 0.45,
         "AAII": 0.25,

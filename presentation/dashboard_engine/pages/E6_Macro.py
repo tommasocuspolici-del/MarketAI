@@ -47,7 +47,10 @@ log = get_logger(__name__)
 # Mapping series_id FRED → label + tipo unita'.
 # I label coincidono con le chiavi del glossario per riusare le spiegazioni.
 _FRED_SERIES_MAP: dict[str, dict[str, str]] = {
-    "GDP":      {"term": "GDP YoY",        "unit": "%"},
+    # A191RL1Q225SBEA: Real GDP Growth Rate % (quarterly annualized, SA).
+    # BUG FIX: la serie "GDP" restituisce il livello in miliardi USD (~28000) NON una percentuale,
+    # producendo valori come "31856.26%" sulla dashboard. La serie corretta è A191RL1Q225SBEA.
+    "A191RL1Q225SBEA": {"term": "GDP YoY", "unit": "%"},
     "CPIAUCSL": {"term": "CPI YoY",        "unit": "%"},
     "UNRATE":   {"term": "Unemployment",   "unit": "%"},
     "FEDFUNDS": {"term": "Fed Funds Rate", "unit": "%"},
@@ -68,8 +71,8 @@ _TRAFFIC_LIGHTS: dict[str, dict[str, tuple[float, float]]] = {
     "FEDFUNDS": {"green": (1.0, 3.5), "yellow": (0.0, 5.5)},
     # 10Y Yield: verde 2-4.5%, giallo 4.5-5.5%, rosso fuori
     "DGS10":    {"green": (2.0, 4.5), "yellow": (1.0, 5.5)},
-    # GDP YoY: verde >1.5% (crescita), giallo 0-1.5% (debole), rosso <0
-    "GDP":      {"green": (1.5, 999.0), "yellow": (0.0, 999.0)},
+    # GDP Growth Rate: verde >1.5% (crescita), giallo 0-1.5% (debole), rosso <0
+    "A191RL1Q225SBEA": {"green": (1.5, 999.0), "yellow": (0.0, 999.0)},
 }
 
 

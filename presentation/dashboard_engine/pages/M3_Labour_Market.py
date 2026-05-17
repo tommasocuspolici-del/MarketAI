@@ -215,11 +215,78 @@ def _render_forecasting_tab(st, tokens: DesignTokens) -> None:
         st.dataframe(display, use_container_width=True, hide_index=True)
 
 
+def _run_labour_market_fetch(st_module) -> None:  # pragma: no cover
+    """Avvia il fetch di tutti i dati Labour Market da FRED e li persiste nel DB."""
+    st = st_module
+    from engine.market_data.fred_simple_client import FredSimpleClient, FredKeyMissingError
+    from engine.analytics.labour_market.claims_fetcher import ClaimsFetcher
+    from engine.analytics.labour_market.jolts_fetcher import JOLTSFetcher
+    from engine.analytics.labour_market.payroll_fetcher import PayrollFetcher
+    from shared.db.duckdb_client import DuckDBClient
+    from shared.constants import DUCKDB_PATH
+
+    fred = FredSimpleClient()
+    if not fred.has_api_key:
+        st.error("❌ FRED_API_KEY non configurata. Aggiungila al file .env e ricarica l'app.")
+        return
+
+    try:
+        db = DuckDBClient(path=DUCKDB_PATH)
+    except Exception as exc:
+        st.error(f"❌ Impossibile connettersi al database: {exc}")
+        return
+
+    results: list[str] = []
+    errors: list[str] = []
+
+    try:
+        n = ClaimsFetcher(db, fred).fetch_and_persist(lookback_years=20)
+        results.append(f"Claims: {n} righe")
+    except FredKeyMissingError:
+        errors.append("Claims: FRED key mancante")
+    except Exception as exc:
+        errors.append(f"Claims: {type(exc).__name__}: {str(exc)[:80]}")
+
+    try:
+        n = JOLTSFetcher(db, fred).fetch_and_persist(lookback_years=20)
+        results.append(f"JOLTS: {n} righe")
+    except FredKeyMissingError:
+        errors.append("JOLTS: FRED key mancante")
+    except Exception as exc:
+        errors.append(f"JOLTS: {type(exc).__name__}: {str(exc)[:80]}")
+
+    try:
+        n = PayrollFetcher(db, fred).fetch_and_persist(lookback_years=20)
+        results.append(f"Payroll: {n} righe")
+    except FredKeyMissingError:
+        errors.append("Payroll: FRED key mancante")
+    except Exception as exc:
+        errors.append(f"Payroll: {type(exc).__name__}: {str(exc)[:80]}")
+
+    if results:
+        st.success("✅ Dati caricati: " + " · ".join(results))
+    if errors:
+        st.error("❌ Errori: " + " · ".join(errors))
+    if results:
+        st.cache_data.clear()
+        st.rerun()
+
+
 def body_labour_market(tokens: DesignTokens) -> None:
     """Body Streamlit pagina M3."""
     # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
+
+    cols_top = st.columns([3, 1, 1])
+    with cols_top[1]:
+        if st.button("📥 Carica da FRED", key="m3_load_fred", help="Scarica dati Claims, JOLTS e Payroll da FRED API"):
+            with st.spinner("Caricamento dati FRED in corso..."):
+                _run_labour_market_fetch(st)
+    with cols_top[2]:
+        if st.button("🔄 Aggiorna", key="m3_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     tab1, tab2, tab3, tab4 = st.tabs(
         ["📉 Claims & Ciclo", "📊 JOLTS & Beveridge", "💼 Payroll", "🔮 Forecasting"]
