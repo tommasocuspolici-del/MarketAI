@@ -1,6 +1,6 @@
 # MarketAI — Guida per Claude Code
 
-**v8.1.0** · Python ^3.11 · 1592+ test · coverage ≥ 94.8% · ROADMAP v6.0 (32 regole)
+**v10.1.0** · Python ^3.11 · 3080+ test · coverage ≥ 89.1% · ROADMAP v6.0 (32 regole)
 
 ---
 
@@ -74,13 +74,18 @@ rate = fx.get_rate(Currency.GBP, Currency.USD)   # FxRate con timestamp
 ```python
 from engine.market_data.instrument_registry import InstrumentRegistry
 
-reg = InstrumentRegistry.get_instance()
-reg.get_ticker(3040)        # "SWDA.L"
-reg.get(3040)               # InstrumentMapping(...)
+reg = InstrumentRegistry()          # nessun get_instance(), costruttore diretto
+reg.get_ticker(3040)                # "SWDA.L"
+reg.get(3040)                       # InstrumentMapping(display_name, native_currency, ...)
 reg.register_from_api(iid, ticker, ...)  # non sovrascrive manual/user_override
 ```
-Fallback seed (5 entry) se DuckDB non disponibile.
+Fallback seed (5 entry) se DuckDB non disponibile: `_SEED_FALLBACK` in `instrument_registry.py`.
 Migration: `shared/db/migrations/duckdb/20260514_017_instrument_registry.sql`
+
+**Regola: nelle pagine presentation** usare `InstrumentRegistry()` per risolvere ticker `#ID`
+(es. `#3040` → `SWDA.L`) e passare il ticker reale a `get_live_price_usd()` per la
+conversione GBX→USD corretta. I ticker numerici eToro non hanno suffisso `.L`, quindi
+`_get_instrument_currency("#3040")` restituisce "USD" (errato) senza questo lookup.
 
 ### Database
 ```python
@@ -126,6 +131,65 @@ st.session_state[SK.FORCE_REFRESH] = True
 @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)  # 300 s
 ```
 Non usare stringhe literal per session_state né `ttl=NUM` diretto.
+
+**Pattern refresh manuale (obbligatorio su ogni pagina):**
+```python
+cols_top = st.columns([4, 1])
+with cols_top[1]:
+    if st.button("🔄 Aggiorna", key="<page_id>_refresh"):
+        st.cache_data.clear()
+        st.rerun()
+```
+Ogni pagina deve esporre il bottone `🔄 Aggiorna` in alto a destra. Per pagine con
+azioni aggiuntive (es. caricamento dati da FRED) usare `st.columns([3, 1, 1])` e
+aggiungere il bottone secondario prima del refresh.
+
+---
+
+## Pipeline Dati — Trigger Manuali (UI)
+
+Le seguenti pagine espongono bottoni per caricare/aggiornare dati dal DB o da API esterne.
+La logica di fetch è sempre **separata** dalla logica di lettura (Regola 12).
+
+| Pagina | Bottone | Cosa fa |
+|--------|---------|---------|
+| M3 Labour Market | `📥 Carica da FRED` | `ClaimsFetcher + JOLTSFetcher + PayrollFetcher` → `claims_cycle`, `jolts_monthly`, `payroll_sector` |
+| M5 Economic Surprise | `📥 Carica consensus` | `ConsensusLoader.load_yaml()` + `.save()` → `economic_consensus` |
+| Q9 Labour Forecasting | `🤖 Genera previsioni` | `LabourForecastEngine` (ARIMA+Ridge) su UNRATE/ICSA/JOLTS → `labour_forecasts` |
+| Q10 Surprise Heatmap | `📥 Carica consensus` | stesso `ConsensusLoader` di M5 |
+
+**Labour Market fetchers** (in `engine/analytics/labour_market/`):
+```python
+from engine.analytics.labour_market.claims_fetcher import ClaimsFetcher
+from engine.analytics.labour_market.jolts_fetcher import JOLTSFetcher
+from engine.analytics.labour_market.payroll_fetcher import PayrollFetcher
+
+fred = FredSimpleClient()       # richiede FRED_API_KEY in .env
+db   = DuckDBClient(path=...)
+n    = ClaimsFetcher(db, fred).fetch_and_persist(lookback_years=20)
+```
+
+**Forecast engine** (orchestrazione in `Q9_Labour_Forecasting._run_forecast_job`):
+- Target: `UNRATE` mensile
+- Feature: lagged ICSA (1-3M), quits_rate, openings_rate
+- Orizzonti: `["1M", "3M", "6M"]`
+- Tabella output: `labour_forecasts` (colonne: `generated_at, horizon, target_metric, forecast_value, forecast_lower, forecast_upper, model_used, arima_forecast, ridge_forecast`)
+
+---
+
+## Bug Noti e Fix Applicati
+
+| ID | Pagina | Problema | Fix |
+|----|--------|----------|-----|
+| B5 | E6 Macro | Serie `"GDP"` restituisce livello in miliardi (~28000), mostrava "31856.26%" | Sostituita con `"A191RL1Q225SBEA"` (Real GDP Growth Rate %, quarterly annualized) |
+| B6 | E7 Sentiment | Scores hardcoded (`CNN F&G: 0.45` ecc.) | Aggiunto banner `⚠️ DATI DEMO` |
+| B7 | E8 Correlations | Matrice simulata con seed fisso | Aggiunto banner `⚠️ DATI DEMO` + refresh |
+| B8 | P2 eToro | Ticker `#3040` mostra `—` come nome | `_extract_display_name` ora usa `InstrumentRegistry` come fallback |
+| B9 | P2 eToro | `#3040` prezzo 9782.2 GBX trattato come USD | `_get_current_price_yf` risolve `#ID` → ticker reale → `get_live_price_usd` |
+
+**Attenzione serie FRED GDP**: non usare mai `"GDP"` (livello miliardi) per mostrare la
+crescita del PIL in percentuale. Usare `"A191RL1Q225SBEA"` (SAAR trimestrale) o
+`"A191RX1Q020SBEA"` (YoY dal precedente anno).
 
 ---
 
@@ -192,4 +256,4 @@ Tipi: `feat` · `fix` · `refactor` · `test` · `docs` · `chore`
 
 ---
 
-*v8.1.0 — aggiornato 2026-05-17*
+*v10.1.0 — aggiornato 2026-05-17*
