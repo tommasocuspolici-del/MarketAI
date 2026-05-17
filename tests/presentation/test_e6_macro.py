@@ -29,10 +29,10 @@ from presentation.dashboard_engine.pages.E6_Macro import (
         ("UNRATE", 3.5, "🟢"),
         ("UNRATE", 6.0, "🟡"),
         ("UNRATE", 8.0, "🔴"),
-        # GDP: green >=1.5, yellow >=0
-        ("GDP", 2.5, "🟢"),
-        ("GDP", 0.5, "🟡"),
-        ("GDP", -1.0, "🔴"),
+        # GDP Growth Rate (A191RL1Q225SBEA): green >=1.5, yellow >=0
+        ("A191RL1Q225SBEA", 2.5, "🟢"),
+        ("A191RL1Q225SBEA", 0.5, "🟡"),
+        ("A191RL1Q225SBEA", -1.0, "🔴"),
         # 10Y: range fisiologico
         ("DGS10", 3.5, "🟢"),
         ("DGS10", 5.0, "🟡"),
