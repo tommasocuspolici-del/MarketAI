@@ -79,6 +79,20 @@ class DuckDBClient:
             except duckdb.Error as exc:
                 raise DuckDBError(f"DuckDB execute failed: {exc}\nSQL: {sql[:200]}") from exc
 
+    def executemany(
+        self,
+        sql: str,
+        params_seq: list[list[Any]] | list[tuple[Any, ...]],
+    ) -> None:
+        """Execute a SQL statement for each row in params_seq (batch DML)."""
+        with metrics.timer("duckdb_executemany_ms"):
+            try:
+                self._conn.executemany(sql, params_seq)
+            except duckdb.Error as exc:
+                raise DuckDBError(
+                    f"DuckDB executemany failed: {exc}\nSQL: {sql[:200]}"
+                ) from exc
+
     def query(
         self,
         sql: str,

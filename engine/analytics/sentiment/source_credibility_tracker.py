@@ -118,7 +118,7 @@ class SourceCredibilityTracker:
         with self._lock:
             return dict(self._weights)
 
-    def annotate_articles(self, articles: list[dict]) -> list[dict]:
+    def annotate_articles(self, articles: list[dict[str, object]]) -> list[dict[str, object]]:
         """Add 'credibility' field to each article dict (in-place, returns list)."""
         for art in articles:
             source = art.get("source", "unknown").lower()

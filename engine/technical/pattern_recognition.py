@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 
 from engine.technical.pattern_schemas import (
     PatternDetectionConfig,
@@ -71,10 +72,10 @@ class PatternDetector:
     def _hs(
         self,
         ticker: str,
-        close: np.ndarray,
-        dates: np.ndarray,
-        hi: np.ndarray,
-        li: np.ndarray,
+        close: npt.NDArray[np.float64],
+        dates: npt.NDArray[np.float64],
+        hi: npt.NDArray[np.intp],
+        li: npt.NDArray[np.intp],
         *,
         inv: bool,
     ) -> list[PatternResult]:
@@ -138,10 +139,10 @@ class PatternDetector:
     def _double(
         self,
         ticker: str,
-        close: np.ndarray,
-        dates: np.ndarray,
-        hi: np.ndarray,
-        li: np.ndarray,
+        close: npt.NDArray[np.float64],
+        dates: npt.NDArray[np.float64],
+        hi: npt.NDArray[np.intp],
+        li: npt.NDArray[np.intp],
         *,
         top: bool,
     ) -> list[PatternResult]:
@@ -198,8 +199,8 @@ class PatternDetector:
     def _triangles(
         self,
         ticker: str,
-        close: np.ndarray,
-        dates: np.ndarray,
+        close: npt.NDArray[np.float64],
+        dates: npt.NDArray[np.float64],
     ) -> list[PatternResult]:
         """Triangolo asc/desc/sym via regressione lineare su pivot (vettorizzata).
 
@@ -259,8 +260,8 @@ class PatternDetector:
     def _flag(
         self,
         ticker: str,
-        close: np.ndarray,
-        dates: np.ndarray,
+        close: npt.NDArray[np.float64],
+        dates: npt.NDArray[np.float64],
     ) -> list[PatternResult]:
         """Flag bullish/bearish: impulso forte + consolidamento compatto."""
         cfg, n = self._cfg, len(close)
@@ -309,8 +310,8 @@ class PatternDetector:
     def _cup(
         self,
         ticker: str,
-        close: np.ndarray,
-        dates: np.ndarray,
+        close: npt.NDArray[np.float64],
+        dates: npt.NDArray[np.float64],
     ) -> list[PatternResult]:
         """Cup & Handle: U-shape + piccola pausa finale (bullish)."""
         cfg = self._cfg

@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from shared.logger import get_logger
@@ -42,8 +43,8 @@ class VolumeProfile:
     vah:           float          # Value Area High
     val:           float          # Value Area Low
     vwap:          float          # Volume-Weighted Average Price
-    price_bins:    np.ndarray     # Bin centres
-    volume_bins:   np.ndarray     # Volume per bin
+    price_bins:    npt.NDArray[np.float64]   # Bin centres
+    volume_bins:   npt.NDArray[np.float64]   # Volume per bin
     current_price: float
     signal:        float          # [-1, 1]: price position vs value area
     signal_label:  str            # "above_va" | "in_va" | "below_va"
@@ -140,8 +141,8 @@ class VolumeProfileCalculator:
 
     def _compute_value_area(
         self,
-        centres:  np.ndarray,
-        vol_bins: np.ndarray,
+        centres:  npt.NDArray[np.float64],
+        vol_bins: npt.NDArray[np.float64],
         poc_idx:  int,
     ) -> tuple[float, float]:
         total       = float(vol_bins.sum())

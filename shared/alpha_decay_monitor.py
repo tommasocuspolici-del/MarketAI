@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
 from scipy import stats
@@ -39,9 +39,10 @@ log = get_logger(__name__)
 _ALPHA_DECAY_PATH = CONFIG_DIR / "alpha_decay.yaml"
 
 
-def _load_alpha_decay_config() -> dict:
+def _load_alpha_decay_config() -> dict[str, Any]:
     try:
-        return yaml.safe_load(_ALPHA_DECAY_PATH.read_text())
+        result: dict[str, Any] = yaml.safe_load(_ALPHA_DECAY_PATH.read_text()) or {}
+        return result
     except Exception:
         return {}
 

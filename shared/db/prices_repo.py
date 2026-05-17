@@ -198,6 +198,22 @@ class PricesRepository:
 
         return df
 
+    def read_ohlcv(
+        self,
+        ticker: str,
+        exchange: str | None = None,
+        timeframe: TimeFrame | str = TimeFrame.D1,
+        limit: int | None = None,
+    ) -> pd.DataFrame:
+        """Fetch OHLCV bars with optional limit (most recent N bars).
+
+        Alias for read_prices with tail slicing for limit support.
+        """
+        df = self.read_prices(ticker=ticker, exchange=exchange, timeframe=timeframe)
+        if limit is not None:
+            df = df.tail(limit)
+        return df
+
     def read_latest_price(
         self,
         ticker: str,

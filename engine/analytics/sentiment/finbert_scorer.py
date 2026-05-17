@@ -13,6 +13,7 @@ if RAM < 4 GB or CPU is very slow.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from shared.feature_flags import is_enabled
 from shared.logger import get_logger
@@ -51,8 +52,8 @@ class FinBERTScorer:
     """
 
     def __init__(self) -> None:
-        self._pipeline = None
-        self._vader    = None
+        self._pipeline: Any = None
+        self._vader: Any    = None
         self._model_name = "vader"
 
         if is_enabled("sentiment_finbert"):
@@ -86,9 +87,9 @@ class FinBERTScorer:
     # ── FinBERT path ───────────────────────────────────────────────────────
 
     @staticmethod
-    def _try_load_finbert():
+    def _try_load_finbert() -> Any:
         try:
-            from transformers import pipeline  # type: ignore[import]
+            from transformers import pipeline  # noqa: PLC0415
             pipe = pipeline(
                 "text-classification",
                 model   = _FINBERT_MODEL,
@@ -126,7 +127,7 @@ class FinBERTScorer:
         return results
 
     @staticmethod
-    def _parse_finbert_output(item) -> tuple[str, float]:
+    def _parse_finbert_output(item: Any) -> tuple[str, float]:
         if isinstance(item, list):
             best = max(item, key=lambda x: x["score"])
         else:
@@ -144,8 +145,8 @@ class FinBERTScorer:
     # ── VADER path ─────────────────────────────────────────────────────────
 
     @staticmethod
-    def _load_vader():
-        from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer  # type: ignore[import]
+    def _load_vader() -> Any:
+        from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer  # noqa: PLC0415
         return SentimentIntensityAnalyzer()
 
     def _score_with_vader(self, texts: list[str]) -> list[SentimentLabel]:

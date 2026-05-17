@@ -29,6 +29,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from shared.logger import get_logger
@@ -59,7 +60,7 @@ class ForecastScenario:
     """Singolo scenario di forecast."""
 
     name: str           # 'pessimistic' | 'base' | 'optimistic'
-    path: np.ndarray    # array di prezzi forecast (lunghezza = horizon_days)
+    path: npt.NDArray[np.float64]   # array di prezzi forecast (lunghezza = horizon_days)
     expected_return_pct: float    # % return totale a fine horizon
     annualized_drift: float        # drift annualizzato usato (log-space)
 
@@ -102,7 +103,7 @@ class SimpleForecaster:
 
     def forecast(
         self,
-        close_prices: np.ndarray | pd.Series,
+        close_prices: npt.NDArray[np.float64] | pd.Series,
         *,
         ticker: str,
         horizon_days: int,

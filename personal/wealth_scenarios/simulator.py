@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 
 from shared.exceptions import PersonalError
 from shared.logger import get_logger
@@ -25,9 +26,9 @@ log = get_logger(__name__)
 class WealthSimulationResult:
     """Outcome of a Monte Carlo wealth projection."""
 
-    percentile_10: np.ndarray   # Pessimistic scenario over time
-    percentile_50: np.ndarray   # Median scenario over time (base case)
-    percentile_90: np.ndarray   # Optimistic scenario over time
+    percentile_10: npt.NDArray[np.float64]   # Pessimistic scenario over time
+    percentile_50: npt.NDArray[np.float64]   # Median scenario over time (base case)
+    percentile_90: npt.NDArray[np.float64]   # Optimistic scenario over time
     n_simulations: int
     years: int
     initial_wealth: float

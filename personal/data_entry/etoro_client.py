@@ -228,6 +228,7 @@ class EtoroClient:
                 raise
             except EtoroClientError:
                 raise
+        assert last_exc is not None
         raise last_exc
 
     def _do_request(self, url: str) -> Any:

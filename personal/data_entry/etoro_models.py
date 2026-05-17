@@ -272,10 +272,7 @@ class EtoroPosition(_EtoroBase):
 
             if iid is not None:
                 result["instrumentId"] = iid
-                log.debug(
-                    "etoro.instrument_id_recovered_from_nested",
-                    instrument_id=iid,
-                )
+                log.debug("etoro.instrument_id_recovered_from_nested instrument_id=%s", iid)
 
         # ── Fase 2: ticker_from_api ───────────────────────────────────────
         ticker: str | None = None

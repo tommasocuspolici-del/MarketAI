@@ -121,7 +121,7 @@ class InstrumentRegistry:
         try:
             rows = self._client.query(f"SELECT instrument_id FROM {_TABLE}")
         except DuckDBError as exc:
-            log.warning("instrument_registry.all_ids_failed", error=str(exc))
+            log.warning("instrument_registry.all_ids_failed error=%s", exc)
             return []
         return [r[0] for r in rows]
 
@@ -134,7 +134,7 @@ class InstrumentRegistry:
         try:
             rows = self._client.query(sql)
         except DuckDBError as exc:
-            log.warning("instrument_registry.all_mappings_failed", error=str(exc))
+            log.warning("instrument_registry.all_mappings_failed error=%s", exc)
             return []
         return [
             InstrumentMapping(
@@ -185,9 +185,8 @@ class InstrumentRegistry:
             )
         except DuckDBError as exc:
             log.warning(
-                "instrument_registry.register_from_api_failed",
-                instrument_id=instrument_id,
-                error=str(exc),
+                "instrument_registry.register_from_api_failed iid=%s error=%s",
+                instrument_id, exc,
             )
 
     def upsert_manual(
@@ -227,7 +226,6 @@ class InstrumentRegistry:
             )
         except DuckDBError as exc:
             log.warning(
-                "instrument_registry.upsert_manual_failed",
-                instrument_id=instrument_id,
-                error=str(exc),
+                "instrument_registry.upsert_manual_failed iid=%s error=%s",
+                instrument_id, exc,
             )

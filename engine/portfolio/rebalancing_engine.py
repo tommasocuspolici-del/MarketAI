@@ -37,6 +37,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import structlog
 from scipy.cluster.hierarchy import linkage
@@ -207,7 +208,7 @@ class RebalancingEngine:
 
     # ─── Metodi di ottimizzazione ─────────────────────────────────────────────
 
-    def _optimize_hrp(self, cov_matrix: np.ndarray) -> np.ndarray:
+    def _optimize_hrp(self, cov_matrix: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         """
         Hierarchical Risk Parity (Lopez de Prado, 2016).
 
@@ -264,11 +265,12 @@ class RebalancingEngine:
                 weights[left_half]  *= alpha
                 weights[right_half] *= 1 - alpha
 
-        w = weights.values.astype(np.float64)
-        return w / w.sum()
+        w: npt.NDArray[np.float64] = np.asarray(weights.values, dtype=np.float64)
+        total = float(w.sum())
+        return w / total
 
     @staticmethod
-    def _get_quasi_diagonal(link: np.ndarray, n: int) -> list[int]:
+    def _get_quasi_diagonal(link: npt.NDArray[np.float64], n: int) -> list[int]:
         """Ordina gli indici in modo quasi-diagonale seguendo il dendrogramma."""
         link_int = link[:, :2].astype(int)
         sort_ix  = pd.Series([n + len(link_int) - 1])
@@ -281,10 +283,10 @@ class RebalancingEngine:
             df_tmp         = pd.Series(link_int[j, 1], index=i + 1)
             sort_ix        = pd.concat([sort_ix, df_tmp]).sort_index()
             sort_ix.index  = range(sort_ix.shape[0])
-        return sort_ix.tolist()
+        return [int(x) for x in sort_ix.tolist()]
 
     @staticmethod
-    def _cluster_variance(cov: np.ndarray, idx: list[int]) -> float:
+    def _cluster_variance(cov: npt.NDArray[np.float64], idx: list[int]) -> float:
         """Varianza del portafoglio equal-weight sul cluster."""
         sub = cov[np.ix_(idx, idx)]
         n   = len(idx)
@@ -292,8 +294,8 @@ class RebalancingEngine:
         return float(w @ sub @ w)
 
     def _optimize_markowitz(
-        self, mu: np.ndarray, cov_matrix: np.ndarray
-    ) -> np.ndarray:
+        self, mu: npt.NDArray[np.float64], cov_matrix: npt.NDArray[np.float64]
+    ) -> npt.NDArray[np.float64]:
         """
         Ottimizzazione Mean-Variance tramite cvxpy.
         Massimizza: μᵀw - λ/2 * wᵀΣw
@@ -306,26 +308,27 @@ class RebalancingEngine:
             lambda_ = 3.0   # risk aversion
 
             objective = cp.Maximize(
-                mu @ w_var - lambda_ / 2 * cp.quad_form(w_var, cov_matrix)
+                mu @ w_var - lambda_ / 2 * cp.quad_form(w_var, cov_matrix)  # type: ignore[attr-defined]
             )
             constraints = [
-                cp.sum(w_var) == 1,
+                cp.sum(w_var) == 1,  # type: ignore[attr-defined]
                 w_var >= 0.02,    # min weight
                 w_var <= 0.40,    # max weight
             ]
             prob = cp.Problem(objective, constraints)
-            prob.solve(solver=cp.OSQP, warm_start=True)
+            prob.solve(solver=cp.OSQP, warm_start=True)  # type: ignore[no-untyped-call]
 
             if w_var.value is not None:
-                w = np.array(w_var.value, dtype=np.float64)
+                w: npt.NDArray[np.float64] = np.array(w_var.value, dtype=np.float64)
                 w = np.clip(w, 0, 1)
-                return w / w.sum()
+                total = float(w.sum())
+                return w / total
         except Exception as exc:
             log.warning("markowitz.failed", error=str(exc)[:100], fallback="hrp")
 
         return self._optimize_hrp(cov_matrix)
 
-    def _optimize_risk_parity(self, cov_matrix: np.ndarray) -> np.ndarray:
+    def _optimize_risk_parity(self, cov_matrix: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         """
         Equal Risk Contribution: ogni asset contribuisce ugualmente al rischio.
         Risolto iterativamente (Newton-Raphson).
@@ -350,15 +353,16 @@ class RebalancingEngine:
             if np.max(np.abs(grad)) < 1e-8:
                 break
 
-        return w / w.sum()
+        total = float(w.sum())
+        return w / total
 
     # ─── Trade generation e utilità ──────────────────────────────────────────
 
     def _generate_trades(
         self,
         tickers:     list[str],
-        w_current:   np.ndarray,
-        w_target:    np.ndarray,
+        w_current:   npt.NDArray[np.float64],
+        w_target:    npt.NDArray[np.float64],
         total_eur:   float,
     ) -> list[TradeInstruction]:
         trades = []
@@ -367,7 +371,7 @@ class RebalancingEngine:
             eur   = abs(drift) * total_eur
 
             if abs(drift) < self._threshold and eur < self._min_trade:
-                action = "HOLD"
+                action: Literal["BUY", "SELL", "HOLD"] = "HOLD"
             elif drift > 0:
                 action = "BUY"
             else:
@@ -400,14 +404,15 @@ class RebalancingEngine:
         assumed_gain_pct = 0.15   # plusvalenza media assunta
         return round(total_sell_eur * assumed_gain_pct * 0.26, 2)
 
-    def _load_covariance(self, tickers: list[str]) -> np.ndarray:
+    def _load_covariance(self, tickers: list[str]) -> npt.NDArray[np.float64]:
         """Carica la matrice di covarianza dal DB (DCC-GARCH)."""
         n = len(tickers)
         try:
-            row = self._duckdb.query(
+            rows = self._duckdb.query(
                 "SELECT covariance_matrix_json FROM correlation_reports "
                 "ORDER BY computed_at DESC LIMIT 1"
-            ).fetchone()
+            )
+            row = rows[0] if rows else None
             if row and row[0]:
                 full_cov = json.loads(row[0])
                 cov = np.zeros((n, n), dtype=np.float64)

@@ -41,6 +41,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import structlog
 
 if TYPE_CHECKING:
@@ -114,7 +115,7 @@ class RiskContributionAnalyzer:
         hhi = float(np.sum(prc ** 2))
 
         # Largest contributor
-        max_ticker = max(risk_contributions, key=risk_contributions.get)
+        max_ticker = max(risk_contributions, key=lambda k: risk_contributions[k])
         max_pct    = risk_contributions[max_ticker]
 
         # CVaR portafoglio (aggregato dai CVaR individuali con correlazione)
@@ -148,17 +149,18 @@ class RiskContributionAnalyzer:
         )
         return report
 
-    def _load_covariance(self, tickers: list[str]) -> np.ndarray:
+    def _load_covariance(self, tickers: list[str]) -> npt.NDArray[np.float64]:
         """
         Carica la matrice di covarianza stimata dal modulo DCC-GARCH.
         Se non disponibile, usa correlazione storica dai prezzi.
         """
         n = len(tickers)
         try:
-            row = self._duckdb.query(
+            rows = self._duckdb.query(
                 "SELECT covariance_matrix_json FROM correlation_reports "
                 "ORDER BY computed_at DESC LIMIT 1"
-            ).fetchone()
+            )
+            row = rows[0] if rows else None
             if row and row[0]:
                 full_cov = json.loads(row[0])
                 # Estrai sotto-matrice per i ticker del portafoglio
@@ -177,8 +179,8 @@ class RiskContributionAnalyzer:
     def _estimate_portfolio_cvar(
         self,
         tickers:    list[str],
-        weights:    np.ndarray,
-        cov_matrix: np.ndarray,
+        weights:    npt.NDArray[np.float64],
+        cov_matrix: npt.NDArray[np.float64],
     ) -> float:
         """
         Stima il CVaR del portafoglio aggregato.
@@ -199,7 +201,7 @@ class RiskContributionAnalyzer:
         weights:            dict[str, float],
         hhi:                float,
     ) -> str:
-        max_ticker = max(risk_contributions, key=risk_contributions.get)
+        max_ticker = max(risk_contributions, key=lambda k: risk_contributions[k])
         max_pct    = risk_contributions[max_ticker]
         n_assets   = len(weights)
 

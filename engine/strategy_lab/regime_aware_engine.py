@@ -141,7 +141,7 @@ class RegimeAwareBacktestEngine:
         exits:    pd.Series,
     ) -> RegimeBacktestResult:
         try:
-            import vectorbt as vbt  # type: ignore[import]
+            import vectorbt as vbt  # type: ignore[import-untyped]  # noqa: PLC0415
             pf    = vbt.Portfolio.from_signals(
                 ohlcv["close"], entries.shift(1).fillna(False),
                 exits.shift(1).fillna(False), fees=0.001, slippage=0.001, freq="1D",
@@ -219,7 +219,7 @@ class RegimeAwareBacktestEngine:
         exits:   pd.Series,
     ) -> tuple[float, float]:
         try:
-            import vectorbt as vbt  # type: ignore[import]
+            import vectorbt as vbt  # noqa: PLC0415
             pf    = vbt.Portfolio.from_signals(
                 ohlcv["close"],
                 entries.shift(1).fillna(False),

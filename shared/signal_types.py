@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -41,7 +41,7 @@ class Signal:
     source_module: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     regime_label: str | None = None
-    metadata: dict = field(default_factory=dict)   # type: ignore[assignment]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Quality fields (QC-1) — None = not yet estimated (< 30 observations)
     ic_estimate: float | None = None

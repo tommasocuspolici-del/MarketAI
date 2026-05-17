@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 from numpy.lib.stride_tricks import sliding_window_view
 
 __version__ = "9.0.0"
@@ -18,9 +19,9 @@ __all__ = ["find_pivots", "normalised_slope", "ts_to_datetime"]
 
 
 def find_pivots(
-    close: np.ndarray,
+    close: npt.NDArray[Any],
     order: int = 5,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
     """Trova pivot locali massimi e minimi sulla serie close.
 
     Usa sliding_window_view di numpy — zero loop Python (Regola 8).
@@ -50,7 +51,7 @@ def find_pivots(
     )
 
 
-def normalised_slope(idx: np.ndarray, vals: np.ndarray) -> float:
+def normalised_slope(idx: npt.NDArray[Any], vals: npt.NDArray[Any]) -> float:
     """Slope della regressione lineare normalizzata per il prezzo medio."""
     if len(idx) < 2:
         return 0.0
@@ -63,6 +64,7 @@ def ts_to_datetime(ts_val: Any) -> datetime:
     """Converte numpy Timestamp/datetime64 in datetime Python UTC-aware (Regola 19)."""
     try:
         import pandas as pd
-        return pd.Timestamp(ts_val).to_pydatetime()
+        result: datetime = pd.Timestamp(ts_val).to_pydatetime()
+        return result
     except Exception:  # noqa: BLE001
         return datetime.now(UTC)

@@ -63,7 +63,7 @@ class SourceDeduplicator:
 
     def deduplicate(
         self,
-        articles: list[dict],
+        articles: list[dict[str, object]],
         # Each dict: {"title": str, "score": float, "source": str, "credibility": float}
     ) -> list[DeduplicatedEvent]:
         """Deduplicate articles into unique events.
@@ -143,7 +143,7 @@ class SourceDeduplicator:
         return events
 
     @staticmethod
-    def _fallback_no_dedup(articles: list[dict]) -> list[DeduplicatedEvent]:
+    def _fallback_no_dedup(articles: list[dict[str, object]]) -> list[DeduplicatedEvent]:
         """Return one event per article (no deduplication) as a safe fallback."""
         return [
             DeduplicatedEvent(

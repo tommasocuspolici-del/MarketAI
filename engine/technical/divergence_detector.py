@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import numpy.typing as npt
 import structlog
 
 from shared.types import TimeFrame
@@ -118,8 +119,8 @@ class DivergenceDetector:
         self,
         ticker:    str,
         timestamps: pd.Series,
-        prices:    np.ndarray,
-        indicator: np.ndarray,
+        prices:    npt.NDArray[np.float64],
+        indicator: npt.NDArray[np.float64],
         ind_name:  str,
     ) -> list[DivergenceSignal]:
         signals = []
@@ -179,7 +180,7 @@ class DivergenceDetector:
         return signals
 
     def _find_pivots(
-        self, arr: np.ndarray, kind: Literal["high", "low"]
+        self, arr: npt.NDArray[np.float64], kind: Literal["high", "low"]
     ) -> list[int]:
         """Trova indici dei pivot (massimi o minimi locali) con finestra w."""
         w       = self._pivot_window
@@ -192,7 +193,7 @@ class DivergenceDetector:
         return pivots
 
     @staticmethod
-    def _compute_rsi(closes: np.ndarray, period: int = 14) -> np.ndarray:
+    def _compute_rsi(closes: npt.NDArray[np.float64], period: int = 14) -> npt.NDArray[np.float64]:
         delta  = np.diff(closes, prepend=closes[0])
         gains  = np.where(delta > 0, delta, 0.0)
         losses = np.where(delta < 0, -delta, 0.0)
@@ -212,10 +213,10 @@ class DivergenceDetector:
 
     @staticmethod
     def _compute_macd_histogram(
-        closes: np.ndarray,
+        closes: npt.NDArray[np.float64],
         fast: int = 12, slow: int = 26, signal: int = 9,
-    ) -> np.ndarray:
-        def ema(arr: np.ndarray, period: int) -> np.ndarray:
+    ) -> npt.NDArray[np.float64]:
+        def ema(arr: npt.NDArray[np.float64], period: int) -> npt.NDArray[np.float64]:
             alpha = 2.0 / (period + 1)
             out   = np.zeros(len(arr), dtype=np.float64)
             out[0] = arr[0]

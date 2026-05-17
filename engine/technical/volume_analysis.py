@@ -44,6 +44,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import pandera as pa
 import structlog
 
@@ -80,12 +81,12 @@ class VolumeSignals:
         self,
         ticker:         str,
         computed_at:    datetime,
-        obv:            np.ndarray,
-        cmf_20:         np.ndarray,
-        vwap_20:        np.ndarray,
-        amihud_ratio:   np.ndarray,
-        amihud_10d_ma:  np.ndarray,
-        volume_zscore:  np.ndarray,
+        obv:            npt.NDArray[np.float64],
+        cmf_20:         npt.NDArray[np.float64],
+        vwap_20:        npt.NDArray[np.float64],
+        amihud_ratio:   npt.NDArray[np.float64],
+        amihud_10d_ma:  npt.NDArray[np.float64],
+        volume_zscore:  npt.NDArray[np.float64],
         latest_cmf:     float,
         latest_vwap:    float,
         latest_amihud:  float,
@@ -209,7 +210,7 @@ class VolumeAnalyzer:
     # ─── Calcoli ──────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _compute_obv(closes: np.ndarray, volumes: np.ndarray) -> np.ndarray:
+    def _compute_obv(closes: npt.NDArray[np.float64], volumes: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         # OTTIMIZZAZIONE Blocco A: zero loop — cumsum vettorizzato (Regola 23)
         # direction: +1 se close sale, -1 se scende, 0 invariato
         direction = np.sign(np.diff(closes, prepend=closes[0]))
@@ -217,10 +218,10 @@ class VolumeAnalyzer:
 
     @staticmethod
     def _compute_cmf(
-        closes: np.ndarray, highs: np.ndarray,
-        lows:   np.ndarray, volumes: np.ndarray,
+        closes: npt.NDArray[np.float64], highs: npt.NDArray[np.float64],
+        lows:   npt.NDArray[np.float64], volumes: npt.NDArray[np.float64],
         window: int,
-    ) -> np.ndarray:
+    ) -> npt.NDArray[np.float64]:
         """Chaikin Money Flow: pressione acquisto/vendita con volume.
 
         OTTIMIZZAZIONE Blocco A: loop sostituito con np.convolve (Regola 23).
@@ -236,14 +237,14 @@ class VolumeAnalyzer:
         vol_safe = np.where(vol_sum > 0, vol_sum, np.float64(1e-9))
         cmf = mfv_sum / vol_safe
         cmf[:window - 1] = np.float64(0.0)  # periodo non completo
-        return np.clip(cmf, -1.0, 1.0)
+        return np.asarray(np.clip(cmf, -1.0, 1.0), dtype=np.float64)
 
     @staticmethod
     def _compute_vwap(
-        closes: np.ndarray, highs: np.ndarray,
-        lows:   np.ndarray, volumes: np.ndarray,
+        closes: npt.NDArray[np.float64], highs: npt.NDArray[np.float64],
+        lows:   npt.NDArray[np.float64], volumes: npt.NDArray[np.float64],
         window: int,
-    ) -> np.ndarray:
+    ) -> npt.NDArray[np.float64]:
         """VWAP rolling su finestra mobile.
 
         OTTIMIZZAZIONE Blocco A: loop sostituito con np.convolve (Regola 23).
@@ -257,10 +258,10 @@ class VolumeAnalyzer:
         vol_safe = np.where(vol_sum > 0, vol_sum, np.float64(1e-9))
         vwap = tpv_sum / vol_safe
         vwap[:window - 1] = np.nan  # periodo non completo
-        return vwap
+        return np.asarray(vwap, dtype=np.float64)
 
     @staticmethod
-    def _rolling_mean(arr: np.ndarray, window: int) -> np.ndarray:
+    def _rolling_mean(arr: npt.NDArray[np.float64], window: int) -> npt.NDArray[np.float64]:
         # OTTIMIZZAZIONE Blocco A: convoluzione divide-per-window = rolling mean O(N)
         kernel = np.ones(window, dtype=np.float64) / window
         out = np.convolve(arr, kernel, mode="full")[:len(arr)]
@@ -268,7 +269,7 @@ class VolumeAnalyzer:
         return out
 
     @staticmethod
-    def _rolling_zscore(arr: np.ndarray, window: int) -> np.ndarray:
+    def _rolling_zscore(arr: npt.NDArray[np.float64], window: int) -> npt.NDArray[np.float64]:
         # OTTIMIZZAZIONE Blocco A: sliding_window_view + operazioni batch (Regola 23)
         # Elimina il loop Python su ogni barra storica
         out = np.full(len(arr), np.float64(0.0), dtype=np.float64)
@@ -286,11 +287,10 @@ class VolumeAnalyzer:
             ticker=ticker, exchange=exchange,
             timeframe=TimeFrame.D1, limit=limit,
         )
-        if df is None or df.empty or len(df) < _MIN_BARS:
+        if df.empty or len(df) < _MIN_BARS:
             raise InsufficientDataError(
-                f"{ticker}: storia insufficiente per volume analysis "
-                f"(trovati {len(df) if df is not None else 0} barre, "
-                f"richiesti {_MIN_BARS})"
+                required=_MIN_BARS,
+                available=len(df),
             )
         # schema validation skipped for pandera compat
         return df.sort_values("ts").reset_index(drop=True)

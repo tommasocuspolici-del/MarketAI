@@ -236,7 +236,7 @@ def _resolve_ticker_from_placeholder(ticker_col: str) -> str:
 
 
 def _resolve_real_ticker_for_row(row: pd.Series, instruments: dict[int, EtoroInstrument]) -> str:
-    ticker = row["ticker"]
+    ticker = str(row["ticker"])
     if not ticker.startswith("#"):
         return ticker
     iid_str = ticker[1:]
@@ -247,9 +247,9 @@ def _resolve_real_ticker_for_row(row: pd.Series, instruments: dict[int, EtoroIns
     if registry is not None:
         mapped = registry.get_ticker(iid)
         if mapped:
-            return mapped
+            return str(mapped)
     if iid in instruments:
-        return instruments[iid].best_symbol
+        return str(instruments[iid].best_symbol)
     return ticker
 
 
@@ -309,7 +309,7 @@ def build_api_positions_df(
         if p.instrument_id is None and p.ticker_from_api is None and p.order_id is None
     ]
 
-    resolvable_via_order: list = []
+    resolvable_via_order: list[EtoroPosition] = []
     if candidate_via_order:
         resolved, still = _resolve_instrument_ids_via_orders(client, candidate_via_order)
         resolvable_via_order = resolved
@@ -319,20 +319,20 @@ def build_api_positions_df(
     n_unresolvable = len(unresolvable)
     n_resolvable = len(resolvable_with_id) + len(resolvable_ticker_only)
 
-    instruments: dict = {}
+    instruments: dict[int, EtoroInstrument] = {}
     if resolvable_with_id:
         try:
             instruments = client.get_instruments(
-                list({p.instrument_id for p in resolvable_with_id})  # type: ignore[arg-type]
+                list({p.instrument_id for p in resolvable_with_id if p.instrument_id is not None})
             )
         except EtoroClientError as exc:
             log.warning("Lookup instrument fallito: %s", exc)
 
-    rates: dict = {}
+    rates: dict[int, EtoroInstrumentRate] = {}
     if resolvable_with_id:
         try:
             rates = client.get_rates(
-                [p.instrument_id for p in resolvable_with_id]  # type: ignore[arg-type]
+                [p.instrument_id for p in resolvable_with_id if p.instrument_id is not None]
             )
         except EtoroClientError as exc:
             log.warning("Lookup rates fallito: %s", exc)

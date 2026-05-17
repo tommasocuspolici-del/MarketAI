@@ -214,6 +214,8 @@ class DSLEvaluator:
     def _eval_node(self, node: ast.expr, df: pd.DataFrame) -> _NodeResult:
         """Valuta ricorsivamente un nodo AST."""
         if isinstance(node, ast.Constant):
+            if not isinstance(node.value, (int, float)):
+                raise DSLParseError(f"Costante non numerica: {node.value!r}")
             return float(node.value)
 
         if isinstance(node, ast.Name):
@@ -237,15 +239,15 @@ class DSLEvaluator:
         if isinstance(node, ast.UnaryOp):
             v = self._eval_node(node.operand, df)
             if isinstance(node.op, ast.USub):
-                return -v  # type: ignore[operator]
+                return -v
             return v
 
         if isinstance(node, ast.Compare):
             lv = self._eval_node(node.left, df)
             for op, comp in zip(node.ops, node.comparators):
                 rv = self._eval_node(comp, df)
-                lv = self._apply_compare(op, lv, rv)  # type: ignore[assignment]
-            return lv  # type: ignore[return-value]
+                lv = self._apply_compare(op, lv, rv)
+            return lv
 
         if isinstance(node, ast.BoolOp):
             results = [self._eval_node(v, df) for v in node.values]
@@ -253,11 +255,12 @@ class DSLEvaluator:
                 out = results[0]
                 for r in results[1:]:
                     out = out & r  # type: ignore[operator]
-                return out  # type: ignore[return-value]
+                return out
             out = results[0]
             for r in results[1:]:
                 out = out | r  # type: ignore[operator]
-            return out  # type: ignore[return-value]
+            return out
+
 
         if isinstance(node, ast.Call):
             return self._eval_call(node, df)
@@ -301,18 +304,18 @@ class DSLEvaluator:
     def _apply_binop(op: ast.operator, lv: _NodeResult, rv: _NodeResult) -> _NodeResult:
         """Applica operatore aritmetico binario."""
         if isinstance(op, ast.Add):
-            return lv + rv  # type: ignore[operator]
+            return lv + rv
         if isinstance(op, ast.Sub):
-            return lv - rv  # type: ignore[operator]
+            return lv - rv
         if isinstance(op, ast.Mult):
-            return lv * rv  # type: ignore[operator]
+            return lv * rv
         if isinstance(op, ast.Div):
             # Divisione sicura: evita ZeroDivisionError su Series
             if isinstance(rv, pd.Series):
                 rv = rv.replace(0.0, np.nan)
             elif rv == 0:
                 raise DSLEvalError("Divisione per zero nell'espressione DSL.")
-            return lv / rv  # type: ignore[operator]
+            return lv / rv
         raise DSLParseError(f"Operatore '{type(op).__name__}' non supportato.")
 
     @staticmethod
@@ -329,7 +332,7 @@ class DSLEvaluator:
         fn = ops_map.get(type(op))
         if fn is None:
             raise DSLParseError(f"Operatore '{type(op).__name__}' non supportato.")
-        return fn(lv, rv)  # type: ignore[return-value]
+        return fn(lv, rv)  # type: ignore[no-untyped-call]
 
 
 # ─── Utility pubblica ─────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from shared.logger import get_logger
@@ -34,7 +35,7 @@ log = get_logger(__name__)
 
 @dataclass
 class OrderFlowResult:
-    cvd:             np.ndarray   # Cumulative Volume Delta time series
+    cvd:             npt.NDArray[np.float64]   # Cumulative Volume Delta time series
     cvd_last:        float        # Latest CVD value
     cvd_change_pct:  float        # CVD change over lookback window (%)
     delta_ratio:     float        # buy_vol / total_vol ∈ [0, 1]

@@ -65,6 +65,26 @@ ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS risk_free_rate DOUBLE;
 ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS data_source VARCHAR DEFAULT 'edgar+fred';
 ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS forward_pe_pct DOUBLE;
 
+-- ─── OHLCV data (tabella generica per prezzi storici e crypto) ───────────────
+CREATE TABLE IF NOT EXISTS ohlcv_data (
+    ticker      VARCHAR     NOT NULL,
+    exchange    VARCHAR     NOT NULL,
+    timeframe   VARCHAR     NOT NULL,
+    ts          TIMESTAMPTZ NOT NULL,
+    open        DOUBLE,
+    high        DOUBLE,
+    low         DOUBLE,
+    close       DOUBLE,
+    volume      DOUBLE,
+    source      VARCHAR,
+    currency    VARCHAR     DEFAULT 'USD',
+    fetched_at  TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (ticker, exchange, timeframe, ts)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohlcv_ticker_ts
+    ON ohlcv_data (ticker, ts DESC);
+
 -- ─── Crypto prices view (creata qui dopo che ohlcv_data esiste) ──────────────
 CREATE VIEW IF NOT EXISTS crypto_prices_latest AS
 SELECT

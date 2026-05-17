@@ -180,9 +180,17 @@ module = [
     "yfinance.*", "pandas_datareader.*", "duckdb.*",
     "apscheduler.*", "diskcache.*", "pandas.*", "pandera.*",
     "pyarrow.*", "bcrypt.*", "streamlit.*", "plotly.*",
-    "scipy.*",
+    "scipy.*", "optuna.*",
+    "statsmodels.*", "arch.*", "hmmlearn.*", "pmdarima.*",
+    "xgboost.*", "shap.*", "prophet.*", "deap.*",
+    "transformers.*", "torch.*", "vaderSentiment.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["cvxpy.*", "vectorbt.*"]
+ignore_missing_imports = true
+ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"

@@ -303,7 +303,7 @@ class FundamentalsRepository:
         df = self.read_valuation(ticker)
         if df.empty:
             return None
-        return df.iloc[0].to_dict()
+        return dict(df.iloc[0].to_dict())
 
     def read_pe_ratio(self, ticker: str) -> float | None:
         """Return the most recent P/E TTM for quick display, or None."""
@@ -311,7 +311,9 @@ class FundamentalsRepository:
         if row is None:
             return None
         val = row.get("pe_ttm")
-        if val is None or (isinstance(val, float) and np.isnan(val)):
+        if val is None or not isinstance(val, (int, float)):
+            return None
+        if isinstance(val, float) and np.isnan(val):
             return None
         return float(val)
 

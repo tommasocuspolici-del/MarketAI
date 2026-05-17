@@ -129,7 +129,7 @@ class WalkForwardValidator:
     ) -> float:
         """Evaluate OOS Sharpe using vectorbt (primary) or numpy (fallback)."""
         try:
-            import vectorbt as vbt  # type: ignore[import]
+            import vectorbt as vbt  # type: ignore[import-untyped]
             entries_test = (
                 entries.reindex(test_df.index).fillna(False).shift(1).fillna(False)
             )

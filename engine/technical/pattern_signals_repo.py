@@ -175,10 +175,11 @@ class PatternSignalsRepo:
         """Numero totale di pattern storici per un ticker."""
         try:
             with self._client.transaction() as conn:
-                return int(conn.execute(
+                row = conn.execute(
                     "SELECT COUNT(*) FROM pattern_signals WHERE ticker = ?",
                     [ticker],
-                ).fetchone()[0])
+                ).fetchone()
+                return int(row[0]) if row else 0
         except Exception:  # noqa: BLE001
             return 0
 
@@ -200,9 +201,10 @@ class PatternSignalsRepo:
                     """,
                     [cutoff_str, days],
                 )
-                n = conn.execute(
+                count_row = conn.execute(
                     "SELECT COUNT(*) FROM pattern_signals WHERE status = 'EXPIRED'"
-                ).fetchone()[0]
+                ).fetchone()
+                n = count_row[0] if count_row else 0
             return int(n)
         except Exception as exc:
             log.warning("pattern_repo.expire_error", error=str(exc)[:100])

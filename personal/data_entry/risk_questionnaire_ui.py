@@ -53,7 +53,7 @@ def render_risk_questionnaire(
             choice_idx = st.radio(
                 q.text,
                 options=range(len(option_labels)),
-                format_func=lambda i, lbls=option_labels: lbls[i],
+                format_func=lambda i, lbls=option_labels: lbls[i],  # type: ignore[misc]
                 key=f"{key}_{q.qid}",
                 index=None,
             )

@@ -30,6 +30,7 @@ __all__ = [
     "list_assets",
     "list_liabilities",
     "net_worth_summary",
+    "new_id",
     "save_asset",
     "save_liability",
 ]

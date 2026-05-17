@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from scipy.fft import fft, fftfreq
 
@@ -41,8 +42,8 @@ class CycleResult:
     hurst:              float | None   # [0, 1] — None if insufficient data
     hurst_regime:       str            # "trending" | "random" | "mean_reverting" | "unknown"
     dominant_cycle_days: int | None    # Dominant FFT cycle in trading days
-    fft_power:          np.ndarray     # Power spectrum
-    fft_freqs:          np.ndarray     # Frequency array
+    fft_power:          npt.NDArray[np.float64]   # Power spectrum
+    fft_freqs:          npt.NDArray[np.float64]   # Frequency array
     n_obs:              int
 
 
@@ -62,7 +63,7 @@ class CycleAnalyzer:
         self._min_hurst = min_obs_hurst
         self._min_fft   = min_obs_fft
 
-    def analyze(self, prices: pd.Series | np.ndarray) -> CycleResult:
+    def analyze(self, prices: pd.Series | npt.NDArray[np.float64]) -> CycleResult:
         """Compute Hurst exponent and dominant FFT cycle.
 
         Args:
@@ -109,7 +110,7 @@ class CycleAnalyzer:
 
     # ── Hurst exponent via R/S analysis ───────────────────────────────────
 
-    def _hurst_rs(self, prices: np.ndarray) -> float:
+    def _hurst_rs(self, prices: npt.NDArray[np.float64]) -> float:
         """Estimate Hurst exponent via rescaled range analysis (multi-window average)."""
         returns = np.diff(np.log(prices + 1e-9))
         n       = len(returns)
@@ -150,7 +151,7 @@ class CycleAnalyzer:
         return float(np.clip(slope, 0.0, 1.0))
 
     @staticmethod
-    def _rs_stat(series: np.ndarray) -> float:
+    def _rs_stat(series: npt.NDArray[np.float64]) -> float:
         """Rescaled range for a single segment."""
         if len(series) < 2:
             return 0.0
@@ -164,7 +165,7 @@ class CycleAnalyzer:
 
     # ── FFT dominant cycle ─────────────────────────────────────────────────
 
-    def _fft_dominant_cycle(self, prices: np.ndarray) -> int | None:
+    def _fft_dominant_cycle(self, prices: npt.NDArray[np.float64]) -> int | None:
         """Find dominant cycle in trading days via FFT on log-returns."""
         returns = np.diff(np.log(prices + 1e-9))
         if len(returns) < self._min_fft:

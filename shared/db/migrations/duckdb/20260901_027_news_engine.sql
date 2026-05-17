@@ -31,8 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_news_category
     ON news_articles (category, published_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_news_cluster
-    ON news_articles (cluster_id)
-    WHERE cluster_id IS NOT NULL;
+    ON news_articles (cluster_id);
 
 -- ─── Cluster di eventi ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS news_clusters (

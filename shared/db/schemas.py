@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 try:
     import pandera.pandas as pa  # pandera >= 0.20
 except ModuleNotFoundError:  # pragma: no cover -- branch attivo su pandera 0.18/0.19
-    import pandera as pa  # type: ignore[no-redef]
+    import pandera as pa  # pragma: no cover
 
 from pandas.api.types import is_datetime64_any_dtype
 
