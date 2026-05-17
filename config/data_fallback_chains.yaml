@@ -1,0 +1,86 @@
+# config/data_fallback_chains.yaml
+# Fallback chain per categoria di dato — Regola 34
+# DataSourceManager legge questo file per sapere l'ordine di tentativi.
+# La voce 'duckdb_cache' è sempre l'ultimo resort (dato stale + warning UI).
+
+price_ohlcv:
+  - source: finnhub_websocket
+    ttl_key: prezzi_realtime
+  - source: yfinance_polling
+    ttl_key: prezzi_daily
+  - source: alpha_vantage
+    ttl_key: prezzi_daily
+  - source: duckdb_cache
+    ttl_key: prezzi_daily
+
+macro_fred:
+  - source: fred_api
+    ttl_key: macro_fred
+  - source: world_bank_api
+    ttl_key: macro_fred
+  - source: duckdb_cache
+    ttl_key: macro_fred
+
+macro_ecb:
+  - source: ecb_api
+    ttl_key: macro_ecb
+  - source: duckdb_cache
+    ttl_key: macro_ecb
+
+macro_imf:
+  - source: imf_api
+    ttl_key: macro_imf
+  - source: duckdb_cache
+    ttl_key: macro_imf
+
+macro_oecd:
+  - source: oecd_api
+    ttl_key: macro_oecd
+  - source: duckdb_cache
+    ttl_key: macro_oecd
+
+pe_metrics:
+  - source: edgar_xbrl
+    ttl_key: fondamentali
+  - source: alpha_vantage_earnings
+    ttl_key: fondamentali
+  - source: yfinance_info
+    ttl_key: fondamentali
+  - source: duckdb_cache
+    ttl_key: pe_metrics
+
+shiller_cape:
+  - source: yale_shiller_xls
+    ttl_key: shiller_cape
+  - source: fred_multpl
+    ttl_key: shiller_cape
+  - source: duckdb_cache
+    ttl_key: shiller_cape
+
+news_articles:
+  - source: rss_fetcher
+    ttl_key: news_rss
+  - source: duckdb_cache
+    ttl_key: news_rss
+
+crypto:
+  - source: coingecko_api
+    ttl_key: crypto
+  - source: duckdb_cache
+    ttl_key: crypto
+
+ib_forecast:
+  - source: ib_rss_fetcher
+    ttl_key: ib_forecast
+  - source: fed_sep_parser
+    ttl_key: ib_forecast
+  - source: imf_wb_api
+    ttl_key: ib_forecast
+  - source: duckdb_cache
+    ttl_key: ib_forecast
+
+sentiment:
+  - source: live_sentiment_service
+    ttl_key: sentiment
+  - source: duckdb_cache
+    ttl_key: sentiment

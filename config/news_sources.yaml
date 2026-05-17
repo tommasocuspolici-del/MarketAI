@@ -1,0 +1,41 @@
+# config/news_sources.yaml
+# Fonti RSS per News Engine (Fase 7)
+# Regola 33: solo fonti reali con URL verificati.
+# Regola 34: fetch_interval_seconds definisce il TTL minimo per ogni sorgente.
+
+news_sources:
+  - id: reuters
+    rss_url: "https://feeds.reuters.com/reuters/businessNews"
+    credibility_weight: 0.95
+    category_bias: macro
+    fetch_interval_seconds: 1800
+
+  - id: cnbc
+    rss_url: "https://search.cnbc.com/rs/search/combinedcombined/view/rss/section/news"
+    credibility_weight: 0.85
+    category_bias: markets
+    fetch_interval_seconds: 1800
+
+  - id: financial_times
+    rss_url: "https://www.ft.com/?format=rss"
+    credibility_weight: 0.95
+    category_bias: macro
+    fetch_interval_seconds: 3600
+
+  - id: seeking_alpha
+    rss_url: "https://seekingalpha.com/market_currents.xml"
+    credibility_weight: 0.75
+    category_bias: equity
+    fetch_interval_seconds: 1800
+
+  - id: nasdaq_news
+    rss_url: "https://www.nasdaq.com/feed/rssoutbound?category=Markets"
+    credibility_weight: 0.80
+    category_bias: equity
+    fetch_interval_seconds: 1800
+
+  - id: finviz
+    rss_url: "https://finviz.com/news.ashx?v=2"
+    credibility_weight: 0.70
+    category_bias: markets
+    fetch_interval_seconds: 1800

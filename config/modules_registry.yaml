@@ -1,0 +1,235 @@
+# config/modules_registry.yaml
+# Registro centralizzato di tutti i moduli attivi — Fase 5 Extensibility
+# L'installer futuro leggerà questo file per sapere cosa installare.
+#
+# Regola: ogni nuovo modulo aggiunto qui — nessuna modifica al codice esistente.
+
+fetchers:
+  - id: yfinance_prices
+    class: engine.market_data.fetchers.yahoo_fetcher.YahooFetcher
+    feature_flag: market_data_refresh
+    cache_ttl_key: prezzi_daily
+    version: "6.0.0"
+
+  - id: fred_macro
+    class: engine.market_data.fetchers.fred_fetcher.FredFetcher
+    feature_flag: market_data_refresh
+    cache_ttl_key: macro_fred
+    version: "6.0.0"
+
+  - id: alpha_vantage
+    class: engine.market_data.fetchers.alpha_vantage_fetcher.AlphaVantageFetcher
+    feature_flag: alpha_vantage_premium
+    cache_ttl_key: prezzi_daily
+    version: "6.0.0"
+
+  - id: edgar_fundamentals
+    class: engine.market_data.fetchers.edgar_fetcher.EdgarFetcher
+    feature_flag: edgar_bulk_download
+    cache_ttl_key: fondamentali
+    version: "6.0.0"
+
+  - id: finnhub
+    class: engine.market_data.fetchers.finnhub_fetcher.FinnhubFetcher
+    feature_flag: realtime_websocket
+    cache_ttl_key: prezzi_realtime
+    version: "6.0.0"
+
+  - id: futures
+    class: engine.market_data.fetchers.futures_fetcher.FuturesFetcher
+    feature_flag: futures_analysis
+    cache_ttl_key: futures_ohlcv
+    version: "6.0.0"
+
+  - id: imf_macro
+    class: engine.market_data.fetchers.imf_fetcher.IMFFetcher
+    feature_flag: imf_fetcher
+    cache_ttl_key: macro_imf
+    version: "1.0.0"
+
+  - id: ecb_macro
+    class: engine.market_data.fetchers.ecb_fetcher.ECBFetcher
+    feature_flag: ecb_fetcher
+    cache_ttl_key: macro_ecb
+    version: "1.0.0"
+
+  - id: oecd_indicators
+    class: engine.market_data.fetchers.oecd_fetcher.OECDFetcher
+    feature_flag: oecd_fetcher
+    cache_ttl_key: macro_oecd
+    version: "1.0.0"
+
+  - id: coingecko_crypto
+    class: engine.market_data.fetchers.coingecko_fetcher.CoinGeckoFetcher
+    feature_flag: coingecko_fetcher
+    cache_ttl_key: crypto
+    version: "1.0.0"
+
+  - id: shiller_cape
+    class: engine.analytics.valuation.shiller_cape_fetcher.ShillerCAPEFetcher
+    feature_flag: shiller_cape_fetcher
+    cache_ttl_key: shiller_cape
+    version: "1.0.0"
+
+  - id: earnings_fetcher
+    class: engine.analytics.valuation.earnings_fetcher.EarningsFetcher
+    feature_flag: valuation_pe_engine
+    cache_ttl_key: fondamentali
+    version: "1.0.0"
+
+  - id: news_rss
+    class: engine.news.rss_fetcher.RSSFetcher
+    feature_flag: news_rss_fetcher
+    cache_ttl_key: news_rss
+    version: "1.0.0"
+
+  - id: ib_rss
+    class: engine.ib_forecast.ib_rss_fetcher.IBRSSFetcher
+    feature_flag: ib_forecast_enabled
+    cache_ttl_key: ib_forecast
+    version: "1.0.0"
+
+analytics_engines:
+  - id: pe_calculator
+    class: engine.analytics.valuation.pe_calculator.PECalculator
+    feature_flag: valuation_pe_engine
+    version: "1.0.0"
+
+  - id: pe_context_builder
+    class: engine.analytics.valuation.pe_context_builder.PEContextBuilder
+    feature_flag: valuation_pe_engine
+    version: "1.0.0"
+
+  - id: valuation_signal_generator
+    class: engine.analytics.valuation.valuation_signal_generator.ValuationSignalGenerator
+    feature_flag: valuation_signal_composite
+    version: "1.0.0"
+
+  - id: news_aggregator
+    class: engine.news.news_aggregator.NewsAggregator
+    feature_flag: news_engine_enabled
+    version: "1.0.0"
+
+  - id: news_signal_generator
+    class: engine.news.news_signal_generator.NewsSignalGenerator
+    feature_flag: news_signal_generator
+    version: "1.0.0"
+
+  - id: ib_consensus_builder
+    class: engine.ib_forecast.consensus_builder.ConsensusBuilder
+    feature_flag: ib_forecast_enabled
+    version: "1.0.0"
+
+  - id: composite_signal_v3
+    class: engine.analytics.composite_signal_v3.CompositeSignalAggregatorV3
+    feature_flag: composite_signal_v3
+    version: "3.0.0"
+
+  - id: llm_gateway
+    class: shared.llm.llm_gateway.LLMGateway
+    feature_flag: llm_engine_enabled
+    version: "1.0.0"
+
+pages_engine:
+  - id: K1_Market_Overview
+    path: presentation/dashboard_engine/pages/K1_Market_Overview.py
+    group: MERCATI
+    requires_flags: [market_data_refresh]
+
+  - id: K2_Equity
+    path: presentation/dashboard_engine/pages/K2_Equity.py
+    group: MERCATI
+    requires_flags: [market_data_refresh]
+
+  - id: K4_Commodity
+    path: presentation/dashboard_engine/pages/K4_Commodity.py
+    group: MERCATI
+    requires_flags: [futures_analysis]
+
+  - id: M1_Macro
+    path: presentation/dashboard_engine/pages/M1_Macro.py
+    group: MACRO
+    requires_flags: [market_data_refresh]
+
+  - id: M2_Yield_Curve
+    path: presentation/dashboard_engine/pages/M2_Yield_Curve.py
+    group: MACRO
+    requires_flags: [market_data_refresh]
+
+  - id: M3_Labour_Market
+    path: presentation/dashboard_engine/pages/M3_Labour_Market.py
+    group: MACRO
+    requires_flags: [labour_market_fetcher]
+
+  - id: M6_Valuation_PE
+    path: presentation/dashboard_engine/pages/M6_Valuation_PE.py
+    group: MACRO
+    requires_flags: [valuation_pe_engine]
+
+  - id: N1_News_Feed
+    path: presentation/dashboard_engine/pages/N1_News_Feed.py
+    group: NEWS
+    requires_flags: [news_engine_enabled]
+
+  - id: N2_News_Analysis
+    path: presentation/dashboard_engine/pages/N2_News_Analysis.py
+    group: NEWS
+    requires_flags: [news_engine_enabled]
+
+  - id: M7_IB_Consensus
+    path: presentation/dashboard_engine/pages/M7_IB_Consensus.py
+    group: FORECAST
+    requires_flags: [ib_forecast_enabled]
+
+  - id: Q1_VIX_Analysis
+    path: presentation/dashboard_engine/pages/Q1_VIX_Analysis.py
+    group: ANALYTICS
+    requires_flags: [vix_based_analysis]
+
+  - id: Q2_Sentiment
+    path: presentation/dashboard_engine/pages/Q2_Sentiment.py
+    group: ANALYTICS
+    requires_flags: []
+
+  - id: S0_Health
+    path: presentation/dashboard_engine/pages/S0_Health.py
+    group: SETTINGS
+    requires_flags: []
+
+  - id: S2_Settings
+    path: presentation/dashboard_engine/pages/S2_Settings.py
+    group: SETTINGS
+    requires_flags: []
+
+migrations:
+  - file: shared/db/migrations/duckdb/20260401_001_initial_schema.sql
+    applied: true
+  - file: shared/db/migrations/duckdb/20260514_017_instrument_registry.sql
+    applied: true
+  - file: shared/db/migrations/duckdb/20260615_007_unified_v2.sql
+    applied: true
+  - file: shared/db/migrations/duckdb/20260615_026_cache_layer.sql
+    applied: false
+  - file: shared/db/migrations/duckdb/20260801_020_valuation_complete.sql
+    applied: false
+  - file: shared/db/migrations/duckdb/20260901_027_news_engine.sql
+    applied: false
+  - file: shared/db/migrations/duckdb/20260901_028_ib_forecast.sql
+    applied: false
+
+llm_models:
+  - id: mistral_7b_q4
+    ollama_name: mistral:7b-q4
+    min_ram_gb: 5.0
+    disk_gb: 4.1
+    recommended_for_ram_gb: [8, 16]
+    quality: high
+    active: false
+
+  - id: phi3_mini
+    ollama_name: phi3:mini
+    min_ram_gb: 4.0
+    disk_gb: 2.3
+    recommended_for_ram_gb: [4, 8]
+    quality: medium
+    active: false

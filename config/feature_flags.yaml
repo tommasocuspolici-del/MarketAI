@@ -215,3 +215,62 @@ source_deduplication: true             # ★ Dedup eventi stesso notizia da N fo
 alpha_decay_monitor_global: true       # ★ IC monitoring su tutti i segnali
 consensus_validator_alerts: true       # ★ Gate consensus prima di ogni alert BUY/SELL
 regime_adaptive_weights: true          # ★ Pesi da regime_weights.yaml (non hardcoded)
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP FINALE v2.0 — Fasi 5-10
+# ══════════════════════════════════════════════════════════════════════════
+
+# ─── Fase 5 — Data Expansion + Cache Layer ────────────────────────────────────
+imf_fetcher: true                      # IMF WEO/IFS macro data (gratuito)
+ecb_fetcher: true                      # ECB SDW (tassi, HICP, M3, EUR/USD)
+oecd_fetcher: true                     # OECD CLI + Business/Consumer Confidence
+coingecko_fetcher: true                # Top 20 crypto + dominance + F&G
+data_source_manager: true              # DataSourceManager fallback chain
+fallback_chain_enabled: true           # Fallback chain per 8 categorie
+cache_first_pattern: true              # ★ Regola 34 — obbligatorio
+
+# ─── Fase 6 — Indicatori Essenziali P/E + Mercato ────────────────────────────
+valuation_context_builder: true        # PEContextBuilder z-score 20Y + percentile
+valuation_signal_composite: true       # Segnale valutazione [-1,+1] → Composite v3
+shiller_cape_historical: true          # Serie Shiller dal 1881 in DuckDB
+erp_regime_detector: true             # ERP regime label (attractive/fair/expensive)
+
+# ─── Fase 7 — News Engine ★ MILESTONE ─────────────────────────────────────────
+news_engine_enabled: true              # ★ Milestone — news pipeline completa
+news_rss_fetcher: true                 # RSS feed 6 fonti (Reuters, CNBC, FT, SA, Nasdaq, Finviz)
+news_entity_resolver: true             # Mapping mention → ticker (top 50 watched)
+news_tfidf_clustering: true           # TF-IDF (500 features) + DBSCAN clustering
+news_signal_generator: true           # ★ CP-01 — segnale news [-1,+1] per Composite
+news_llm_analysis: false               # LLM latente — attivato quando llm_engine_enabled: true
+
+# ─── Fase 8 — IB Forecast Engine ─────────────────────────────────────────────
+ib_forecast_enabled: true              # IB Forecast Engine (Stage 1 regex)
+ib_regex_fallback: true                # Stage 1: regex pattern extraction
+ib_llm_extraction: false               # Stage 2: attivato DALL'UTENTE dopo LLM abilitato
+fed_sep_parser: true                   # Fed SEP FOMC parser (>= 4 FOMC recenti)
+imf_wb_outlook_fetcher: true           # IMF/WB GDP + inflation da API strutturata
+
+# ─── Fase 9 — LLM Integrazione Latente ────────────────────────────────────────
+# ★★★ TUTTI FALSE DI DEFAULT ★★★ — Utente attiva da S2_Settings
+llm_engine_enabled: false              # MASTER SWITCH — tutto LLM inattivo se false
+llm_backend: ollama                    # 'ollama' (unico backend — privacy)
+llm_model: mistral:7b-q4              # Modello raccomandato
+llm_max_tokens: 512
+llm_temperature: 0.2
+ollama_host: http://localhost:11434
+llm_cache_ttl_hours: 4               # Regola 34: LLM output cachato 4h
+
+# Sotto-moduli LLM (ignorati se llm_engine_enabled: false)
+llm_narrative_generator: false         # Narrativa mercato giornaliera
+llm_news_semantic: false               # Analisi notizie semantica deep
+llm_market_qa: false                   # Q&A contestualizzato sul mercato
+llm_earnings_summary: false            # Narrativa earnings
+llm_alert_explain: false               # Spiegazione alert in linguaggio naturale
+llm_portfolio_comment: false           # Commento portafoglio personalizzato
+
+# ─── Fase 10 — Quality Gate ───────────────────────────────────────────────────
+quality_gate_enabled: true             # scripts/quality_gate.py
+mini_sprint_enabled: true             # 0.5 sett. mini-sprint per fase
+silent_failure_detector: true         # Rileva fallback silenziosi
+no_hardcode_enforcement: true         # ★ Regola 33 — verificato in CI
+cache_compliance_check: true          # ★ Regola 34 — verificato in CI

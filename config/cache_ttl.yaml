@@ -1,0 +1,29 @@
+# config/cache_ttl.yaml
+# TTL in secondi per ogni categoria di dato — Regola 34
+# OBBLIGATORIO: ogni fetcher dichiara il proprio ttl_key.
+# Zero TTL hardcoded nel codice Python — usare questo file.
+#
+# Uso: from shared.config.cache_ttl_config import CACHE_TTL
+#      ttl = CACHE_TTL.get("prezzi_realtime")  # → 60
+
+prezzi_realtime:    60        # Prices via polling/WebSocket — aggiornati ogni minuto max
+prezzi_daily:       3600      # OHLCV daily — aggiornati ogni ora in intraday
+macro_fred:         86400     # FRED — aggiorna giornalmente
+fondamentali:       604800    # EDGAR/AV — aggiornato settimanalmente
+news:               1800      # News feed — ogni 30 min
+llm_narrativa:      14400     # LLM output — 4h (costoso)
+ib_forecast:        86400     # IB reports — giornaliero
+pe_metrics:         3600      # P/E, CAPE, ERP — aggiornato orario
+shiller_cape:       86400     # CAPE Shiller — mensile ma refresh giornaliero
+vix_surface:        3600      # VIX term structure — orario
+futures_ohlcv:      3600      # Futures prices — orario
+sentiment:          3600      # Sentiment aggregato — orario
+composite_signal:   1800      # Composite signal — 30 min
+ib_consensus:       86400     # IB consensus — giornaliero
+crypto:             3600      # Crypto prices — orario
+macro_ecb:          86400     # ECB data — giornaliero
+macro_imf:          86400     # IMF data — giornaliero
+macro_oecd:         86400     # OECD leading indicators — giornaliero
+news_rss:           1800      # RSS news articles — 30 min
+valuation_signal:   1800      # Valuation composite signal — 30 min
+instrument_lookup:  86400     # Instrument registry — giornaliero
