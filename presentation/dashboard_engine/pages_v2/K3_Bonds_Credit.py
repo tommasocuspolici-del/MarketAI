@@ -11,6 +11,11 @@ def body_k3_bonds_credit(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.components.yield_curve_chart import render_yield_curve_chart
     require_auth()
     st.title("📊 Mercati — Bonds & Credit")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="k3_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     col1, col2 = st.columns([3, 2])
     with col1:

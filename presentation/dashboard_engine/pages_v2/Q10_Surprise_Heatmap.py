@@ -26,6 +26,11 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("🗺️ Economic Surprise — Heatmap")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q10v2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Z-Score per Indicatore × Mese · Stile Bloomberg CESI · Ultimi 12 mesi")
 
     try:

@@ -17,6 +17,11 @@ def body_t1_backtesting(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("🧪 Backtesting — v9.0")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="t1_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     tab_run, tab_res, tab_stress, tab_hist = st.tabs(
         ["🧪 Esegui", "📊 Risultati", "⚡ Stress", "📋 Storia"]
     )

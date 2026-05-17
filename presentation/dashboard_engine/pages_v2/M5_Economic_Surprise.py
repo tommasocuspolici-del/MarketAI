@@ -18,6 +18,11 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("⚡ Economic Surprise Index")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="m5v2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Citigroup CESI-style · 20 indicatori · 4 settori · z-score normalizzato")
 
     try:

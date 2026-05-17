@@ -10,6 +10,11 @@ def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("🔬 Analisi — Forecasting (3 scenari)")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q4_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Wiring dati reali da DuckDB — completamento Settimana 8.")
 
     try:

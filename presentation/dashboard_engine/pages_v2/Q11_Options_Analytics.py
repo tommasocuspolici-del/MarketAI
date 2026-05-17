@@ -18,6 +18,11 @@ def body_q11_options_analytics(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("📐 Options Analytics")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q11_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Black-Scholes Greeks, Volatility Surface, Expected Move — Lean MVP v10.0")
 
     from shared.feature_flags import is_enabled

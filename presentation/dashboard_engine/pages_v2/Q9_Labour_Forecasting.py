@@ -26,6 +26,11 @@ def body_q9_labour_forecasting(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("🔮 Labour Market — Forecasting")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q9v2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("ARIMA + Ridge Ensemble · Orizzonti 1M / 3M / 6M · Walk-forward validation")
 
     try:

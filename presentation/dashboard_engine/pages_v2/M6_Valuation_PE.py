@@ -15,6 +15,11 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("📊 Valuation — P/E & CAPE")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="m6_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Trailing P/E · Forward P/E · Shiller CAPE · Equity Risk Premium")
 
     try:

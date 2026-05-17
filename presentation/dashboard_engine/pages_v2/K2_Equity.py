@@ -75,6 +75,11 @@ def body_k2_equity(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("📊 Mercati — Equity")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="k2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     ticker: str = st.selectbox("Ticker", _DEFAULT_TICKERS, key="k2_ticker")
     sector: str = _TICKER_SECTOR.get(ticker, "Unknown")

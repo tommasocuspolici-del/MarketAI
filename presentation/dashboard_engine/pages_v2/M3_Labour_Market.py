@@ -18,6 +18,11 @@ def body_m3_labour_market(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("🌍 Labour Market — JOLTS · Claims · Payrolls · Regime")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="m3v2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("FRED data · Classificazione 4 regimi · Forecast engine integrato")
 
     try:

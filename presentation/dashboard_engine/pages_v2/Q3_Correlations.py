@@ -18,6 +18,11 @@ def body_q3_correlations(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("🔬 Correlation Engine v2 — Cross-Asset & Lead-Lag")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q3_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("EWMA Enhanced · Granger Causality · Regime-Conditioned · DCC")
 
     try:

@@ -12,6 +12,11 @@ def body_m2_yield_curve(st, tokens) -> None:  # pragma: no cover
 
     require_auth()
     st.title("🌍 Macro — Yield Curve & Credit Spreads")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="m2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     col1, col2 = st.columns([3, 2])
 

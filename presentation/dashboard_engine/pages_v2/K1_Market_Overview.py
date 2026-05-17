@@ -28,6 +28,11 @@ def body_k1_market_overview(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("📊 Mercati — Market Overview")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="k1mo_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     # ── 1. Composite Signal v2 ─────────────────────────────────────────────
     st.subheader("🔬 Composite Signal v2 — 7 Componenti")

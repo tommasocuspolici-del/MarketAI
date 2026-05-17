@@ -12,6 +12,11 @@ def body_k5_forex_options(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("📊 Mercati — Forex & Options")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="k5_refresh"):
+            st.cache_data.clear()
+            st.rerun()
 
     try:
         import plotly.graph_objects as go

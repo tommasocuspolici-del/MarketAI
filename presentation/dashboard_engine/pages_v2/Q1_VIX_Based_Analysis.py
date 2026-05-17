@@ -10,6 +10,11 @@ def body_q1_vix_based_analysis(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("🔬 Analisi — VIX-Based Strategy")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="q1_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("Segnale VIX Z-Score regime-aware + StrategyComposer output.")
 
     # ── Strategy output corrente ───────────────────────────────────────────

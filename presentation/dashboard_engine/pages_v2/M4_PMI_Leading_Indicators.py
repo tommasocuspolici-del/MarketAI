@@ -10,6 +10,11 @@ def body_m4_pmi_leading_indicators(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
     st.title("🌍 Macro — PMI & Leading Indicators")
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="m4_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     st.caption("ISM Manufacturing, Industrial Production, Housing Starts, Sentiment.")
 
     try:
