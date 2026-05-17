@@ -11,6 +11,113 @@ if TYPE_CHECKING:
 __version__ = "1.0.0"
 
 
+def _run_forecast_job(st_module) -> None:  # pragma: no cover
+    """Genera previsioni UNRATE da FRED e persiste in labour_forecasts."""
+    st = st_module
+    import pandas as pd
+    from datetime import datetime, UTC as _UTC
+    from engine.market_data.fred_simple_client import FredSimpleClient, FredKeyMissingError
+    from engine.analytics.labour_market.labour_forecast_engine import LabourForecastEngine
+    from shared.db.duckdb_client import DuckDBClient
+    from shared.constants import DUCKDB_PATH
+
+    fred = FredSimpleClient()
+    if not fred.has_api_key:
+        st.error("❌ FRED_API_KEY non configurata in .env.")
+        return
+    try:
+        db = DuckDBClient(path=DUCKDB_PATH)
+    except Exception as exc:
+        st.error(f"❌ DB non disponibile: {exc}")
+        return
+
+    try:
+        unrate_df  = fred.fetch_series("UNRATE",  limit=200, sort_order="asc")
+        icsa_df    = fred.fetch_series("ICSA",    limit=800, sort_order="asc")
+        quits_df   = fred.fetch_series("JTSQUR",  limit=200, sort_order="asc")
+        openings_df = fred.fetch_series("JTSJOR", limit=200, sort_order="asc")
+    except FredKeyMissingError:
+        st.error("❌ FRED API key non valida.")
+        return
+    except Exception as exc:
+        st.error(f"❌ Fetch FRED fallita: {type(exc).__name__}: {str(exc)[:120]}")
+        return
+
+    if unrate_df.empty or icsa_df.empty:
+        st.error("❌ Serie FRED UNRATE o ICSA vuota — impossibile addestrare.")
+        return
+
+    # Allinea su frequenza mensile (UNRATE è mensile, ICSA è settimanale → media mensile)
+    unrate = unrate_df.set_index("ts")["value"].astype(float)
+    unrate.index = pd.to_datetime(unrate.index).to_period("M").to_timestamp()
+
+    icsa = icsa_df.set_index("ts")["value"].astype(float)
+    icsa.index = pd.to_datetime(icsa.index)
+    icsa_monthly = icsa.resample("ME").mean()
+    icsa_monthly.index = icsa_monthly.index.to_period("M").to_timestamp()
+
+    features = pd.DataFrame(index=unrate.index)
+    features["claims_lag1"] = icsa_monthly.reindex(features.index).shift(1)
+    features["claims_lag2"] = icsa_monthly.reindex(features.index).shift(2)
+    features["claims_lag3"] = icsa_monthly.reindex(features.index).shift(3)
+
+    if not quits_df.empty:
+        quits = quits_df.set_index("ts")["value"].astype(float)
+        quits.index = pd.to_datetime(quits.index).to_period("M").to_timestamp()
+        features["quits_lag1"] = quits.reindex(features.index).shift(1)
+
+    if not openings_df.empty:
+        openings = openings_df.set_index("ts")["value"].astype(float)
+        openings.index = pd.to_datetime(openings.index).to_period("M").to_timestamp()
+        features["openings_lag1"] = openings.reindex(features.index).shift(1)
+
+    features = features.dropna()
+    target = unrate.reindex(features.index).dropna()
+    features = features.loc[target.index]
+
+    if len(target) < 24:
+        st.error(f"❌ Dati insufficienti per il training ({len(target)} < 24 osservazioni).")
+        return
+
+    engine_obj = LabourForecastEngine()
+    try:
+        engine_obj.fit(target, features)
+    except Exception as exc:
+        st.error(f"❌ Training fallito: {type(exc).__name__}: {str(exc)[:120]}")
+        return
+
+    future_features = features.iloc[-6:].copy()
+    try:
+        result = engine_obj.forecast(["1M", "3M", "6M"], future_features, "UNRATE")
+    except Exception as exc:
+        st.error(f"❌ Forecast fallito: {type(exc).__name__}: {str(exc)[:120]}")
+        return
+
+    now = datetime.now(_UTC).isoformat()
+    n_saved = 0
+    for bundle in result.bundles:
+        try:
+            db.execute(
+                "INSERT INTO labour_forecasts "
+                "(generated_at, horizon, target_metric, forecast_value, "
+                "forecast_lower, forecast_upper, model_used, arima_forecast, ridge_forecast) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [now, bundle.horizon, bundle.target_metric, bundle.point_forecast,
+                 bundle.lower_10, bundle.upper_90, bundle.model_used,
+                 bundle.arima_forecast, bundle.ridge_forecast],
+            )
+            n_saved += 1
+        except Exception:
+            pass
+
+    if n_saved > 0:
+        st.success(f"✅ {n_saved} previsioni UNRATE salvate (ARIMA+Ridge ensemble, n_train={result.n_train_obs}).")
+        st.cache_data.clear()
+        st.rerun()
+    else:
+        st.error("❌ Nessuna riga salvata. Verifica che la tabella labour_forecasts esista nel DB.")
+
+
 def body_labour_forecasting(tokens: DesignTokens) -> None:
     # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
@@ -23,8 +130,13 @@ def body_labour_forecasting(tokens: DesignTokens) -> None:
     render_section_header("🔬 Labour Forecasting — Dettaglio Modello",
         "Feature importance Ridge · Ordine ARIMA · Walk-forward accuracy · Scenario sensitivity")
 
-    cols_top = st.columns([4, 1])
+    cols_top = st.columns([3, 1, 1])
     with cols_top[1]:
+        if st.button("🤖 Genera previsioni", key="q9_run_forecast",
+                     help="Scarica dati FRED (UNRATE, ICSA, JOLTS), addestra ensemble ARIMA+Ridge, salva forecasts nel DB"):
+            with st.spinner("Training ARIMA+Ridge ensemble in corso..."):
+                _run_forecast_job(st)
+    with cols_top[2]:
         if st.button("🔄 Aggiorna", key="q9_refresh"):
             st.cache_data.clear()
             st.rerun()

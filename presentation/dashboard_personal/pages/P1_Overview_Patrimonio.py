@@ -83,6 +83,12 @@ def body_overview_patrimonio(
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="p1_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     # ── 1. Patrimonio (asset - passivita) ─────────────────────────────────
     summary = net_worth_summary()
     has_networth_data = (

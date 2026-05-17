@@ -300,6 +300,12 @@ def body_goals(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-r
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="p5_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     render_section_header(
         "🎯 I tuoi obiettivi SMART",
         "Specific · Measurable · Achievable · Relevant · Time-bound",

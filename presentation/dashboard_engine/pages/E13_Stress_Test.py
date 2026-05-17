@@ -35,6 +35,11 @@ def body_stress_test(tokens: DesignTokens) -> None:  # pragma: no cover -- Strea
     # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="e13_refresh"):
+            st.cache_data.clear()
+            st.rerun()
     render_section_header("Market Context Sliders", "What-if scenario builder")
     cols = st.columns(3)
     cols[0].slider("VIX", 10.0, 60.0, 20.0)

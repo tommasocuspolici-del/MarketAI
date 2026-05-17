@@ -42,6 +42,12 @@ def render() -> None:
         "di rischio e sulla matrice di correlazione corrente."
     )
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="p10_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     # ─── Carica dati portafoglio corrente ─────────────────────────────────
     current_weights, portfolio_eur = _load_current_portfolio()
 

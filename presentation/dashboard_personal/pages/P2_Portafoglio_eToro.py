@@ -804,6 +804,12 @@ def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover --
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="p2_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     tab_positions, tab_import, tab_metrics = st.tabs(
         ["💼 Posizioni", "📥 Import", "📊 Metriche"]
     )

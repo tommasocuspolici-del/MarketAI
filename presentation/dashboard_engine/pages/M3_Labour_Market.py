@@ -184,6 +184,12 @@ def _render_forecasting_tab(st, tokens: DesignTokens) -> None:
     render_section_header("🔮 Forecasting Mercato del Lavoro",
         "Previsioni ensemble ARIMA + Ridge a 1M/3M/6M.")
 
+    if st.button("🤖 Genera previsioni da FRED", key="m3_run_forecast",
+                 help="Scarica UNRATE, ICSA, JOLTS da FRED, addestra ensemble ARIMA+Ridge e salva nel DB"):
+        with st.spinner("Training in corso..."):
+            from presentation.dashboard_engine.pages.Q9_Labour_Forecasting import _run_forecast_job
+            _run_forecast_job(st)
+
     from shared.db.duckdb_client import DuckDBClient
     from shared.constants import DUCKDB_PATH
     try:
@@ -196,11 +202,7 @@ def _render_forecasting_tab(st, tokens: DesignTokens) -> None:
         rows = None
 
     if not rows:
-        st.info("⏳ Nessuna previsione disponibile. Il modello si addestra sui dati FRED storici.")
-        st.caption(
-            "Per generare le previsioni: assicurati che FRED_API_KEY sia configurata "
-            "e che il job Labour Market abbia completato almeno un run."
-        )
+        st.info("⏳ Nessuna previsione disponibile. Premi 'Genera previsioni' per addestrare il modello.")
         return
 
     import pandas as pd

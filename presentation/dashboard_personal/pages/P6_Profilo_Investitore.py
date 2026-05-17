@@ -143,6 +143,12 @@ def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
     # funzione body già #pragma:no cover — ImportError qui è un errore reale
     import streamlit as st
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="p6_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     saved = load_saved_profile()
 
     if saved is not None:

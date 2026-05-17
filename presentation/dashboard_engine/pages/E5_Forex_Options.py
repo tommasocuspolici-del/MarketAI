@@ -166,6 +166,12 @@ def body_forex_options(tokens: DesignTokens) -> None:  # pragma: no cover -- Str
     except ImportError:
         return
 
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="e5_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
     # ── 1. FX Heatmap reale ──────────────────────────────────────────────
     render_section_header(
         "💱 FX Majors Cross Heatmap",
