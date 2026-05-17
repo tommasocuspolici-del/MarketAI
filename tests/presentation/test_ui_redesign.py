@@ -42,10 +42,14 @@ TOKENS = _MockTokens()
 ALL_PAGES = [
     "S0_Health_API_Status",
     "S1_Analysis_Pipeline",
+    "S2_Settings",
     "M1_Macro_Dashboard",
     "M2_Yield_Curve",
     "M3_Labour_Market",
     "M4_PMI_Leading_Indicators",
+    "M5_Economic_Surprise",
+    "M6_Valuation_PE",
+    "M7_IB_Consensus",
     "K1_Market_Overview",
     "K2_Equity",
     "K3_Bonds_Credit",
@@ -56,6 +60,11 @@ ALL_PAGES = [
     "Q3_Correlations",
     "Q4_Forecasting",
     "Q5_Delta",
+    "Q9_Labour_Forecasting",
+    "Q10_Surprise_Heatmap",
+    "Q11_Options_Analytics",
+    "N1_News_Feed",
+    "N2_News_Analysis",
     "T1_Backtesting",
     "T2_Stress_Test",
     "T3_Alerts",
@@ -446,22 +455,22 @@ class TestAppV8Navigation:
         for req in required:
             assert req in all_modules, f"{req} non trovato nella navigazione"
 
-    def test_pages_dict_has_five_groups(self):
-        """Esattamente 5 gruppi di navigazione."""
+    def test_pages_dict_has_six_groups(self):
+        """Esattamente 6 gruppi di navigazione (aggiunto NEWS & IB FORECAST in v8.1)."""
         import importlib
         app = importlib.import_module(
             "presentation.dashboard_engine.app_v8"
         )
-        assert len(app.PAGES) == 5
+        assert len(app.PAGES) == 6
 
     def test_total_page_count(self):
-        """23 pagine totali (2+6+5+7+3): incluse M5, M6, Q9, Q10 da Roadmap v4."""
+        """28 pagine totali (3+7+5+8+2+3): S2, M7, Q11, N1, N2 aggiunti in v8.1."""
         import importlib
         app = importlib.import_module(
             "presentation.dashboard_engine.app_v8"
         )
         total = sum(len(pages) for pages in app.PAGES.values())
-        assert total == 23, f"Attese 23 pagine, trovate {total}"
+        assert total == 28, f"Attese 28 pagine, trovate {total}"
 
     def test_new_pages_are_starred(self):
         """Le 5 nuove pagine hanno ★ nel label."""

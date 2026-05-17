@@ -15,7 +15,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-__version__ = "8.0.0"
+__version__ = "8.1.0"
 
 # ─── Registry pagine (importabile senza streamlit) ────────────────────────────
 
@@ -23,6 +23,7 @@ PAGES: dict[str, list[tuple[str, str]]] = {
     "📡 SISTEMA": [
         ("S0 Health & API Status",   "S0_Health_API_Status"),
         ("S1 Analysis Pipeline",     "S1_Analysis_Pipeline"),
+        ("S2 Settings",              "S2_Settings"),
     ],
     "🌍 MACRO & CICLO": [
         ("M1 Macro Dashboard",       "M1_Macro_Dashboard"),
@@ -31,6 +32,7 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("M4 PMI & Leading Ind. ★",  "M4_PMI_Leading_Indicators"),
         ("M5 Economic Surprise ★",   "M5_Economic_Surprise"),
         ("M6 Valuation P/E ★",       "M6_Valuation_PE"),
+        ("M7 IB Consensus ★",        "M7_IB_Consensus"),
     ],
     "📊 MERCATI": [
         ("K1 Market Overview ★",     "K1_Market_Overview"),
@@ -47,6 +49,11 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("Q5 Delta & Momentum",      "Q5_Delta"),
         ("Q9 Labour Forecasting ★",  "Q9_Labour_Forecasting"),
         ("Q10 Surprise Heatmap ★",   "Q10_Surprise_Heatmap"),
+        ("Q11 Options Analytics",    "Q11_Options_Analytics"),
+    ],
+    "📰 NEWS & IB FORECAST": [
+        ("N1 News Feed ★",           "N1_News_Feed"),
+        ("N2 News Analysis ★",       "N2_News_Analysis"),
     ],
     "⚙️ STRATEGIE": [
         ("T1 Backtesting",           "T1_Backtesting"),
@@ -90,7 +97,7 @@ def main() -> None:  # pragma: no cover
     )
 
     with st.sidebar:
-        st.markdown("## 📊 MarketAI v8.0")
+        st.markdown("## 📊 MarketAI v8.1")
         st.caption("Roadmap Unificata — Engine Dashboard")
         st.divider()
 
