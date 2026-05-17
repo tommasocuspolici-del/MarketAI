@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import structlog
 
@@ -133,7 +133,7 @@ class CacheAwareRepository(ABC, Generic[T]):
     # ─── Abstract interface — da implementare nelle sottoclassi ─────────────
 
     @abstractmethod
-    def _read_from_db(self, key: str) -> dict | None:
+    def _read_from_db(self, key: str) -> dict[str, Any] | None:
         """Legge il record dalla tabella DuckDB. Ritorna None se assente."""
 
     @abstractmethod
@@ -145,7 +145,7 @@ class CacheAwareRepository(ABC, Generic[T]):
         """Scrive il valore in DuckDB con fetched_at = NOW()."""
 
     @abstractmethod
-    def _extract_value(self, row: dict) -> T:
+    def _extract_value(self, row: dict[str, Any]) -> T:
         """Deserializza il record DuckDB nel tipo T atteso."""
 
     def _invalidate_in_db(self, key: str) -> None:
@@ -153,7 +153,7 @@ class CacheAwareRepository(ABC, Generic[T]):
 
     # ─── TTL helpers ─────────────────────────────────────────────────────────
 
-    def _is_fresh(self, row: dict) -> bool:
+    def _is_fresh(self, row: dict[str, Any]) -> bool:
         """True se il dato è stato aggiornato entro il TTL."""
         fetched_at = row.get("fetched_at") or row.get("computed_at") or row.get("updated_at")
         if fetched_at is None:
@@ -168,7 +168,7 @@ class CacheAwareRepository(ABC, Generic[T]):
         age = datetime.now(UTC) - fetched_at
         return age < self._ttl
 
-    def _ttl_remaining(self, row: dict) -> float:
+    def _ttl_remaining(self, row: dict[str, Any]) -> float:
         """Secondi rimanenti prima che il dato diventi stale."""
         fetched_at = row.get("fetched_at") or row.get("computed_at") or row.get("updated_at")
         if fetched_at is None:

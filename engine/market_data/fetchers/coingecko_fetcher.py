@@ -143,7 +143,7 @@ class CoinGeckoFetcher:
         log.info("coingecko.dominance_done")
         return df
 
-    def fetch_fear_greed_index(self) -> dict | None:
+    def fetch_fear_greed_index(self) -> dict[str, object] | None:
         """Crypto Fear & Greed Index da alternative.me (complementare).
 
         Ritorna dict con: value (0-100), classification, timestamp.

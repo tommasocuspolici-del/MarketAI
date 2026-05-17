@@ -232,7 +232,7 @@ def _load_chains() -> dict[str, FallbackChain]:
         return _default_chains()
 
     with _CHAINS_PATH.open(encoding="utf-8") as f:
-        raw: dict = yaml.safe_load(f) or {}
+        raw: dict[str, object] = yaml.safe_load(f) or {}
 
     chains: dict[str, FallbackChain] = {}
     for cat_name, entries_raw in raw.items():

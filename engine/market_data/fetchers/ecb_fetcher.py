@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pandas as pd
@@ -30,7 +30,7 @@ _TIMEOUT = 30.0
 _DELAY_S = 2.0  # 30 req/min
 
 # Serie ECB chiave per MarketAI
-ECB_SERIES: dict[str, dict] = {
+ECB_SERIES: dict[str, dict[str, str]] = {
     # Tassi BCE
     "FM/B.U2.EUR.4F.KR.MRR_FR.LEV":   {"name": "ECB Main Refinancing Rate", "series_id": "ECB_MRR"},
     "FM/B.U2.EUR.4F.KR.MLFR.LEV":     {"name": "ECB Marginal Lending Facility", "series_id": "ECB_MLFR"},
@@ -111,9 +111,9 @@ class ECBFetcher:
                 log.warning("ecb_fetcher.series_failed", series=key, error=str(exc))
         return results
 
-    def _parse_json(self, data: dict, series_id: str) -> list[dict]:
+    def _parse_json(self, data: dict[str, Any], series_id: str) -> list[dict[str, Any]]:
         """Estrae osservazioni dal formato SDMX-JSON ECB."""
-        rows = []
+        rows: list[dict[str, Any]] = []
         now = datetime.now(UTC)
         try:
             ds = data.get("dataSets", [])
@@ -122,7 +122,8 @@ class ECBFetcher:
             series_block = ds[0].get("series", {})
             if not series_block:
                 return rows
-            obs = next(iter(series_block.values()), {}).get("observations", {})
+            first_series: dict[str, Any] = next(iter(series_block.values()), {})
+            obs = first_series.get("observations", {})
             if not obs:
                 return rows
 

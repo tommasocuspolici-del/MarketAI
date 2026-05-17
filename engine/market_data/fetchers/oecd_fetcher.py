@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pandas as pd
@@ -30,7 +30,7 @@ _TIMEOUT = 30.0
 _DELAY_S = 1.0  # Throttling leggero
 
 # Serie OECD principali
-OECD_SERIES: dict[str, dict] = {
+OECD_SERIES: dict[str, dict[str, str]] = {
     # Composite Leading Indicators
     "MEI_CLI/LOLITOAA.USA+GBR+DEU+JPN+CHN+FRA+ITA+OECDE.M": {
         "name": "CLI Leading Indicator (amplitude adjusted)",
@@ -123,9 +123,9 @@ class OECDFetcher:
                 log.warning("oecd_fetcher.series_failed", dataset=key, error=str(exc))
         return results
 
-    def _parse(self, data: dict, series_prefix: str) -> list[dict]:
+    def _parse(self, data: dict[str, Any], series_prefix: str) -> list[dict[str, Any]]:
         """Estrae osservazioni da risposta SDMX-JSON OECD."""
-        rows = []
+        rows: list[dict[str, Any]] = []
         now = datetime.now(UTC)
         try:
             datasets = data.get("dataSets", [])

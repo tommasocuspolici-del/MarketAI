@@ -189,6 +189,8 @@ class NewsSignalGenerator:
 
     def _persist(self, signal: NewsSignal) -> None:
         """Salva segnale in news_signal (Regola 34)."""
+        if self._client is None:
+            return
         try:
             self._client.execute(
                 """

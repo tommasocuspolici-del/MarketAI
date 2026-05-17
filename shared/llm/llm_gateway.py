@@ -101,7 +101,7 @@ class _LLMCache:
         self._store[key] = (text, datetime.now(UTC))
 
     @staticmethod
-    def cache_key(template: str, context: dict) -> str:
+    def cache_key(template: str, context: dict[str, Any]) -> str:
         payload = f"{template}:{json.dumps(context, sort_keys=True, default=str)}"
         return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
@@ -206,7 +206,7 @@ class LLMGateway:
                 cached=False,
             )
 
-    def _call_ollama(self, template: str, context: dict, max_tokens: int | None) -> str:
+    def _call_ollama(self, template: str, context: dict[str, Any], max_tokens: int | None) -> str:
         """Chiama Ollama API locale (localhost:11434)."""
         import httpx
 
@@ -225,9 +225,9 @@ class LLMGateway:
             timeout=60.0,
         )
         resp.raise_for_status()
-        return resp.json().get("response", "").strip()
+        return str(resp.json().get("response", "")).strip()
 
-    def _build_prompt(self, template: str, context: dict) -> str:
+    def _build_prompt(self, template: str, context: dict[str, Any]) -> str:
         """Costruisce il prompt per Ollama."""
         ctx_str = "\n".join(f"- {k}: {v}" for k, v in context.items())
         return (
@@ -238,7 +238,7 @@ class LLMGateway:
             f"Risposta (max 3 frasi, in italiano):"
         )
 
-    def _template_fallback(self, template: str, context: dict) -> str:
+    def _template_fallback(self, template: str, context: dict[str, Any]) -> str:
         """Template deterministico Jinja-like. Sempre disponibile."""
         tmpl = _TEMPLATES.get(template, "Dati non disponibili.")
         try:

@@ -44,7 +44,7 @@ class CacheTTLConfig:
 @lru_cache(maxsize=1)
 def _load() -> CacheTTLConfig:
     with _CONFIG_PATH.open(encoding="utf-8") as f:
-        raw: dict = yaml.safe_load(f) or {}
+        raw: dict[str, object] = yaml.safe_load(f) or {}
     data = {k: int(v) for k, v in raw.items() if isinstance(v, (int, float))}
     return CacheTTLConfig(data)
 

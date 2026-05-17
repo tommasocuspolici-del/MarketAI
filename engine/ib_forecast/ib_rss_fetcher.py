@@ -9,7 +9,7 @@ import hashlib
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -28,7 +28,7 @@ _TIMEOUT = 20.0
 _DELAY_S = 1.0
 
 # Feed RSS/Atom pubblici da istituzioni finanziarie
-IB_SOURCES: list[dict] = [
+IB_SOURCES: list[dict[str, str]] = [
     {
         "id": "fed_speeches",
         "url": "https://www.federalreserve.gov/feeds/speeches.xml",
@@ -79,9 +79,9 @@ class IBRSSFetcher:
         self._client = client
         self._http = httpx.Client(timeout=_TIMEOUT, follow_redirects=True)
 
-    def fetch_all(self) -> list[dict]:
+    def fetch_all(self) -> list[dict[str, Any]]:
         """Scarica report da tutte le sorgenti IB configurate."""
-        all_reports: list[dict] = []
+        all_reports: list[dict[str, Any]] = []
         for src in IB_SOURCES:
             try:
                 if self._is_fresh(src["id"]):
@@ -96,7 +96,7 @@ class IBRSSFetcher:
         log.info("ib_rss.all_done", total=len(all_reports))
         return all_reports
 
-    def _fetch_source(self, src: dict) -> list[dict]:
+    def _fetch_source(self, src: dict[str, str]) -> list[dict[str, Any]]:
         """Scarica e persiste report da una sorgente."""
         source_id = src["id"]
         url = src["url"]
@@ -113,9 +113,9 @@ class IBRSSFetcher:
         log.info("ib_rss.source_done", source=source_id, count=len(reports))
         return reports
 
-    def _parse(self, xml_text: str, src: dict) -> list[dict]:
+    def _parse(self, xml_text: str, src: dict[str, str]) -> list[dict[str, Any]]:
         """Parsa feed RSS/Atom e ritorna lista di report dict."""
-        reports = []
+        reports: list[dict[str, Any]] = []
         now = datetime.now(UTC)
         try:
             root = ET.fromstring(xml_text)
@@ -173,11 +173,11 @@ class IBRSSFetcher:
             fetched_at = rows[0][0]
             if hasattr(fetched_at, "tzinfo") and fetched_at.tzinfo is None:
                 fetched_at = fetched_at.replace(tzinfo=UTC)
-            return (datetime.now(UTC) - fetched_at).total_seconds() < ttl_s
+            return bool((datetime.now(UTC) - fetched_at).total_seconds() < ttl_s)
         except Exception:
             return False
 
-    def _persist(self, reports: list[dict]) -> None:
+    def _persist(self, reports: list[dict[str, Any]]) -> None:
         """Salva in ib_reports (Regola 34)."""
         for rep in reports:
             try:

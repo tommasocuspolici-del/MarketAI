@@ -11,7 +11,7 @@ import pathlib
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import yaml
@@ -36,7 +36,7 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
 
 
-def _parse_rss_entry(entry: dict, source_id: str) -> NewsArticle | None:
+def _parse_rss_entry(entry: dict[str, Any], source_id: str) -> NewsArticle | None:
     """Estrae un NewsArticle da un entry feedparser."""
     title = (entry.get("title") or "").strip()
     url = entry.get("link") or entry.get("id") or ""
@@ -85,12 +85,12 @@ class RSSFetcher:
         self._http = httpx.Client(timeout=_TIMEOUT, follow_redirects=True)
         self._sources = self._load_sources()
 
-    def _load_sources(self) -> list[dict]:
+    def _load_sources(self) -> list[dict[str, Any]]:
         if not _CONFIG_PATH.exists():
             return _default_sources()
         with _CONFIG_PATH.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        return cfg.get("news_sources", _default_sources())
+            cfg: dict[str, Any] = yaml.safe_load(f) or {}
+        return list(cfg.get("news_sources", _default_sources()))
 
     def fetch_all(self) -> list[NewsArticle]:
         """Scarica e salva articoli da tutte le fonti configurate.
@@ -109,7 +109,7 @@ class RSSFetcher:
         log.info("rss_fetcher.all_done", total=len(all_articles))
         return all_articles
 
-    def fetch_source(self, source: dict) -> list[NewsArticle]:
+    def fetch_source(self, source: dict[str, Any]) -> list[NewsArticle]:
         """Scarica e persiste articoli da una singola sorgente RSS."""
         source_id = source.get("id", "unknown")
         url = source.get("rss_url", "")
@@ -134,7 +134,7 @@ class RSSFetcher:
         log.info("rss_fetcher.source_done", source=source_id, fetched=len(articles), new=new_count)
         return articles
 
-    def _parse_feed(self, xml_text: str, source_id: str, source: dict) -> list[NewsArticle]:
+    def _parse_feed(self, xml_text: str, source_id: str, source: dict[str, Any]) -> list[NewsArticle]:
         """Parsa XML RSS/Atom senza dipendenze esterne (parser semplice)."""
         articles = []
         try:
@@ -202,7 +202,7 @@ class RSSFetcher:
             if hasattr(fetched_at, "tzinfo") and fetched_at.tzinfo is None:
                 fetched_at = fetched_at.replace(tzinfo=UTC)
             age_s = (datetime.now(UTC) - fetched_at).total_seconds()
-            return age_s < ttl_seconds
+            return bool(age_s < ttl_seconds)
         except Exception:
             return False
 
@@ -246,7 +246,7 @@ class RSSFetcher:
             pass
 
 
-def _default_sources() -> list[dict]:
+def _default_sources() -> list[dict[str, Any]]:
     """Fonti RSS di default se config/news_sources.yaml non trovato."""
     return [
         {"id": "reuters",        "rss_url": "https://feeds.reuters.com/reuters/businessNews",                          "fetch_interval_seconds": 1800, "credibility_weight": 0.95},
