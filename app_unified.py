@@ -46,8 +46,18 @@ _ENV_REPORT = load_environment()
 # di errore lo registra in _MIGRATIONS_REPORT che mostriamo in sidebar.
 # ────────────────────────────────────────────────────────────────────────────
 from shared.db.migrations_runner import apply_sqlite_migrations
+from shared.db.duckdb_migrator import run_pending_migrations
 
 _MIGRATIONS_REPORT = apply_sqlite_migrations()
+
+# v10.2.0: applica anche le migration DuckDB all'avvio (idempotente).
+# Senza questa chiamata, nuove tabelle (consensus_estimates, ecc.) non venivano
+# create finché l'utente non le lanciava manualmente, causando errori silenziosi
+# nei bottoni "📥 Carica consensus" e simili.
+try:
+    run_pending_migrations()
+except Exception:
+    pass  # non-fatal: la UI parte comunque
 
 # Auth gating (Rule 32) — disattivato in dev se STREAMLIT_AUTH_ENABLED=false
 try:
