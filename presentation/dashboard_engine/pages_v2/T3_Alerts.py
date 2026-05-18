@@ -75,7 +75,7 @@ def body_t3_alerts(st, tokens) -> None:  # pragma: no cover
                 t10 = fred.fetch_latest("DGS10")
                 t2  = fred.fetch_latest("DGS2")
                 if t10 is not None and t2 is not None:
-                    spread = t10 - t2
+                    spread = t10[1] - t2[1]  # fetch_latest ritorna (date, float)
                     if spread < 0:
                         alerts.append({
                             "Severity": "🔴 HIGH",

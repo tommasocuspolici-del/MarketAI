@@ -65,8 +65,10 @@ def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
         }
         for label, series_id in series_map.items():
             try:
-                df = fred.fetch_series(series_id, limit=24)
-                if df is not None and not df.empty:
+                # sort_values("ts"): fetch_series default desc → oldest last;
+                # ordina crescente così iloc[-1]=recente, tail(12)=ultimi 12
+                df = fred.fetch_series(series_id, limit=24).sort_values("ts")
+                if not df.empty:
                     results[label] = df
             except Exception:
                 pass
@@ -82,7 +84,7 @@ def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
             with cols[i % 2]:
                 st.markdown(f"**{label}**")
                 if not df.empty:
-                    latest = df["value"].iloc[-1]
+                    latest = df["value"].iloc[-1]   # più recente (ord. crescente)
                     prev = df["value"].iloc[-2] if len(df) >= 2 else latest
                     delta = latest - prev
                     st.metric(label, f"{latest:.2f}", delta=f"{delta:+.2f}")
