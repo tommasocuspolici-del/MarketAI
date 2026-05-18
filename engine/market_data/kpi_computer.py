@@ -130,31 +130,102 @@ def build_unavailable_kpis(reason: str) -> list[MarketKpi]:
 
 
 # ─── yfinance download ──────────────────────────────────────────────────────
+
+_CACHE_DIR = None  # lazy-initialized in _get_yf_session
+
+_YF_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+_RETRY_DELAYS: tuple[float, ...] = (0.0, 3.0, 8.0)
+
+
+def _get_yf_session() -> object:
+    """Ritorna una CachedSession requests_cache con TTL uguale al live_market_ttl.
+
+    Trasparente per yfinance: intercetta le chiamate HTTP e serve dalla cache
+    locale (SQLite in DATA_DIR/cache/) per evitare rate-limit di Yahoo Finance.
+    """
+    import requests_cache
+    from shared.constants import DATA_DIR
+    from shared.config.operational_config import OP_CONFIG
+
+    cache_path = DATA_DIR / "cache" / "yf_http_cache"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    session = requests_cache.CachedSession(
+        str(cache_path),
+        expire_after=OP_CONFIG.cache.live_market_ttl_s,
+        allowable_methods=("GET",),
+        stale_if_error=True,
+    )
+    session.headers.update(_YF_HEADERS)
+    return session
+
+
 def download_market_data(tickers_list: list[str]) -> pd.DataFrame | None:
-    """Scarica dati yfinance per i ticker dati, con retry su API incompatibile."""
+    """Scarica dati yfinance per i ticker dati, con HTTP cache e retry su rate-limit.
+
+    Strategia:
+      1. Usa CachedSession (requests_cache) per evitare richieste duplicate → YFRateLimitError.
+      2. Fino a 3 tentativi con backoff (0s / 3s / 8s) se la risposta è vuota o rate-limited.
+      3. Retry su incompatibilità API (TypeError → fallback senza multi_level_index).
+    """
     try:
         import yfinance as yf
+        from yfinance.exceptions import YFRateLimitError
     except ImportError:
         return None
+
     try:
-        data = yf.download(
-            tickers=tickers_list, period="5d", interval="1d",
-            progress=False, auto_adjust=True, multi_level_index=True,
+        session = _get_yf_session()
+    except Exception as exc:  # noqa: BLE001 — requests_cache non installato
+        log.warning("yfinance.cached_session_unavailable", error=str(exc)[:120])
+        session = None
+
+    import time as _time
+
+    def _attempt(use_multi_level: bool) -> pd.DataFrame | None:
+        kwargs: dict = dict(
+            period="5d", interval="1d",
+            progress=False, auto_adjust=True,
         )
-        return data if data is not None and not data.empty else None
-    except TypeError:
+        if use_multi_level:
+            kwargs["multi_level_index"] = True
+        if session is not None:
+            kwargs["session"] = session
         try:
-            data = yf.download(
-                tickers=" ".join(tickers_list), period="5d", interval="1d",
-                progress=False, auto_adjust=True,
-            )
+            data = yf.download(tickers=tickers_list, **kwargs)
             return data if data is not None and not data.empty else None
+        except YFRateLimitError:
+            return None  # segnale per il retry loop
+        except TypeError:
+            return False  # segnale per passare a use_multi_level=False
         except (OSError, ValueError, KeyError) as exc:
             log.warning("yfinance.download_failed", error=str(exc)[:120])
             return None
-    except (OSError, ValueError, KeyError) as exc:
-        log.warning("yfinance.download_failed", error=str(exc)[:120])
-        return None
+
+    use_multi = True
+    for i, delay in enumerate(_RETRY_DELAYS):
+        if delay:
+            _time.sleep(delay)
+        result = _attempt(use_multi)
+        if result is False:
+            # TypeError: API incompatibile, riprova senza multi_level_index
+            use_multi = False
+            result = _attempt(use_multi)
+        if result is not None and result is not False:
+            return result
+        if i < len(_RETRY_DELAYS) - 1:
+            log.warning("yfinance.download_empty_retrying", attempt=i + 1, delay=_RETRY_DELAYS[i + 1])
+
+    log.warning("yfinance.download_failed_all_retries", tickers=len(tickers_list))
+    return None
 
 
 # ─── KpiComputer ────────────────────────────────────────────────────────────

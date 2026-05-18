@@ -63,6 +63,15 @@ def body_commodities(tokens: DesignTokens) -> None:  # pragma: no cover -- Strea
         st.error("❌ Dati commodities non disponibili.")
         return
 
+    n_stale = sum(1 for k in commodities if k.is_stale)
+    if n_stale == len(commodities):
+        st.warning(
+            f"📦 Dati da cache disco · fetchati {snapshot.fetched_at_human} "
+            f"(API offline — mostrando ultimo snapshot valido)"
+        )
+    elif n_stale > 0:
+        st.caption(f"📦 {n_stale} prezzi da cache (API parzialmente offline)")
+
     metrics = []
     for k in commodities:
         if k.value is None:

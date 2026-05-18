@@ -28,6 +28,9 @@ cache:
   instrument_lookup_ttl_s: 86400
   scheduler_job_ttl_s: 300
   equities_ohlcv_ttl_s: 300
+  # Massima età del disco-cache dei KPI di mercato (fallback quando API offline).
+  # Dati più vecchi di questo valore vengono scartati anziché mostrati.
+  disk_snapshot_max_age_s: 86400
 
 alerts:
   dedup_window_minutes: 60

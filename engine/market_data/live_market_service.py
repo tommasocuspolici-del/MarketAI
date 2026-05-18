@@ -29,6 +29,7 @@ from engine.market_data.kpi_computer import (
     build_unavailable_kpis,
     download_market_data,
 )
+from engine.market_data.snapshot_disk_cache import SnapshotDiskCache
 from personal.data_entry.override_store import ManualOverrideStore
 from shared.config.operational_config import OP_CONFIG
 from shared.logger import get_logger
@@ -48,6 +49,7 @@ log = get_logger(__name__)
 
 _TTL_SECONDS: float = OP_CONFIG.cache.live_market_ttl_s
 _DB_MAX_AGE_SECONDS = 6 * 3600
+_DISK_MAX_AGE_SECONDS: float = OP_CONFIG.cache.disk_snapshot_max_age_s
 
 
 class LiveMarketService:
@@ -68,6 +70,7 @@ class LiveMarketService:
         self._refresh_cv = Condition(self._lock)
         self._refresh_in_progress = False
         self._ws_manager: object | None = None
+        self._disk_cache = SnapshotDiskCache(max_age_s=_DISK_MAX_AGE_SECONDS)
         self._kpi_computer = KpiComputer(
             override_store=self._override_store,
             sanity=self._sanity,
@@ -98,9 +101,13 @@ class LiveMarketService:
                     new_snapshot = self._cache
                     new_snapshot.is_stale = True
                 else:
-                    new_snapshot = MarketSnapshot(
-                        kpis=build_unavailable_kpis(f"Fetch error: {e}")
-                    )
+                    disk = self._disk_cache.load()
+                    if disk is not None:
+                        new_snapshot = disk
+                    else:
+                        new_snapshot = MarketSnapshot(
+                            kpis=build_unavailable_kpis(f"Fetch error: {e}")
+                        )
         finally:
             with self._refresh_cv:
                 self._cache = new_snapshot
@@ -147,6 +154,9 @@ class LiveMarketService:
             if cached.kpis:
                 cached.is_stale = True
                 return cached
+            disk = self._disk_cache.load()
+            if disk is not None:
+                return disk
             snapshot.kpis = build_unavailable_kpis("yfinance non installato")
             snapshot.n_errors = len(snapshot.kpis)
             snapshot.is_unavailable = True
@@ -158,6 +168,9 @@ class LiveMarketService:
             if cached.kpis:
                 cached.is_stale = True
                 return cached
+            disk = self._disk_cache.load()
+            if disk is not None:
+                return disk
             snapshot.kpis = build_unavailable_kpis("yfinance download failed")
             snapshot.n_errors = len(snapshot.kpis)
             snapshot.is_unavailable = True
@@ -170,6 +183,8 @@ class LiveMarketService:
             snapshot.kpis.append(kpi)
             if kpi.error:
                 snapshot.n_errors += 1
+
+        self._disk_cache.save(snapshot)
         return snapshot
 
     def _extract_kpi(self, *, data: Any, term: str, yf_ticker: str, currency: str, fmt: str) -> MarketKpi:

@@ -70,7 +70,14 @@ def _render_refresh_bar(st_module, snapshot: MarketSnapshot) -> bool:  # pragma:
     with cols[0]:
         n_total = len(snapshot.kpis)
         n_ok = sum(1 for k in snapshot.kpis if k.value is not None)
-        if n_ok == n_total:
+        n_stale = sum(1 for k in snapshot.kpis if k.is_stale)
+        all_stale = n_stale == n_total and n_total > 0
+        if all_stale:
+            st.warning(
+                f"📦 Dati da cache disco · fetchati {snapshot.fetched_at_human} "
+                f"(API offline — mostrando ultimo snapshot valido)"
+            )
+        elif n_ok == n_total:
             st.success(f"✅ Tutti i {n_total} KPI aggiornati · {snapshot.fetched_at_human}")
         elif n_ok > 0:
             st.warning(
@@ -80,7 +87,7 @@ def _render_refresh_bar(st_module, snapshot: MarketSnapshot) -> bool:  # pragma:
             st.error(f"❌ Dati di mercato non disponibili · {snapshot.fetched_at_human}")
     with cols[1]:
         n_stale = sum(1 for k in snapshot.kpis if k.is_stale)
-        if n_stale > 0:
+        if n_stale > 0 and not all_stale:
             st.caption(
                 f"📦 {n_stale} valori da cache "
                 f"(API offline o ticker temporaneamente non disponibile)"
