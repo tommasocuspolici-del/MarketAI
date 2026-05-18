@@ -166,7 +166,7 @@ def body_scenari_ricchezza(tokens: DesignTokens) -> None:  # pragma: no cover
                 annual_return_std=eq_vol,
                 years=years,
                 n_simulations=int(n_sim),
-                seed=42,
+                seed=None,
             )
             try:
                 from presentation.ui.components.wealth_scenario_chart import (
@@ -239,7 +239,7 @@ def body_scenari_ricchezza(tokens: DesignTokens) -> None:  # pragma: no cover
                 annual_return_mean=0.07,
                 annual_return_std=0.15,
                 n_simulations=2_000,
-                seed=42,
+                seed=None,
             )
             if fire.fire_age is not None:
                 st.success(

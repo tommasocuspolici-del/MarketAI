@@ -20,8 +20,7 @@ def body_surprise_heatmap(tokens: DesignTokens) -> None:
     import numpy as np
     import plotly.graph_objects as go
     import io
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
 
     render_section_header("🗺️ Surprise Heatmap — Dettaglio Indicatori",
         "25 indicatori × 12 mesi · Click su cella per dettaglio · Export CSV")
@@ -54,7 +53,7 @@ def body_surprise_heatmap(tokens: DesignTokens) -> None:
     )
 
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         # SECURITY FIX: whitelist validation prima di costruire la query
         # Mai costruire IN (...) con valori utente via f-string
         _VALID = {"labour", "growth", "inflation", "housing", "trade_external"}
