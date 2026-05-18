@@ -30,10 +30,9 @@ def _render_claims_tab(st, tokens: DesignTokens) -> None:
     render_section_header("📉 Claims & Ciclo Lavoro",
         "Initial Claims settimanali con media mobile 4 settimane e regime di ciclo.")
 
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         rows = _safe_read(db,
             "SELECT week_ending, initial_claims, claims_4wk_ma, cycle_regime, signal_strength "
             "FROM claims_cycle ORDER BY week_ending DESC LIMIT 104")
@@ -83,10 +82,9 @@ def _render_jolts_tab(st, tokens: DesignTokens) -> None:
     render_section_header("📊 JOLTS & Beveridge Curve",
         "Job openings, dimissioni volontarie e il gap Beveridge (leading wage indicator).")
 
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         rows = _safe_read(db,
             "SELECT series_date, job_openings, quits_rate, openings_rate, beveridge_gap "
             "FROM jolts_monthly ORDER BY series_date DESC LIMIT 60")
@@ -141,10 +139,9 @@ def _render_payroll_tab(st, tokens: DesignTokens) -> None:
         "NFP headline scomposto in ciclici vs difensivi. "
         "Cyclical ratio > 1 → espansione guidata dal settore privato.")
 
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         rows = _safe_read(db,
             "SELECT release_date, sector, jobs_added_k, is_cyclical "
             "FROM payroll_sector ORDER BY release_date DESC LIMIT 120")
@@ -190,10 +187,9 @@ def _render_forecasting_tab(st, tokens: DesignTokens) -> None:
             from presentation.dashboard_engine.pages.Q9_Labour_Forecasting import _run_forecast_job
             _run_forecast_job(st)
 
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         rows = _safe_read(db,
             "SELECT generated_at, horizon, target_metric, forecast_value, "
             "forecast_lower, forecast_upper, model_used "
@@ -224,8 +220,7 @@ def _run_labour_market_fetch(st_module) -> None:  # pragma: no cover
     from engine.analytics.labour_market.claims_fetcher import ClaimsFetcher
     from engine.analytics.labour_market.jolts_fetcher import JOLTSFetcher
     from engine.analytics.labour_market.payroll_fetcher import PayrollFetcher
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
 
     fred = FredSimpleClient()
     if not fred.has_api_key:
@@ -233,7 +228,7 @@ def _run_labour_market_fetch(st_module) -> None:  # pragma: no cover
         return
 
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
     except Exception as exc:
         st.error(f"❌ Impossibile connettersi al database: {exc}")
         return

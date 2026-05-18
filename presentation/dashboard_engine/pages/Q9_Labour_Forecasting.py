@@ -18,26 +18,28 @@ def _run_forecast_job(st_module) -> None:  # pragma: no cover
     from datetime import datetime, UTC as _UTC
     from engine.market_data.fred_simple_client import FredSimpleClient, FredKeyMissingError
     from engine.analytics.labour_market.labour_forecast_engine import LabourForecastEngine
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
 
     fred = FredSimpleClient()
     if not fred.has_api_key:
         st.error("❌ FRED_API_KEY non configurata in .env.")
         return
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
     except Exception as exc:
         st.error(f"❌ DB non disponibile: {exc}")
         return
 
+    # BUGFIX: sort_order="asc" con limit restituisce le osservazioni PIÙ VECCHIE
+    # (es. UNRATE dal 1948, ICSA dal 1967) senza sovrapposizione temporale → 0 campioni.
+    # Corretto: fetch desc (più recenti prima), poi sort crescente per il modello.
     try:
-        unrate_df  = fred.fetch_series("UNRATE",  limit=200, sort_order="asc")
-        icsa_df    = fred.fetch_series("ICSA",    limit=800, sort_order="asc")
-        quits_df   = fred.fetch_series("JTSQUR",  limit=200, sort_order="asc")
-        openings_df = fred.fetch_series("JTSJOR", limit=200, sort_order="asc")
+        unrate_df   = fred.fetch_series("UNRATE",  limit=200, sort_order="desc").sort_values("ts")
+        icsa_df     = fred.fetch_series("ICSA",    limit=800, sort_order="desc").sort_values("ts")
+        quits_df    = fred.fetch_series("JTSQUR",  limit=200, sort_order="desc").sort_values("ts")
+        openings_df = fred.fetch_series("JTSJOR",  limit=200, sort_order="desc").sort_values("ts")
     except FredKeyMissingError:
-        st.error("❌ FRED API key non valida.")
+        st.error("❌ FRED API key non valida o scaduta.")
         return
     except Exception as exc:
         st.error(f"❌ Fetch FRED fallita: {type(exc).__name__}: {str(exc)[:120]}")
@@ -124,8 +126,7 @@ def body_labour_forecasting(tokens: DesignTokens) -> None:
     import streamlit as st
 
     import pandas as pd
-    from shared.db.duckdb_client import DuckDBClient
-    from shared.constants import DUCKDB_PATH
+    from shared.db.duckdb_client import get_duckdb_client
 
     render_section_header("🔬 Labour Forecasting — Dettaglio Modello",
         "Feature importance Ridge · Ordine ARIMA · Walk-forward accuracy · Scenario sensitivity")
@@ -142,7 +143,7 @@ def body_labour_forecasting(tokens: DesignTokens) -> None:
             st.rerun()
 
     try:
-        db = DuckDBClient(path=DUCKDB_PATH)
+        db = get_duckdb_client()
         rows = db.query(
             "SELECT generated_at, horizon, target_metric, forecast_value, forecast_lower, "
             "forecast_upper, model_used, arima_forecast, ridge_forecast "

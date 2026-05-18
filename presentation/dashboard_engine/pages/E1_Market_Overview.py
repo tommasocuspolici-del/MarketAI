@@ -156,7 +156,14 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
     with col_regime:
         render_section_header("Market Regime", "HMM-based classification")
         try:
-            render_regime_badge(tokens, regime="bull")
+            # Deriva il regime dal VIX già presente nello snapshot (no API extra)
+            vix_kpi = next((k for k in snapshot.kpis if k.term == "VIX"), None)
+            if vix_kpi and vix_kpi.value is not None:
+                v = float(vix_kpi.value)
+                current_regime = "stress" if v > 30 else ("bear" if v > 25 else ("transition" if v > 15 else "bull"))
+            else:
+                current_regime = "transition"
+            render_regime_badge(tokens, regime=current_regime)
         except (ImportError, AttributeError, TypeError):
             st.info("Regime classifier non disponibile in questa build.")
 
@@ -217,10 +224,13 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
         try:
             fred = FredSimpleClient()
             if fred.has_api_key:
-                t10 = fred.fetch_latest("DGS10")
-                t2  = fred.fetch_latest("DGS2")
-                if t10 is not None and t2 is not None:
-                    spread_bp = round((t10 - t2) * 100, 0)
+                t10_res = fred.fetch_latest("DGS10")
+                t2_res  = fred.fetch_latest("DGS2")
+                if t10_res is not None and t2_res is not None:
+                    # fetch_latest ritorna (date, float) — estraiamo solo il float
+                    t10_val = t10_res[1]
+                    t2_val  = t2_res[1]
+                    spread_bp = round((t10_val - t2_val) * 100, 0)
                     label = "invertita" if spread_bp < 0 else f"+{int(spread_bp)}bp"
                     factors.append(f"Yield curve 10Y-2Y: {label} — {'⚠️ inversione attiva' if spread_bp < 0 else 'normale'}")
         except Exception:
