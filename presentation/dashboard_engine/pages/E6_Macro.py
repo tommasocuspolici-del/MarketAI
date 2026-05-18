@@ -50,11 +50,13 @@ _FRED_SERIES_MAP: dict[str, dict[str, str]] = {
     # A191RL1Q225SBEA: Real GDP Growth Rate % (quarterly annualized, SA).
     # BUG FIX: la serie "GDP" restituisce il livello in miliardi USD (~28000) NON una percentuale,
     # producendo valori come "31856.26%" sulla dashboard. La serie corretta è A191RL1Q225SBEA.
-    "A191RL1Q225SBEA": {"term": "GDP YoY", "unit": "%"},
-    "CPIAUCSL": {"term": "CPI YoY",        "unit": "%"},
-    "UNRATE":   {"term": "Unemployment",   "unit": "%"},
-    "FEDFUNDS": {"term": "Fed Funds Rate", "unit": "%"},
-    "DGS10":    {"term": "10Y Yield",      "unit": "%"},
+    "A191RL1Q225SBEA": {"term": "GDP YoY",        "unit": "%"},
+    # CPIAUCSL è un indice di livello (~314), NON una percentuale.
+    # transform="yoy": fetch 14 mesi, calcola (ultimo/12fa - 1)*100.
+    "CPIAUCSL":        {"term": "CPI YoY",         "unit": "%", "transform": "yoy"},
+    "UNRATE":          {"term": "Unemployment",    "unit": "%"},
+    "FEDFUNDS":        {"term": "Fed Funds Rate",  "unit": "%"},
+    "DGS10":           {"term": "10Y Yield",       "unit": "%"},
 }
 
 # Soglie semaforo (Regola 7: nominate, non magic numbers).
@@ -113,16 +115,47 @@ def _classify_trend(delta: float | None) -> str:
     return "→"
 
 
-def _fetch_one_series(client: FredSimpleClient, series_id: str) -> tuple[float | None, float | None]:
+def _fetch_one_series(
+    client: FredSimpleClient,
+    series_id: str,
+    transform: str = "level",
+) -> tuple[float | None, float | None]:
     """Fetcha (ultimo_valore, delta_vs_penultimo) per una serie.
+
+    Args:
+        transform: "level" → usa l'ultimo valore grezzo (per serie già in %);
+                   "yoy"   → calcola YoY% da indice di livello (es. CPIAUCSL).
 
     Restituisce (None, None) in caso di errore o dati insufficienti.
     NON solleva — i fallimenti sono loggati e graceful.
     """
+    if transform == "yoy":
+        # Fetch 14 mesi per calcolare l'ultimo e il penultimo YoY%
+        try:
+            df = client.fetch_series(series_id, limit=14, sort_order="desc")
+        except FredKeyMissingError:
+            raise
+        except FredSimpleError as exc:
+            log.warning("e6_macro.fetch_failed", series_id=series_id, error=str(exc))
+            return None, None
+        if df.empty or len(df) < 13:
+            return None, None
+        df_s = df.sort_values("ts")  # cronologico: più vecchio → più recente
+        n = len(df_s)
+        # YoY corrente: ultimo mese vs. 12 mesi fa
+        latest_yoy = (float(df_s["value"].iloc[-1]) / float(df_s["value"].iloc[-13]) - 1) * 100
+        # Delta YoY: differenza rispetto al mese precedente (richiede 14 osservazioni)
+        if n >= 14:
+            prev_yoy = (float(df_s["value"].iloc[-2]) / float(df_s["value"].iloc[-14]) - 1) * 100
+            delta: float | None = latest_yoy - prev_yoy
+        else:
+            delta = None
+        return latest_yoy, delta
+
+    # transform == "level": serie già in % (UNRATE, FEDFUNDS, DGS10, GDP growth)
     try:
         df = client.fetch_series(series_id, limit=2, sort_order="desc")
     except FredKeyMissingError:
-        # Riemerge perche' e' a livello applicativo, non per serie
         raise
     except FredSimpleError as exc:
         log.warning(
@@ -133,12 +166,12 @@ def _fetch_one_series(client: FredSimpleClient, series_id: str) -> tuple[float |
         return None, None
     if df.empty:
         return None, None
-    latest_value = float(df.iloc[0]["value"])
+    latest_value = float(df.iloc[0]["value"])   # sort_order="desc" → iloc[0] = più recente
     if len(df) >= 2:
-        delta = latest_value - float(df.iloc[1]["value"])
+        delta_lv: float | None = latest_value - float(df.iloc[1]["value"])
     else:
-        delta = None
-    return latest_value, delta
+        delta_lv = None
+    return latest_value, delta_lv
 
 
 def _build_macro_rows() -> list[dict]:
@@ -167,7 +200,7 @@ def _build_macro_rows() -> list[dict]:
     rows: list[dict] = []
     for sid, meta in _FRED_SERIES_MAP.items():
         try:
-            value, delta = _fetch_one_series(client, sid)
+            value, delta = _fetch_one_series(client, sid, transform=meta.get("transform", "level"))
         except FredKeyMissingError as exc:
             log.warning("e6_macro.key_missing_during_fetch", error=str(exc))
             value, delta = None, None
