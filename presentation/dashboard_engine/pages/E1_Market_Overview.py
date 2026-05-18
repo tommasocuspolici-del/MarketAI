@@ -215,19 +215,24 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
 
     render_section_header("Top Risk Factors")
 
+    # Estrae VIX dallo snapshot già caricato (evita seconda chiamata yfinance)
+    _vix_now: float | None = None
+    _vix_kpi = next((k for k in snapshot.kpis if k.term == "VIX"), None)
+    if _vix_kpi and _vix_kpi.value is not None:
+        _vix_now = round(float(_vix_kpi.value), 1)
+
     @st.cache_data(ttl=3600)
-    def _cached_risk_factors() -> list[str]:
+    def _cached_risk_factors(vix_value: float | None) -> list[str]:
         from engine.market_data.fred_simple_client import FredSimpleClient
-        import yfinance as yf
 
         factors: list[str] = []
+        fred = FredSimpleClient()
+
         try:
-            fred = FredSimpleClient()
             if fred.has_api_key:
                 t10_res = fred.fetch_latest("DGS10")
                 t2_res  = fred.fetch_latest("DGS2")
                 if t10_res is not None and t2_res is not None:
-                    # fetch_latest ritorna (date, float) — estraiamo solo il float
                     t10_val = t10_res[1]
                     t2_val  = t2_res[1]
                     spread_bp = round((t10_val - t2_val) * 100, 0)
@@ -235,36 +240,34 @@ def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover -- S
                     factors.append(f"Yield curve 10Y-2Y: {label} — {'⚠️ inversione attiva' if spread_bp < 0 else 'normale'}")
         except Exception:
             pass
+
+        if vix_value is not None:
+            if vix_value > 30:
+                factors.append(f"VIX elevato: {vix_value:.1f} — stress di mercato (soglia critica 30)")
+            elif vix_value > 20:
+                factors.append(f"VIX in rialzo: {vix_value:.1f} — volatilità moderata")
+            else:
+                factors.append(f"VIX basso: {vix_value:.1f} — mercato tranquillo")
+
         try:
-            vix_hist = yf.Ticker("^VIX").history(period="2d")
-            if not vix_hist.empty:
-                vix_now = float(vix_hist["Close"].iloc[-1])
-                if vix_now > 30:
-                    factors.append(f"VIX elevato: {vix_now:.1f} — stress di mercato (soglia critica 30)")
-                elif vix_now > 20:
-                    factors.append(f"VIX in rialzo: {vix_now:.1f} — volatilità moderata")
-                else:
-                    factors.append(f"VIX basso: {vix_now:.1f} — mercato tranquillo")
-        except Exception:
-            pass
-        try:
-            fred = FredSimpleClient()
             if fred.has_api_key:
                 cpi_df = fred.fetch_series("CPIAUCSL", limit=13)
-                if cpi_df is not None and len(cpi_df) >= 13:
-                    latest = float(cpi_df["value"].iloc[-1])
-                    year_ago = float(cpi_df["value"].iloc[-13])
+                if not cpi_df.empty and len(cpi_df) >= 13:
+                    cpi_sorted = cpi_df.sort_values("ts")   # cronologico: più vecchio → più recente
+                    latest   = float(cpi_sorted["value"].iloc[-1])   # mese corrente
+                    year_ago = float(cpi_sorted["value"].iloc[0])    # ~12 mesi fa
                     cpi_yoy = (latest / year_ago - 1) * 100
                     factors.append(f"CPI YoY: {cpi_yoy:.1f}% — {'⚠️ sopra target Fed 2%' if cpi_yoy > 2.5 else 'vicino al target'}")
         except Exception:
             pass
+
         if not factors:
             factors = [
                 "Dati risk factor non disponibili — configura FRED_API_KEY in .env",
             ]
         return factors
 
-    risk_factors = _cached_risk_factors()
+    risk_factors = _cached_risk_factors(_vix_now)
     for i, factor in enumerate(risk_factors, 1):
         st.info(f"{i}. {factor}")
 
