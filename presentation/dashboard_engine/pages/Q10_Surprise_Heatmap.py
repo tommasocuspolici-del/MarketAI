@@ -29,18 +29,36 @@ def body_surprise_heatmap(tokens: DesignTokens) -> None:
     cols_top = st.columns([3, 1, 1])
     with cols_top[1]:
         if st.button("📥 Carica consensus", key="q10_load_consensus",
-                     help="Esegue ConsensusLoader: carica stime consensus da YAML e FRED nel DB"):
-            with st.spinner("Caricamento consensus..."):
+                     help="Esegue la pipeline completa: YAML → actuals FRED → z-score → segnale"):
+            with st.spinner("Pipeline in esecuzione..."):
                 try:
-                    from engine.analytics.surprise_engine.consensus_loader import ConsensusLoader
-                    loader = ConsensusLoader()
-                    batch = loader.load_yaml()
-                    loader.save(batch)
-                    st.success(f"✅ Consensus caricato: {batch.row_count} righe")
+                    from shared.db.duckdb_client import get_duckdb_client
+                    from presentation.dashboard_engine.pages.M5_Economic_Surprise import (
+                        _run_surprise_pipeline,
+                    )
+                    db_pipe = get_duckdb_client()
+                    r = _run_surprise_pipeline(db_pipe, st)
+                    parts = [f"Consensus YAML: {r['yaml_rows']} righe"]
+                    if r["macro_rows"] > 0:
+                        parts.append(f"Actuals da FRED: {r['macro_rows']} righe")
+                    else:
+                        parts.append("Actuals: 0 — carica prima FRED da M3 Labour Market")
+                    if r["calc_rows"] > 0:
+                        parts.append(f"Z-score: {r['calc_rows']} righe")
+                    if r["sector_count"] > 0:
+                        parts.append(f"Settori: {r['sector_count']}")
+                    if r["signal_value"] is not None:
+                        parts.append(f"Segnale: {r['signal_value']:+.3f}")
+                    st.success("✅ " + " · ".join(parts))
+                    if r["macro_rows"] == 0:
+                        st.info(
+                            "ℹ️ Nessun dato storico in macro_series. "
+                            "Vai su M3 Labour Market → 📥 Carica da FRED."
+                        )
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as exc:
-                    st.error(f"❌ Errore ConsensusLoader: {type(exc).__name__}: {exc}")
+                    st.error(f"❌ Errore pipeline: {type(exc).__name__}: {exc}")
     with cols_top[2]:
         if st.button("🔄 Aggiorna", key="q10_refresh"):
             st.cache_data.clear()

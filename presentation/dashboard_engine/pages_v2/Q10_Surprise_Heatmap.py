@@ -1,14 +1,14 @@
 # ruff: noqa: N999
-"""Q10 — Economic Surprise Heatmap ★ NUOVO (v8.3 — Blocco 2).
+"""Q10 — Economic Surprise Heatmap (v8.4 — fix tabelle + pipeline).
 
-Dashboard heatmap sorprese economiche:
-  Tab 1: Heatmap 12M  — z-score per indicatore × mese (stile Bloomberg CESI)
-  Tab 2: Z-Score live — tabella aggiornata con ranking
-  Tab 3: Sector trend — EMA momentum per settore
+Corregge:
+  - Tabelle inesistenti (economic_surprise → economic_consensus, z_score → surprise_z;
+    surprise_sector_score → sector_surprise_index, score_date → snapshot_date, ecc.)
+  - Mancanza bottone "Carica consensus" → aggiunto, riusa pipeline di M5.
 """
 from __future__ import annotations
 
-__version__ = "8.3.0"
+__version__ = "8.4.0"
 __all__ = ["body_q10_surprise_heatmap"]
 
 _SECTOR_ORDER = ["labour", "growth", "inflation", "housing", "trade_external"]
@@ -25,12 +25,42 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
     require_auth()
 
-    st.title("🗺️ Economic Surprise — Heatmap")
-    cols_top = st.columns([4, 1])
+    st.title("Economic Surprise — Heatmap")
+    cols_top = st.columns([3, 1, 1])
     with cols_top[1]:
-        if st.button("🔄 Aggiorna", key="q10v2_refresh"):
+        if st.button("Carica consensus", key="q10v2_load_consensus",
+                     help="Esegue la pipeline: YAML → macro_series → z-score → segnale"):
+            with st.spinner("Pipeline in esecuzione…"):
+                try:
+                    from shared.db.duckdb_client import get_duckdb_client
+                    from presentation.dashboard_engine.pages_v2.M5_Economic_Surprise import (
+                        _run_surprise_pipeline,
+                    )
+                    db_pipe = get_duckdb_client()
+                    r = _run_surprise_pipeline(db_pipe, st)
+                    parts = [f"Consensus YAML: {r['yaml_rows']} righe"]
+                    if r["macro_rows"] > 0:
+                        parts.append(f"Actuals da FRED: {r['macro_rows']} righe")
+                    else:
+                        parts.append("Actuals: 0 — carica prima FRED da M3 Labour Market")
+                    if r["calc_rows"] > 0:
+                        parts.append(f"Z-score: {r['calc_rows']} righe")
+                    if r["sector_count"] > 0:
+                        parts.append(f"Settori: {r['sector_count']}")
+                    if r["signal_value"] is not None:
+                        parts.append(f"Segnale: {r['signal_value']:+.3f}")
+                    st.success(" · ".join(parts))
+                    if r["macro_rows"] == 0:
+                        st.info("Per popolare i dati reali vai su M3 Labour Market → Carica da FRED.")
+                    st.cache_data.clear()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Errore pipeline: {type(exc).__name__}: {exc}")
+    with cols_top[2]:
+        if st.button("Aggiorna", key="q10v2_refresh"):
             st.cache_data.clear()
             st.rerun()
+
     st.caption("Z-Score per Indicatore × Mese · Stile Bloomberg CESI · Ultimi 12 mesi")
 
     try:
@@ -41,9 +71,9 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
         return
 
     tab_heatmap, tab_ranking, tab_sector = st.tabs([
-        "🗺️ Heatmap 12M",
-        "🏆 Z-Score Ranking",
-        "📊 Sector Trend",
+        "Heatmap 12M",
+        "Z-Score Ranking",
+        "Sector Trend",
     ])
 
     # ── Tab 1: Heatmap ────────────────────────────────────────────────────────
@@ -52,28 +82,25 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
         try:
             import pandas as pd
             rows = db.query(
-                "SELECT indicator_code, sector, z_score, release_date "
-                "FROM economic_surprise "
+                "SELECT indicator_code, sector, surprise_z, release_date "
+                "FROM economic_consensus "
                 "WHERE release_date >= CURRENT_DATE - INTERVAL 365 DAY "
-                "AND z_score IS NOT NULL "
+                "AND surprise_z IS NOT NULL "
                 "ORDER BY release_date"
             )
             if not rows:
                 st.info(
-                    "Nessun dato disponibile. Configurare FRED_API_KEY e "
-                    "eseguire il SurpriseCalculator."
+                    "Nessun dato disponibile. Premi 'Carica consensus' per eseguire la pipeline."
                 )
             else:
                 df = pd.DataFrame(rows, columns=["Indicatore", "Settore", "Z-Score", "Data"])
                 df["Mese"] = pd.to_datetime(df["Data"]).dt.to_period("M").astype(str)
 
-                # Pivot: indicatori × mesi
                 pivot = df.pivot_table(
                     index="Indicatore", columns="Mese",
                     values="Z-Score", aggfunc="last"
                 ).round(2)
 
-                # Color-coded dataframe
                 def _color_zscore(val):
                     if pd.isna(val):
                         return ""
@@ -93,8 +120,8 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
                     height=500,
                 )
                 st.caption(
-                    "🟢 Z > +2 sorpresa molto positiva · "
-                    "🔴 Z < -2 sorpresa molto negativa"
+                    "Z > +2 sorpresa molto positiva · "
+                    "Z < -2 sorpresa molto negativa"
                 )
         except Exception as exc:
             st.warning(f"Heatmap non disponibile: {exc}")
@@ -106,26 +133,31 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
         sector_filter = st.selectbox(
             "Filtra per settore",
             ["tutti"] + _SECTOR_ORDER,
-            format_func=lambda s: f"{_SECTOR_ICONS.get(s, '')} {s.capitalize()}" if s != "tutti" else "🌐 Tutti",
+            format_func=lambda s: f"{_SECTOR_ICONS.get(s, '')} {s.capitalize()}" if s != "tutti" else "Tutti",
         )
 
         try:
             import pandas as pd
-            query_where = (
-                "WHERE release_date >= CURRENT_DATE - INTERVAL 90 DAY AND z_score IS NOT NULL"
-            )
-            params: list = []
-            if sector_filter != "tutti":
-                query_where += " AND sector=?"
-                params.append(sector_filter)
+            _VALID = {"labour", "growth", "inflation", "housing", "trade_external"}
+            safe_sector = sector_filter if sector_filter in _VALID else None
 
-            rows = db.query(
-                f"SELECT indicator_code, sector, actual_value, consensus_value, "
-                f"surprise_raw, z_score, release_date "
-                f"FROM economic_surprise {query_where} "
-                f"ORDER BY ABS(z_score) DESC NULLS LAST LIMIT 25",
-                params or None,
+            base_query = (
+                "SELECT indicator_code, sector, actual_value, consensus_value, "
+                "surprise_raw, surprise_z, release_date "
+                "FROM economic_consensus "
+                "WHERE release_date >= CURRENT_DATE - INTERVAL 90 DAY "
+                "AND surprise_z IS NOT NULL"
             )
+            if safe_sector:
+                rows = db.query(
+                    base_query + " AND sector=? ORDER BY ABS(surprise_z) DESC NULLS LAST LIMIT 25",
+                    [safe_sector],
+                )
+            else:
+                rows = db.query(
+                    base_query + " ORDER BY ABS(surprise_z) DESC NULLS LAST LIMIT 25"
+                )
+
             if not rows:
                 st.info("Nessun dato per il filtro selezionato.")
             else:
@@ -143,14 +175,14 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
 
     # ── Tab 3: Sector Trend ───────────────────────────────────────────────────
     with tab_sector:
-        st.subheader("Trend EMA per Settore — Ultime 26 Settimane")
+        st.subheader("Trend per Settore — Ultime 26 Settimane")
         try:
             import pandas as pd
             rows = db.query(
-                "SELECT score_date, sector, score_ema, score_momentum "
-                "FROM surprise_sector_score "
-                "WHERE score_date >= CURRENT_DATE - INTERVAL 180 DAY "
-                "ORDER BY score_date"
+                "SELECT snapshot_date, sector, surprise_index, momentum_1m "
+                "FROM sector_surprise_index "
+                "WHERE snapshot_date >= CURRENT_DATE - INTERVAL 180 DAY "
+                "ORDER BY snapshot_date"
             )
             if not rows:
                 st.info("Nessun dato trend settoriale disponibile.")
@@ -167,10 +199,11 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
                     sub_plot = sub.set_index("Data")[["EMA", "Momentum"]]
                     st.line_chart(sub_plot, height=180)
                     latest = sub.iloc[-1]
-                    direction = "▲ improving" if latest.get("Momentum", 0) > 0.15 else (
-                        "▼ deteriorating" if latest.get("Momentum", 0) < -0.15 else "→ stable"
+                    mom = latest.get("Momentum", 0) or 0
+                    direction = "▲ improving" if mom > 0.15 else (
+                        "▼ deteriorating" if mom < -0.15 else "→ stable"
                     )
-                    st.caption(f"EMA: {latest['EMA']:+.3f}  ·  Momentum: {direction}")
+                    st.caption(f"Surprise Index: {latest['EMA']:+.3f}  ·  Momentum: {direction}")
                     st.divider()
 
         except Exception as exc:
