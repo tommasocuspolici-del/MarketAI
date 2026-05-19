@@ -101,7 +101,8 @@ class LiveMarketService:
                     new_snapshot = self._cache
                     new_snapshot.is_stale = True
                 else:
-                    disk = self._disk_cache.load()
+                    _dc = getattr(self, "_disk_cache", None)
+                    disk = _dc.load() if _dc is not None else None
                     if disk is not None:
                         new_snapshot = disk
                     else:
@@ -154,7 +155,8 @@ class LiveMarketService:
             if cached.kpis:
                 cached.is_stale = True
                 return cached
-            disk = self._disk_cache.load()
+            _dc = getattr(self, "_disk_cache", None)
+            disk = _dc.load() if _dc is not None else None
             if disk is not None:
                 return disk
             snapshot.kpis = build_unavailable_kpis("yfinance non installato")
@@ -168,9 +170,11 @@ class LiveMarketService:
             if cached.kpis:
                 cached.is_stale = True
                 return cached
-            disk = self._disk_cache.load()
-            if disk is not None:
-                return disk
+            disk_cache = getattr(self, "_disk_cache", None)
+            if disk_cache is not None:
+                disk = disk_cache.load()
+                if disk is not None:
+                    return disk
             snapshot.kpis = build_unavailable_kpis("yfinance download failed")
             snapshot.n_errors = len(snapshot.kpis)
             snapshot.is_unavailable = True
@@ -184,7 +188,9 @@ class LiveMarketService:
             if kpi.error:
                 snapshot.n_errors += 1
 
-        self._disk_cache.save(snapshot)
+        _dc = getattr(self, "_disk_cache", None)
+        if _dc is not None:
+            _dc.save(snapshot)
         return snapshot
 
     def _extract_kpi(self, *, data: Any, term: str, yf_ticker: str, currency: str, fmt: str) -> MarketKpi:
