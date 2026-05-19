@@ -35,6 +35,7 @@ ENGINE_V2_PAGES: list[str] = [
     "Q3_Correlations",
     "Q4_Forecasting",
     "Q5_Delta",
+    "Q6_Technical_Advanced",
     "Q9_Labour_Forecasting",
     "Q10_Surprise_Heatmap",
     "Q11_Options_Analytics",

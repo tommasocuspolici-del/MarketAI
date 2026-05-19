@@ -134,6 +134,7 @@ nav_dict: dict[str, list] = {
         _ep("Q3_Correlations",            "Correlazioni",        "🕸️"),
         _ep("Q4_Forecasting",             "Forecasting",         "🔮"),
         _ep("Q5_Delta",                   "Delta & Momentum",    "📈"),
+        _ep("Q6_Technical_Advanced",      "Technical Advanced ★","🔬"),
         _ep("Q9_Labour_Forecasting",      "Labour Forecasting ★","🔬"),
         _ep("Q10_Surprise_Heatmap",       "Surprise Heatmap ★",  "🗺️"),
         _ep("Q11_Options_Analytics",      "Options Analytics",   "📊"),
