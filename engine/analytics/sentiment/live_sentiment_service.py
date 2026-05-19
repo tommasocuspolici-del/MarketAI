@@ -1,11 +1,15 @@
 """LiveSentimentService — fetch sentiment scores from free public APIs (sync).
 
 Sources (all free, no paid subscription required):
-  · CNN Fear & Greed  — production.dataviz.cnn.io  (no key; requests+browser headers)
+  · CNN Fear & Greed   — production.dataviz.cnn.io  (no key; requests+browser headers)
   · Crypto Fear & Greed — api.alternative.me/fng/   (no key)
   · SPY Put/Call Ratio  — yfinance options chain     (no key)
   · Finnhub news-sentiment — finnhub.io              (FINNHUB_API_KEY in .env)
       fallback: SPY RSI(14) via yfinance when Finnhub is unavailable
+  · AAII Investor Survey — aaii.com (HTML scrape; no key)
+  · COT E-mini S&P 500  — CFTC Socrata JSON API (no key)
+  · Insider Activity     — openinsider.com (HTML scrape; no key)
+  · Short Interest       — yfinance SPY shortPercentOfFloat (no key)
 
 All scores are normalized to [-1, +1]:
   -1 = extreme fear / bearish
@@ -22,7 +26,7 @@ from typing import Any
 
 from shared.logger import get_logger
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 __all__ = ["LiveSentimentService", "SentimentScores"]
 
@@ -36,6 +40,38 @@ _FINNHUB_BASE = "https://finnhub.io/api/v1"
 # Put/Call ratio normalization bounds (based on historical CBOE data)
 _PC_BULLISH_THRESH = 0.70   # below → bullish (+1)
 _PC_BEARISH_THRESH = 1.25   # above → bearish (-1)
+
+# AAII — HTML results page
+_AAII_URL = "https://www.aaii.com/sentimentsurvey/sent_results"
+
+# COT — CFTC Socrata public API (Legacy Futures Only, Financial Futures dataset)
+_CFTC_SOCRATA_URL = "https://publicreporting.cftc.gov/resource/r4w3-av2u.json"
+_SP500_FUTURES_SUBSTR = "E-MINI S&P 500"   # substring match against market name
+
+# COT normalization: ±25% of open interest maps to ±1
+_COT_OI_SPREAD = 0.25
+
+# Insider — OpenInsider screener: last 30 days, open-market purchases + sales, value ≥ $5k
+_OPENINSIDER_URL = (
+    "https://openinsider.com/screener"
+    "?fd=30&xp=1&xs=1&vl=5&cnt=500&action=1"
+)
+
+# Short interest normalization (SPY shortPercentOfFloat)
+# Typical SPY range: 0.5–3 %; 1 % = neutral, drift down = bullish, up = bearish
+_SHORT_INT_NEUTRAL = 0.01   # 1 % = score 0
+_SHORT_INT_SPREAD  = 0.03   # 3 pp from neutral = ±1
+
+# Browser-like headers used for sites that block bare Python UA
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 
 class SentimentScores:
@@ -123,11 +159,14 @@ class LiveSentimentService:
         """Fetch all available sources. Errors are logged and ignored."""
         scores = SentimentScores()
 
-        scores.cnn_fg = self._fetch_cnn_fg(scores)
+        scores.cnn_fg    = self._fetch_cnn_fg(scores)
         scores.crypto_fg = self._fetch_crypto_fg(scores)
-        scores.put_call = self._fetch_cboe_put_call(scores)
-
-        scores.finnhub = self._fetch_finnhub(scores)
+        scores.put_call  = self._fetch_cboe_put_call(scores)
+        scores.finnhub   = self._fetch_finnhub(scores)
+        scores.aaii      = self._fetch_aaii(scores)
+        scores.cot       = self._fetch_cot(scores)
+        scores.insider   = self._fetch_insider(scores)
+        scores.short_int = self._fetch_short_int(scores)
 
         return scores
 
@@ -258,6 +297,106 @@ class LiveSentimentService:
             log.warning("live_sentiment.spy_rsi_error", error=str(exc))
             # Report the original Finnhub error if present, else the RSI error
             scores.errors["Finnhub"] = str(primary_exc) if primary_exc else str(exc)
+            return None
+
+    def _fetch_aaii(self, scores: SentimentScores) -> float | None:
+        """AAII Investor Survey — scrape HTML, extract bullish/bearish %, normalize to [-1,+1]."""
+        try:
+            from bs4 import BeautifulSoup
+
+            req = urllib.request.Request(_AAII_URL, headers=_BROWSER_HEADERS)
+            with urllib.request.urlopen(req, timeout=_TIMEOUT_S) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
+            soup = BeautifulSoup(html, "html.parser")
+            table = soup.find("table", {"id": "sentiment-data"}) or soup.find("table")
+            if table is None:
+                raise ValueError("AAII sentiment table not found")
+            rows = table.find_all("tr")
+            last_row = rows[-1].find_all("td")
+            # Columns: Date, Bullish, Neutral, Bearish, ...
+            bullish = float(last_row[1].text.strip().replace("%", ""))
+            bearish = float(last_row[3].text.strip().replace("%", ""))
+            total = bullish + bearish
+            if total == 0:
+                raise ValueError("AAII zero total sentiment")
+            score = (bullish - bearish) / total
+            return float(max(-1.0, min(1.0, score)))
+        except Exception as exc:
+            log.warning("live_sentiment.aaii_error", error=str(exc))
+            scores.errors["AAII"] = str(exc)
+            return None
+
+    def _fetch_cot(self, scores: SentimentScores) -> float | None:
+        """COT E-mini S&P 500 — CFTC Socrata API, non-commercial net position / open interest."""
+        try:
+            url = f"{_CFTC_SOCRATA_URL}?$limit=5&$order=report_date_as_yyyy_mm_dd DESC"
+            data = self._get_json(url)
+            record = next(
+                (r for r in data if _SP500_FUTURES_SUBSTR in r.get("market_and_exchange_names", "").upper()),
+                None,
+            )
+            if record is None:
+                raise ValueError("E-mini S&P 500 not found in CFTC response")
+            long_nc = float(record.get("noncomm_positions_long_all", 0))
+            short_nc = float(record.get("noncomm_positions_short_all", 0))
+            oi = float(record.get("open_interest_all", 1))
+            if oi == 0:
+                raise ValueError("COT open interest is zero")
+            net_pct = (long_nc - short_nc) / oi
+            score = net_pct / _COT_OI_SPREAD  # ±25% OI → ±1
+            return float(max(-1.0, min(1.0, score)))
+        except Exception as exc:
+            log.warning("live_sentiment.cot_error", error=str(exc))
+            scores.errors["COT"] = str(exc)
+            return None
+
+    def _fetch_insider(self, scores: SentimentScores) -> float | None:
+        """Insider Activity — OpenInsider screener, open-market buy vs sell count."""
+        try:
+            from bs4 import BeautifulSoup
+
+            req = urllib.request.Request(_OPENINSIDER_URL, headers=_BROWSER_HEADERS)
+            with urllib.request.urlopen(req, timeout=_TIMEOUT_S) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
+            soup = BeautifulSoup(html, "html.parser")
+            table = soup.find("table", {"class": "tinytable"})
+            if table is None:
+                raise ValueError("OpenInsider tinytable not found")
+            buys = sells = 0
+            for row in table.find_all("tr")[1:]:  # skip header
+                cells = row.find_all("td")
+                if len(cells) < 5:
+                    continue
+                trade_type = cells[4].text.strip().upper()
+                if trade_type == "P":
+                    buys += 1
+                elif trade_type == "S":
+                    sells += 1
+            total = buys + sells
+            if total == 0:
+                raise ValueError("OpenInsider: no trades found")
+            score = (buys - sells) / total
+            return float(max(-1.0, min(1.0, score)))
+        except Exception as exc:
+            log.warning("live_sentiment.insider_error", error=str(exc))
+            scores.errors["Insider"] = str(exc)
+            return None
+
+    def _fetch_short_int(self, scores: SentimentScores) -> float | None:
+        """Short Interest — SPY shortPercentOfFloat via yfinance, normalized to [-1,+1]."""
+        try:
+            import yfinance as yf
+
+            info = yf.Ticker("SPY").info
+            pct = info.get("shortPercentOfFloat")
+            if pct is None:
+                raise ValueError("shortPercentOfFloat not available for SPY")
+            # Invert: high short interest → bearish (-1); low → bullish (+1)
+            score = -(pct - _SHORT_INT_NEUTRAL) / _SHORT_INT_SPREAD
+            return float(max(-1.0, min(1.0, score)))
+        except Exception as exc:
+            log.warning("live_sentiment.short_int_error", error=str(exc))
+            scores.errors["Short Int"] = str(exc)
             return None
 
     # ── HTTP helpers ───────────────────────────────────────────────────────

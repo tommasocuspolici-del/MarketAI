@@ -288,3 +288,187 @@ class TestNormalization:
         mid = (0.70 + 1.25) / 2
         result = svc._normalize_put_call(mid)
         assert pytest.approx(result, abs=0.01) == 0.0
+
+
+# ── AAII / COT / Insider / Short Int ─────────────────────────────────────────
+
+class TestFetchAaiiCotInsiderShortInt:
+    def _mock_urlopen(self, html_bytes: bytes) -> MagicMock:
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = html_bytes
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        return mock_resp
+
+    # ── AAII ──
+
+    def test_fetch_aaii_success(self) -> None:
+        html = (
+            b"<table><tr><th>Date</th><th>Bullish</th><th>Neutral</th><th>Bearish</th></tr>"
+            b"<tr><td>2026-05-19</td><td>39.0%</td><td>30.0%</td><td>31.0%</td></tr></table>"
+        )
+        with patch("urllib.request.urlopen", return_value=self._mock_urlopen(html)):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_aaii(scores)
+        assert result is not None
+        assert -1.0 <= result <= 1.0
+        assert "AAII" not in scores.errors
+
+    def test_fetch_aaii_bullish_majority(self) -> None:
+        html = (
+            b"<table><tr><th>Date</th><th>Bullish</th><th>Neutral</th><th>Bearish</th></tr>"
+            b"<tr><td>2026-05-19</td><td>60.0%</td><td>20.0%</td><td>20.0%</td></tr></table>"
+        )
+        with patch("urllib.request.urlopen", return_value=self._mock_urlopen(html)):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_aaii(scores)
+        assert result is not None
+        assert result > 0  # bullish majority → positive
+
+    def test_fetch_aaii_network_error_returns_none(self) -> None:
+        with patch("urllib.request.urlopen", side_effect=OSError("timeout")):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_aaii(scores)
+        assert result is None
+        assert "AAII" in scores.errors
+
+    # ── COT ──
+
+    def test_fetch_cot_success(self) -> None:
+        mock_data = [{
+            "market_and_exchange_names": "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE",
+            "noncomm_positions_long_all": "300000",
+            "noncomm_positions_short_all": "200000",
+            "open_interest_all": "800000",
+        }]
+        svc = _make_service()
+        with patch.object(svc, "_get_json", return_value=mock_data):
+            scores = SentimentScores()
+            result = svc._fetch_cot(scores)
+        assert result is not None
+        assert -1.0 <= result <= 1.0
+        assert "COT" not in scores.errors
+
+    def test_fetch_cot_net_long_positive(self) -> None:
+        mock_data = [{
+            "market_and_exchange_names": "E-MINI S&P 500 - CME",
+            "noncomm_positions_long_all": "500000",
+            "noncomm_positions_short_all": "100000",
+            "open_interest_all": "800000",
+        }]
+        svc = _make_service()
+        with patch.object(svc, "_get_json", return_value=mock_data):
+            scores = SentimentScores()
+            result = svc._fetch_cot(scores)
+        assert result is not None
+        assert result > 0  # net long → bullish
+
+    def test_fetch_cot_not_found_returns_none(self) -> None:
+        svc = _make_service()
+        with patch.object(svc, "_get_json", return_value=[{"market_and_exchange_names": "CORN FUTURES"}]):
+            scores = SentimentScores()
+            result = svc._fetch_cot(scores)
+        assert result is None
+        assert "COT" in scores.errors
+
+    def test_fetch_cot_api_error_returns_none(self) -> None:
+        svc = _make_service()
+        with patch.object(svc, "_get_json", side_effect=OSError("network error")):
+            scores = SentimentScores()
+            result = svc._fetch_cot(scores)
+        assert result is None
+        assert "COT" in scores.errors
+
+    # ── Insider ──
+
+    def test_fetch_insider_more_buys_positive(self) -> None:
+        html = (
+            b'<table class="tinytable">'
+            b'<tr><th>A</th><th>B</th><th>C</th><th>D</th><th>Type</th></tr>'
+            b'<tr><td></td><td></td><td></td><td></td><td>P</td></tr>'
+            b'<tr><td></td><td></td><td></td><td></td><td>P</td></tr>'
+            b'<tr><td></td><td></td><td></td><td></td><td>S</td></tr>'
+            b'</table>'
+        )
+        with patch("urllib.request.urlopen", return_value=self._mock_urlopen(html)):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_insider(scores)
+        assert result is not None
+        assert result > 0  # 2 buys, 1 sell → positive
+        assert "Insider" not in scores.errors
+
+    def test_fetch_insider_no_table_returns_none(self) -> None:
+        html = b"<html><body>No table here</body></html>"
+        with patch("urllib.request.urlopen", return_value=self._mock_urlopen(html)):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_insider(scores)
+        assert result is None
+        assert "Insider" in scores.errors
+
+    def test_fetch_insider_network_error_returns_none(self) -> None:
+        with patch("urllib.request.urlopen", side_effect=OSError("timeout")):
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_insider(scores)
+        assert result is None
+        assert "Insider" in scores.errors
+
+    # ── Short Int ──
+
+    def test_fetch_short_int_low_short_bullish(self) -> None:
+        with patch("yfinance.Ticker") as mock_yf:
+            mock_yf.return_value.info = {"shortPercentOfFloat": 0.005}  # 0.5% → bullish
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_short_int(scores)
+        assert result is not None
+        assert result > 0
+        assert "Short Int" not in scores.errors
+
+    def test_fetch_short_int_high_short_bearish(self) -> None:
+        with patch("yfinance.Ticker") as mock_yf:
+            mock_yf.return_value.info = {"shortPercentOfFloat": 0.04}  # 4% → bearish
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_short_int(scores)
+        assert result is not None
+        assert result < 0
+
+    def test_fetch_short_int_missing_field_returns_none(self) -> None:
+        with patch("yfinance.Ticker") as mock_yf:
+            mock_yf.return_value.info = {}
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_short_int(scores)
+        assert result is None
+        assert "Short Int" in scores.errors
+
+    def test_fetch_short_int_clamped_to_bounds(self) -> None:
+        with patch("yfinance.Ticker") as mock_yf:
+            mock_yf.return_value.info = {"shortPercentOfFloat": 0.10}  # 10% → extreme
+            svc = _make_service()
+            scores = SentimentScores()
+            result = svc._fetch_short_int(scores)
+        assert result == -1.0  # clamped
+
+    # ── fetch_all wires all 8 ──
+
+    def test_fetch_all_calls_all_8_sources(self) -> None:
+        svc = _make_service()
+        with patch.object(svc, "_fetch_cnn_fg", return_value=0.3) as m1, \
+             patch.object(svc, "_fetch_crypto_fg", return_value=-0.1) as m2, \
+             patch.object(svc, "_fetch_cboe_put_call", return_value=0.5) as m3, \
+             patch.object(svc, "_fetch_finnhub", return_value=0.2) as m4, \
+             patch.object(svc, "_fetch_aaii", return_value=0.1) as m5, \
+             patch.object(svc, "_fetch_cot", return_value=0.4) as m6, \
+             patch.object(svc, "_fetch_insider", return_value=-0.2) as m7, \
+             patch.object(svc, "_fetch_short_int", return_value=0.0) as m8:
+            scores = svc.fetch_all()
+        for mock in (m1, m2, m3, m4, m5, m6, m7, m8):
+            mock.assert_called_once()
+        assert len(scores.live_sources) == 8
