@@ -124,6 +124,9 @@ context_pages = [
     _page(f"{ENG}/E8_Correlations.py",        "Correlazioni",      "🕸️"),
     _page(f"{ENG}/M3_Labour_Market.py",       "Labour Market",     "👷"),
     _page(f"{ENG}/M5_Economic_Surprise.py",   "Economic Surprise", "⚡"),
+    _page(f"{ENG}/M6_Valuation_PE.py",        "Valuation & P/E",   "📊"),
+    _page(f"{ENG}/N1_News_Feed.py",           "News Feed",         "📰"),
+    _page(f"{ENG}/N2_News_Analysis.py",       "News Analysis",     "📊"),
 ]
 
 # Cluster 4: rischio & previsione — "cosa potrebbe succedere?"
@@ -131,6 +134,7 @@ risk_pages = [
     _page(f"{ENG}/E9_Forecasting.py",         "Forecasting",       "🔮"),
     _page(f"{ENG}/Q9_Labour_Forecasting.py",  "Labour Forecast",   "🔬"),
     _page(f"{ENG}/Q10_Surprise_Heatmap.py",   "Surprise Heatmap",  "🗺️"),
+    _page(f"{ENG}/M7_IB_Consensus.py",        "IB Consensus",      "🏦"),
     _page(f"{ENG}/E12_Backtesting.py",        "Backtesting",       "🧪"),
     _page(f"{ENG}/E13_Stress_Test.py",        "Stress Test",       "⚡"),
 ]
@@ -187,7 +191,7 @@ if personal := _clean(personal_pages):
 # ────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🧠 MarketAI")
-    st.caption("Professional Edition · v7.1.3")
+    st.caption("Professional Edition · v10.2.0")
     st.divider()
 
     # v7.1.3 (B3): se le auto-migrations sono fallite, l'utente deve saperlo
