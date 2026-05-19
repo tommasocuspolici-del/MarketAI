@@ -1,10 +1,11 @@
 """LiveSentimentService — fetch sentiment scores from free public APIs (sync).
 
 Sources (all free, no paid subscription required):
-  · CNN Fear & Greed  — production.dataviz.cnn.io  (no key)
+  · CNN Fear & Greed  — production.dataviz.cnn.io  (no key; requests+browser headers)
   · Crypto Fear & Greed — api.alternative.me/fng/   (no key)
-  · CBOE Put/Call Ratio — cdn.cboe.com               (no key)
+  · SPY Put/Call Ratio  — yfinance options chain     (no key)
   · Finnhub news-sentiment — finnhub.io              (FINNHUB_API_KEY in .env)
+      fallback: SPY RSI(14) via yfinance when Finnhub is unavailable
 
 All scores are normalized to [-1, +1]:
   -1 = extreme fear / bearish
@@ -14,8 +15,6 @@ Returns None for sources that are unavailable (missing key, network error, etc.)
 """
 from __future__ import annotations
 
-import csv
-import io
 import json
 import os
 import urllib.request
@@ -23,7 +22,7 @@ from typing import Any
 
 from shared.logger import get_logger
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = ["LiveSentimentService", "SentimentScores"]
 
@@ -32,7 +31,6 @@ log = get_logger(__name__)
 _TIMEOUT_S = 8.0
 _CNN_FG_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 _CRYPTO_FG_URL = "https://api.alternative.me/fng/?limit=1"
-_CBOE_PC_URL = "https://cdn.cboe.com/api/global/us_indices/daily_prices/CBOE_Total_PC.csv"
 _FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 # Put/Call ratio normalization bounds (based on historical CBOE data)
@@ -112,8 +110,7 @@ class SentimentScores:
 class LiveSentimentService:
     """Sync sentiment fetcher for Streamlit pages.
 
-    All network calls use urllib (stdlib, no extra deps). Designed to be
-    wrapped with ``@st.cache_data(ttl=900)`` in the UI layer.
+    Designed to be wrapped with ``@st.cache_data(ttl=900)`` in the UI layer.
     """
 
     def __init__(self, finnhub_api_key: str | None = None) -> None:
@@ -130,25 +127,39 @@ class LiveSentimentService:
         scores.crypto_fg = self._fetch_crypto_fg(scores)
         scores.put_call = self._fetch_cboe_put_call(scores)
 
-        if self._finnhub_key:
-            scores.finnhub = self._fetch_finnhub(scores)
-        else:
-            scores.errors["Finnhub"] = "FINNHUB_API_KEY non configurata in .env"
+        scores.finnhub = self._fetch_finnhub(scores)
 
         return scores
 
     # ── Private fetchers ───────────────────────────────────────────────────
 
     def _fetch_cnn_fg(self, scores: SentimentScores) -> float | None:
-        """CNN Fear & Greed index — score 0..100 → normalized [-1,+1]."""
+        """CNN Fear & Greed index — score 0..100 → normalized [-1,+1].
+
+        Uses requests.Session with full browser headers to bypass anti-bot (418).
+        """
         try:
-            data = self._get_json(_CNN_FG_URL, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; MarketAI/1.0)",
-                "Accept": "application/json",
+            import requests  # available via requests-cache dependency
+
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Referer": "https://www.cnn.com/markets/fear-and-greed",
+                "Origin": "https://www.cnn.com",
             })
+            resp = session.get(_CNN_FG_URL, timeout=_TIMEOUT_S)
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+
             score_raw = data.get("fear_and_greed", {}).get("score")
             if score_raw is None:
-                # Try alternative path
                 score_raw = data.get("score")
             if score_raw is None:
                 raise ValueError("score field missing from CNN F&G response")
@@ -175,44 +186,78 @@ class LiveSentimentService:
             return None
 
     def _fetch_cboe_put_call(self, scores: SentimentScores) -> float | None:
-        """CBOE Total Put/Call ratio from daily CSV — ratio → normalized [-1,+1].
+        """SPY options put/call volume ratio via yfinance — ratio → normalized [-1,+1].
 
         Low ratio (< 0.70) = lots of calls = bullish → +1
         High ratio (> 1.25) = lots of puts = bearish → -1
         """
         try:
-            body = self._get_bytes(_CBOE_PC_URL)
-            text = body.decode("utf-8", errors="replace")
-            reader = csv.reader(io.StringIO(text))
-            last_ratio: float | None = None
-            for row in reader:
-                if len(row) >= 2:
-                    try:
-                        last_ratio = float(row[1].strip())
-                    except (ValueError, IndexError):
-                        pass
-            if last_ratio is None:
-                raise ValueError("no valid put/call ratio found in CSV")
-            return self._normalize_put_call(last_ratio)
+            import yfinance as yf  # already a project dependency
+
+            spy = yf.Ticker("SPY")
+            exp_dates = spy.options
+            if not exp_dates:
+                raise ValueError("no options expiry dates available for SPY")
+            chain = spy.option_chain(exp_dates[0])
+            put_vol = float(chain.puts["volume"].fillna(0).sum())
+            call_vol = float(chain.calls["volume"].fillna(0).sum())
+            if call_vol == 0:
+                raise ValueError("zero call volume in SPY options chain")
+            ratio = put_vol / call_vol
+            return self._normalize_put_call(ratio)
         except Exception as exc:
-            log.warning("live_sentiment.cboe_pc_error", error=str(exc))
+            log.warning("live_sentiment.put_call_error", error=str(exc))
             scores.errors["Put/Call"] = str(exc)
             return None
 
     def _fetch_finnhub(self, scores: SentimentScores) -> float | None:
-        """Finnhub news-sentiment for SPY — bullish% - bearish% → [-1,+1]."""
+        """Finnhub news-sentiment for SPY, with SPY RSI(14) fallback via yfinance.
+
+        Finnhub free tier may return 403 on news-sentiment; in that case the RSI
+        proxy is used so the source remains live (real data, different origin).
+        """
+        finnhub_exc: Exception | None = None
+        if self._finnhub_key:
+            try:
+                url = f"{_FINNHUB_BASE}/news-sentiment?symbol=SPY&token={self._finnhub_key}"
+                data = self._get_json(url)
+                sent = data.get("sentiment", {})
+                bullish = float(sent.get("bullishPercent", 0.0))
+                bearish = float(sent.get("bearishPercent", 0.0))
+                if bullish == 0.0 and bearish == 0.0:
+                    raise ValueError("Finnhub returned zero sentiment for SPY")
+                return float(bullish - bearish)
+            except Exception as exc:
+                finnhub_exc = exc
+                log.warning("live_sentiment.finnhub_error", error=str(exc))
+
+        # Fallback: SPY RSI(14) as technical sentiment proxy
+        result = self._fetch_spy_rsi_fallback(scores, finnhub_exc)
+        return result
+
+    def _fetch_spy_rsi_fallback(
+        self, scores: SentimentScores, primary_exc: Exception | None
+    ) -> float | None:
+        """RSI(14) of SPY as technical sentiment proxy when Finnhub is unavailable."""
         try:
-            url = f"{_FINNHUB_BASE}/news-sentiment?symbol=SPY&token={self._finnhub_key}"
-            data = self._get_json(url)
-            sent = data.get("sentiment", {})
-            bullish = float(sent.get("bullishPercent", 0.0))
-            bearish = float(sent.get("bearishPercent", 0.0))
-            if bullish == 0.0 and bearish == 0.0:
-                raise ValueError("Finnhub returned zero sentiment for SPY")
-            return float(bullish - bearish)
+            import yfinance as yf
+
+            hist = yf.Ticker("SPY").history(period="3mo")["Close"]
+            if len(hist) < 15:
+                raise ValueError("insufficient SPY history for RSI(14)")
+            delta = hist.diff()
+            gain = delta.clip(lower=0).rolling(14).mean()
+            loss = (-delta.clip(upper=0)).rolling(14).mean()
+            last_loss = loss.iloc[-1]
+            if last_loss == 0:
+                raise ValueError("RSI denominator is zero (all gains, no losses)")
+            rs = gain.iloc[-1] / last_loss
+            rsi = 100.0 - (100.0 / (1.0 + rs))
+            return self._normalize_0_100(float(rsi))
         except Exception as exc:
-            log.warning("live_sentiment.finnhub_error", error=str(exc))
-            scores.errors["Finnhub"] = str(exc)
+            log.warning("live_sentiment.spy_rsi_error", error=str(exc))
+            # Report the original Finnhub error if present, else the RSI error
+            scores.errors["Finnhub"] = str(primary_exc) if primary_exc else str(exc)
             return None
 
     # ── HTTP helpers ───────────────────────────────────────────────────────
@@ -224,13 +269,6 @@ class LiveSentimentService:
         with urllib.request.urlopen(req, timeout=_TIMEOUT_S) as resp:
             raw = resp.read()
         return dict(json.loads(raw))
-
-    def _get_bytes(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> bytes:
-        req = urllib.request.Request(url, headers=headers or {})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT_S) as resp:
-            return bytes(resp.read())
 
     # ── Normalization helpers ──────────────────────────────────────────────
 
