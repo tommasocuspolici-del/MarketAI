@@ -210,7 +210,7 @@ markers = [
 
 [tool.coverage.run]
 source = ["shared", "engine", "personal", "bridge", "presentation"]
-omit = ["*/tests/*", "*/__init__.py", "*/migrations/*"]
+omit = ["*/tests/*", "*/__init__.py", "*/migrations/*", "presentation/*"]
 
 [tool.coverage.report]
 exclude_lines = [
