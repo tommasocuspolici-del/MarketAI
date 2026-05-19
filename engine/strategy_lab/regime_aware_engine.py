@@ -104,8 +104,8 @@ class RegimeAwareBacktestEngine:
                 continue
 
             r_ohlcv   = ohlcv.loc[regime_idx]
-            r_entries = entries.reindex(regime_idx).fillna(False)
-            r_exits   = exits.reindex(regime_idx).fillna(False)
+            r_entries = entries.reindex(regime_idx).fillna(False).astype(bool)
+            r_exits   = exits.reindex(regime_idx).fillna(False).astype(bool)
 
             result = self._evaluate_regime(regime, r_ohlcv, r_entries, r_exits)
             per_regime[regime] = result
@@ -143,8 +143,8 @@ class RegimeAwareBacktestEngine:
         try:
             import vectorbt as vbt  # type: ignore[import-untyped]  # noqa: PLC0415
             pf    = vbt.Portfolio.from_signals(
-                ohlcv["close"], entries.shift(1).fillna(False),
-                exits.shift(1).fillna(False), fees=0.001, slippage=0.001, freq="1D",
+                ohlcv["close"], entries.shift(1).fillna(False).astype(bool),
+                exits.shift(1).fillna(False).astype(bool), fees=0.001, slippage=0.001, freq="1D",
             )
             stats = pf.stats()
             raw_sharpe = float(stats.get("Sharpe Ratio", 0.0) or 0.0)
@@ -222,8 +222,8 @@ class RegimeAwareBacktestEngine:
             import vectorbt as vbt  # noqa: PLC0415
             pf    = vbt.Portfolio.from_signals(
                 ohlcv["close"],
-                entries.shift(1).fillna(False),
-                exits.shift(1).fillna(False),
+                entries.shift(1).fillna(False).astype(bool),
+                exits.shift(1).fillna(False).astype(bool),
                 fees=0.001, slippage=0.001, freq="1D",
             )
             stats = pf.stats()

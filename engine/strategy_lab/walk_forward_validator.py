@@ -131,10 +131,10 @@ class WalkForwardValidator:
         try:
             import vectorbt as vbt  # type: ignore[import-untyped]
             entries_test = (
-                entries.reindex(test_df.index).fillna(False).shift(1).fillna(False)
+                entries.reindex(test_df.index, fill_value=False).astype(bool).shift(1).fillna(value=False).astype(bool)
             )
             exits_test = (
-                exits.reindex(test_df.index).fillna(False).shift(1).fillna(False)
+                exits.reindex(test_df.index, fill_value=False).astype(bool).shift(1).fillna(value=False).astype(bool)
             )
             pf    = vbt.Portfolio.from_signals(
                 test_df["close"], entries_test, exits_test,
@@ -157,8 +157,8 @@ class WalkForwardValidator:
         rets   = np.diff(close) / close[:-1]
 
         # Build a simple position series from entries/exits
-        entries_arr = entries.reindex(test_df.index).fillna(False).values[:-1]
-        exits_arr   = exits.reindex(test_df.index).fillna(False).values[:-1]
+        entries_arr = entries.reindex(test_df.index, fill_value=False).astype(bool).values[:-1]
+        exits_arr   = exits.reindex(test_df.index, fill_value=False).astype(bool).values[:-1]
 
         position  = np.zeros(len(rets), dtype=np.float64)
         in_trade  = False
