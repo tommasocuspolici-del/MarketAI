@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "market-ai"
-version = "6.0.0"
-description = "Market Analysis AI — Professional Edition (dual engine/personal architecture)"
+version = "1.0.0"
+description = "MarketAI v1.0 — Professional Edition (dual engine/personal architecture)"
 authors = ["Market AI Team"]
-readme = "README.md"
+readme = "INSTALL.md"
 license = "MIT"
 packages = [
     { include = "shared" },
