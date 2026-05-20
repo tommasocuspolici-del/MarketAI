@@ -1,5 +1,19 @@
 # ruff: noqa: N999
-"""P2 — Portafoglio eToro (v7.3.0).
+"""P2 — Portafoglio eToro (v7.4.1).
+
+Bugfix v7.4.1:
+  - FIX GROUPING CRITICO: _build_grouped_portfolio ora raggruppa per ticker
+    canonico (risolto via _resolve_canonical_ticker + InstrumentRegistry)
+    invece che per ticker raw. Prima, posizioni importate come '#3040' e
+    posizioni manuali come 'SWDA.L' (stesso ETF) generavano due righe separate
+    nel portafoglio. Ora vengono correttamente aggregate in una sola riga.
+  - FIX: il ticker mostrato in tabella è sempre il ticker Yahoo Finance reale
+    (es. 'SWDA.L'), non il placeholder numerico eToro ('#3040').
+  - FIX display_name: la comparazione per determinare se mostrare '—' ora usa
+    il canonical ticker come riferimento (non il raw ticker). Questo corregge
+    il caso in cui il nome era uguale al placeholder e veniva nascosto.
+  - Aggiunta funzione _resolve_canonical_ticker() riutilizzabile per la
+    risoluzione #ID → ticker reale con fallback al seed hardcoded.
 
 Bugfix v7.3.0:
   - FIX CRITICO: _get_current_price_yf sostituita con get_live_price_usd
@@ -68,7 +82,7 @@ from presentation.ui.session_keys import SK
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.3.0"
+__version__ = "7.4.1"
 
 __all__ = ["body_portafoglio_etoro"]
 
@@ -420,6 +434,31 @@ La directory `.gitignore` del progetto lo esclude gia'.
         )
 
 
+def _resolve_canonical_ticker(ticker: str) -> str:
+    """Risolve un ticker eToro numerico (#ID) nel ticker Yahoo Finance reale.
+
+    Usa InstrumentRegistry (DuckDB-backed con seed fallback). Se il mapping
+    non è disponibile restituisce il ticker originale invariato.
+
+    Questo è necessario per il raggruppamento corretto: senza risoluzione,
+    posizioni importate come '#3040' e posizioni manuali come 'SWDA.L'
+    (stesso strumento) finirebbero in righe separate.
+    """
+    if not ticker.startswith("#"):
+        return ticker
+    iid_str = ticker[1:]
+    if not iid_str.isdigit():
+        return ticker
+    try:
+        from engine.market_data.instrument_registry import InstrumentRegistry
+        real = InstrumentRegistry().get_ticker(int(iid_str))
+        if real:
+            return real
+    except Exception:
+        pass
+    return ticker
+
+
 def _extract_display_name(position: PositionInput) -> str:
     """Estrae il nome display dalla posizione.
 
@@ -482,14 +521,18 @@ def _get_current_price_yf(ticker: str) -> float | None:
 
 
 def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
-    """Raggruppa le posizioni per ticker e calcola aggregati.
+    """Raggruppa le posizioni per ticker canonico e calcola aggregati.
 
-    Aggrega quantità, costo ponderato, valore corrente e P/L
-    per ogni ticker. I ticker '#ID' mantengono il nome leggibile dalle note.
+    v7.4.1 — FIX GROUPING: usa _resolve_canonical_ticker() come chiave invece
+    del ticker raw. Questo garantisce che posizioni importate come '#3040' e
+    posizioni manuali come 'SWDA.L' (stesso strumento) vengano aggregate
+    nella stessa riga. Il ticker mostrato in tabella è sempre quello reale
+    (es. 'SWDA.L', non '#3040').
 
-    Prezzi correnti recuperati via get_live_price_usd (v7.3.0):
-    tutti i valori sono in USD (o nella valuta nativa del PositionInput
-    per posizioni inserite manualmente con valuta diversa).
+    Priorità display_name all'interno del gruppo:
+      1. Testo nelle note (formato 'name=...') — impostato dall'import API
+      2. InstrumentRegistry.display_name per ticker #ID
+      3. Ticker canonico (fallback)
 
     Returns:
         DataFrame con colonne: Ticker, Nome, Dir., Qta totale,
@@ -499,39 +542,45 @@ def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
     if not positions:
         return pd.DataFrame()
 
-    # Raggruppa per ticker
+    # Raggruppa per ticker canonico (risolto da #ID a ticker reale se possibile)
     grouped: dict[str, dict] = {}
     for pos in positions:
-        key = pos.ticker
+        canonical = _resolve_canonical_ticker(pos.ticker)
         display = _extract_display_name(pos)
-        if key not in grouped:
-            grouped[key] = {
-                "display_name": display,
+        if canonical not in grouped:
+            grouped[canonical] = {
+                "display_name": display if display != pos.ticker else None,
                 "direction": pos.direction,
                 "currency": pos.currency,
                 "total_qty": 0.0,
                 "total_cost": 0.0,
                 "positions_list": [],
             }
-        grouped[key]["total_qty"] += pos.quantity
-        grouped[key]["total_cost"] += pos.quantity * pos.avg_cost
-        grouped[key]["positions_list"].append(pos)
+        else:
+            # Aggiorna display_name solo se ancora sconosciuto e questa posizione
+            # ha un nome significativo (diverso sia dal raw che dal canonical)
+            if grouped[canonical]["display_name"] is None and display not in (pos.ticker, canonical):
+                grouped[canonical]["display_name"] = display
+        grouped[canonical]["total_qty"] += pos.quantity
+        grouped[canonical]["total_cost"] += pos.quantity * pos.avg_cost
+        grouped[canonical]["positions_list"].append(pos)
 
     rows = []
-    for ticker, data in grouped.items():
+    for canonical_ticker, data in grouped.items():
         total_qty = data["total_qty"]
         total_cost = data["total_cost"]
         avg_cost_weighted = total_cost / total_qty if total_qty > 0 else 0.0
 
         # Prezzo corrente: usa il valore salvato nella posizione (già in USD dopo
-        # import v7.4.0), altrimenti fallback a get_live_price_usd (con conversione GBX).
+        # import v7.4.0), altrimenti fallback a get_live_price_usd via canonical
+        # ticker (già risolto — GBX/EUR→USD incluso).
         current_price: float | None = None
         for p in data["positions_list"]:
             if p.current_price is not None:
                 current_price = p.current_price
                 break
         if current_price is None:
-            current_price = _get_current_price_yf(ticker)  # delega a get_live_price_usd
+            current_price = _get_current_price_yf(canonical_ticker)
 
         current_value = (current_price * total_qty) if current_price is not None else None
         pl_abs = (current_value - total_cost) if current_value is not None else None
@@ -541,10 +590,11 @@ def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
             else None
         )
 
+        display_name = data["display_name"] or "—"
         ccy = data["currency"]
         rows.append({
-            "Ticker": ticker,
-            "Nome": data["display_name"] if data["display_name"] != ticker else "—",
+            "Ticker": canonical_ticker,
+            "Nome": display_name,
             "Dir.": data["direction"],
             "Qta totale": round(total_qty, 4),
             "Costo medio": round(avg_cost_weighted, 2),
