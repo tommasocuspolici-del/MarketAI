@@ -42,6 +42,30 @@ colors:
   quality_fair:       "#F59E0B"   # 0.5–0.7
   quality_poor:       "#EF4444"   # < 0.5
 
+  # Signal colors [-1, 1] — used by signal_color() helper
+  signal_strong_bull:  "#2d7a4f"
+  signal_bull:         "#5cba86"
+  signal_neutral:      "#888780"
+  signal_bear:         "#d85a30"
+  signal_strong_bear:  "#a32d2d"
+
+  # IC (Information Coefficient) quality flags
+  ic_low:      "#ba7517"
+  ic_degraded: "#d85a30"
+  ic_unknown:  "#888780"
+
+  # Chart palette
+  chart_primary:   "#534ab7"
+  chart_secondary: "#1d9e75"
+  chart_accent:    "#ba7517"
+  chart_negative:  "#d85a30"
+
+  # Regime shading — semi-transparent overlays on time-series charts
+  shade_bull:       "rgba(93,186,134,0.08)"
+  shade_bear:       "rgba(216,90,48,0.10)"
+  shade_stress:     "rgba(163,45,45,0.15)"
+  shade_transition: "rgba(186,117,23,0.06)"
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Typography
 # ═══════════════════════════════════════════════════════════════════════════

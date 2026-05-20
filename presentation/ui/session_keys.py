@@ -44,5 +44,15 @@ class _SessionKeys:
     # ── Diagnostics ────────────────────────────────────────────────────────
     API_HEALTH_RESULTS       = "api_health_results"
 
+    # ── Auth (Rule 32) ─────────────────────────────────────────────────────
+    AUTH_TOKEN               = "auth_token"
+
+    # ── Sidebar navigation ─────────────────────────────────────────────────
+    SIDEBAR_SEARCH           = "sidebar_search"
+    SIDEBAR_EXPANDED_PREFIX  = "sidebar_expanded_"   # + group.id
+
+    # ── Analytics results ─────────────────────────────────────────────────
+    BACKTEST_RESULT          = "backtest_result"
+
 
 SK = _SessionKeys()

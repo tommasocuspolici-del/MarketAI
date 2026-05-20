@@ -80,6 +80,30 @@ class Colors:
     quality_fair: str
     quality_poor: str
 
+    # Signal colors [-1, 1]
+    signal_strong_bull: str
+    signal_bull: str
+    signal_neutral: str
+    signal_bear: str
+    signal_strong_bear: str
+
+    # IC quality
+    ic_low: str
+    ic_degraded: str
+    ic_unknown: str
+
+    # Chart palette
+    chart_primary: str
+    chart_secondary: str
+    chart_accent: str
+    chart_negative: str
+
+    # Regime shading (semi-transparent)
+    shade_bull: str
+    shade_bear: str
+    shade_stress: str
+    shade_transition: str
+
     def for_pnl(self, value: float) -> str:
         """Color helper: positive/negative based on value sign."""
         if value > 0:
@@ -108,6 +132,33 @@ class Colors:
             "stress": self.regime_stress,
         }
         return mapping.get(regime_lower, self.neutral)
+
+    def signal_color(self, value: float) -> str:
+        """Color for a signal in [-1, 1] — five-bucket scale."""
+        v = max(-1.0, min(1.0, float(value)))
+        if v > 0.5:
+            return self.signal_strong_bull
+        if v > 0.1:
+            return self.signal_bull
+        if v > -0.1:
+            return self.signal_neutral
+        if v > -0.5:
+            return self.signal_bear
+        return self.signal_strong_bear
+
+    def regime_color(self, regime: str) -> str:
+        """Alias for for_regime(); preferred name for new components."""
+        return self.for_regime(regime)
+
+    def ic_color(self, ic: float | None, flag: str = "ok") -> str:
+        """Color for Information Coefficient quality flag."""
+        if flag == "low_ic":
+            return self.ic_low
+        if flag == "degraded":
+            return self.ic_degraded
+        if ic is None:
+            return self.ic_unknown
+        return self.quality_good
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,18 +1,20 @@
-"""Layout helpers — page configuration + section wrappers.
+"""Layout helpers — page configuration, section wrappers, page decorator.
 
-Provides a single ``setup_page()`` entry that:
-  · Configures Streamlit page (title, icon, layout)
-  · Applies custom CSS from ``DESIGN_TOKENS``
-  · Optionally renders the auth gate (Rule 32)
-  · Optionally renders the health status bar in the sidebar
+Provides:
+  · ``setup_page()``    — page-level setup (title, CSS, auth gate)
+  · ``page_layout()``   — function decorator for page body functions
+  · ``build_custom_css()`` — pure CSS builder from DesignTokens
 """
 from __future__ import annotations
 
+import functools
+from typing import Callable
+
 from presentation.ui.theme import DesignTokens, load_design_tokens
 
-__version__ = "6.0.0"
+__version__ = "8.2.0"
 
-__all__ = ["build_custom_css", "setup_page"]
+__all__ = ["build_custom_css", "page_layout", "setup_page"]
 
 
 def build_custom_css(tokens: DesignTokens) -> str:
@@ -124,6 +126,72 @@ def setup_page(
     # Page title
     st.markdown(f"# {icon} {title}")
     return tokens
+
+
+def page_layout(
+    title: str,
+    icon: str = "📊",
+    cache_key: str | None = None,
+    ttl: int = 300,
+    requires_auth: bool = True,
+) -> Callable:
+    """Decorator for Streamlit page body functions.
+
+    Wraps the function with:
+      · Optional auth check (Rule 32)
+      · Section header (title + refresh button)
+      · Error boundary — no traceback exposed to the user
+
+    Usage::
+
+        @page_layout(title="Market Overview", icon="📊")
+        def body_market_overview(tokens: DesignTokens) -> None:  # pragma: no cover
+            ...
+
+    Args:
+        title:         Section title rendered as h2.
+        icon:          Emoji or Tabler icon prefix for the header.
+        cache_key:     Unused; reserved for future per-page cache invalidation.
+        ttl:           Unused; reserved for future TTL display in the header.
+        requires_auth: If True, verifies auth before rendering. Defaults True.
+    """
+    def decorator(fn: Callable) -> Callable:
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs) -> None:  # pragma: no cover
+            import streamlit as st
+            from shared.logger import get_logger
+
+            if requires_auth:
+                from presentation.ui.auth import require_auth
+                require_auth()
+
+            # Refresh button aligned top-right
+            hdr_cols = st.columns([5, 1])
+            with hdr_cols[0]:
+                st.markdown(f"## {icon} {title}")
+            with hdr_cols[1]:
+                refresh_key = f"{fn.__name__}_refresh"
+                if st.button("🔄 Aggiorna", key=refresh_key):
+                    st.cache_data.clear()
+                    st.rerun()
+
+            try:
+                fn(*args, **kwargs)
+            except Exception as exc:
+                log = get_logger(__name__)
+                log.error(
+                    "page.render_failed",
+                    page=title,
+                    error=str(exc),
+                    exc_info=True,
+                )
+                st.error(
+                    f"**{title} non disponibile**\n\n"
+                    f"Si è verificato un errore. Riprova o controlla S0 Health."
+                )
+
+        return wrapper
+    return decorator
 
 
 def render_section_header(title: str, subtitle: str | None = None) -> None:  # pragma: no cover

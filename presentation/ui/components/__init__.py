@@ -1,12 +1,20 @@
 """UI components package — composable visual building blocks (Rule 20).
 
-Every component exposes:
-  · ``build_*()`` — pure function returning HTML string or Plotly figure.
-    Testable without Streamlit.
-  · ``render_*()`` — Streamlit wrapper. No-op if Streamlit not importable.
+Legacy pattern (v6.0): ``build_*()`` pure function + ``render_*()`` Streamlit wrapper.
+New pattern (v8.2): ``BaseComponent`` subclasses with ``to_html()`` + ``render()``.
+
+Both patterns coexist. New pages use the class-based components.
 """
 from __future__ import annotations
 
+# ── New class-based components (v8.2) ─────────────────────────────────────
+from presentation.ui.components.base import BaseComponent
+from presentation.ui.components.empty_state import EmptyState
+from presentation.ui.components.section_header import SectionHeader
+from presentation.ui.components.signal_badge import SignalBadge
+from presentation.ui.components.status_dot import StatusDot
+
+# ── Legacy functional components (v6.0) ───────────────────────────────────
 from presentation.ui.components.backtest_report import render_backtest_report
 from presentation.ui.components.candlestick_pro import render_candlestick_pro
 from presentation.ui.components.cash_flow_waterfall import render_cash_flow_waterfall
@@ -30,9 +38,16 @@ from presentation.ui.components.sentiment_radar import render_sentiment_radar
 from presentation.ui.components.stress_test_viewer import render_stress_test_viewer
 from presentation.ui.components.wealth_scenario_chart import render_wealth_scenario_chart
 
-__version__ = "6.0.0"
+__version__ = "8.2.0"
 
 __all__ = [
+    # v8.2 class-based
+    "BaseComponent",
+    "EmptyState",
+    "SectionHeader",
+    "SignalBadge",
+    "StatusDot",
+    # v6.0 functional
     "PipelineStep",
     "render_backtest_report",
     "render_candlestick_pro",
