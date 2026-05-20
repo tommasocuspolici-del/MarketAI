@@ -10,6 +10,7 @@ from __future__ import annotations
 # ── New class-based components (v8.2) ─────────────────────────────────────
 from presentation.ui.components.base import BaseComponent
 from presentation.ui.components.empty_state import EmptyState
+from presentation.ui.components.ic_breakdown_bar import ICBreakdownBar
 from presentation.ui.components.section_header import SectionHeader
 from presentation.ui.components.signal_badge import SignalBadge
 from presentation.ui.components.status_dot import StatusDot
@@ -44,6 +45,7 @@ __all__ = [
     # v8.2 class-based
     "BaseComponent",
     "EmptyState",
+    "ICBreakdownBar",
     "KpiCard",
     "SectionHeader",
     "SignalBadge",
