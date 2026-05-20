@@ -1,5 +1,25 @@
 # ruff: noqa: N999
-"""P2 — Portafoglio eToro (v7.4.1).
+"""P2 — Portafoglio eToro (v7.5.0).
+
+Bugfix v7.5.0:
+  - FIX VALUTE CRITICHE: _build_grouped_portfolio ora normalizza TUTTI i costi
+    d'acquisto in USD prima di aggregare. Prima, posizioni manuali in EUR
+    (currency="EUR", avg_cost=105.0 EUR) e posizioni eToro in USD venivano
+    sommati direttamente producendo P/L privi di senso. Ora:
+    · EUR → USD: avg_cost * EUR/USD
+    · GBP → USD: avg_cost * GBP/USD
+    · GBX → USD: avg_cost / 100 * GBP/USD
+    · USD: invariato
+  - FIX: current_price recuperato sempre via _get_current_price_yf (sempre USD).
+    Prima si usava il valore salvato pos.current_price che per posizioni manuali
+    poteva essere in EUR, causando P/L errati.
+  - FIX: colonne DataFrame ora a nome fisso (USD), non più dinamiche per valuta.
+    Questo elimina il problema in cui la stessa colonna veniva chiamata
+    "Investito (EUR)" o "Investito (USD)" a seconda dell'ordine delle posizioni.
+  - FIX: _render_portfolio_totals semplificato — legge colonne USD fisse.
+    Rimosso il logic di multi-currency detection (non più necessario).
+  - FIX: _compute_real_portfolio_metrics normalizza avg_cost a USD per i pesi
+    del portafoglio (stessa conversione FX).
 
 Bugfix v7.4.1:
   - FIX GROUPING CRITICO: _build_grouped_portfolio ora raggruppa per ticker
@@ -53,7 +73,6 @@ La pagina ha tre tab:
 """
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -82,7 +101,7 @@ from presentation.ui.session_keys import SK
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.4.1"
+__version__ = "7.5.0"
 
 __all__ = ["body_portafoglio_etoro"]
 
@@ -119,13 +138,27 @@ def _compute_real_portfolio_metrics() -> tuple[list[MetricSpec], list[MetricSpec
         perf, risk = _kpi_specs_demo()
         return perf, risk, False
 
+    # Normalizza avg_cost a USD per calcolare i pesi corretti
+    from personal.data_entry.etoro_position_builder import _build_fx_cache as _bfx
+    _fx_m = _bfx()
+
+    def _to_usd_cost(cost: float, ccy: str) -> float:
+        c = ccy.upper()
+        if c == "EUR":
+            return cost * _fx_m.get("EUR_USD", 1.08)
+        if c == "GBP":
+            return cost * _fx_m.get("GBP_USD", 1.27)
+        if c == "GBX":
+            return cost / 100.0 * _fx_m.get("GBP_USD", 1.27)
+        return cost
+
     # Fetch 1y history for each ticker
     tickers_weights: dict[str, float] = {}
     for pos in positions:
-        t = pos.ticker
+        t = _resolve_canonical_ticker(pos.ticker)
         if t.startswith("#"):
             continue
-        cost_basis = pos.quantity * pos.avg_cost
+        cost_basis = pos.quantity * _to_usd_cost(pos.avg_cost, pos.currency)
         tickers_weights[t] = tickers_weights.get(t, 0.0) + cost_basis
 
     if not tickers_weights:
@@ -521,67 +554,75 @@ def _get_current_price_yf(ticker: str) -> float | None:
 
 
 def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
-    """Raggruppa le posizioni per ticker canonico e calcola aggregati.
+    """Raggruppa le posizioni per ticker canonico e calcola aggregati in USD.
 
-    v7.4.1 — FIX GROUPING: usa _resolve_canonical_ticker() come chiave invece
-    del ticker raw. Questo garantisce che posizioni importate come '#3040' e
-    posizioni manuali come 'SWDA.L' (stesso strumento) vengano aggregate
-    nella stessa riga. Il ticker mostrato in tabella è sempre quello reale
-    (es. 'SWDA.L', non '#3040').
+    v7.5.0 — NORMALIZZAZIONE VALUTE: tutti i costi sono convertiti in USD prima
+    di aggregare. Questo risolve il problema in cui posizioni manuali (EUR)
+    e posizioni importate (USD) venivano sommati direttamente, producendo P/L
+    privi di senso.
 
-    Priorità display_name all'interno del gruppo:
-      1. Testo nelle note (formato 'name=...') — impostato dall'import API
+    Conversioni applicate (via FX cache yfinance):
+      · EUR → USD: avg_cost × EUR/USD
+      · GBP → USD: avg_cost × GBP/USD
+      · GBX → USD: avg_cost / 100 × GBP/USD
+      · USD: invariato
+
+    Prezzo corrente: sempre via _get_current_price_yf (USD).
+    Colonne output: sempre in USD (nomi fissi, non dinamici).
+
+    Priorità display_name:
+      1. Testo nelle note ('name=...') — impostato dall'import API
       2. InstrumentRegistry.display_name per ticker #ID
       3. Ticker canonico (fallback)
 
     Returns:
         DataFrame con colonne: Ticker, Nome, Dir., Qta totale,
-        Costo medio, Investito (CCY), Prezzo corrente, Valore corrente (CCY),
-        P/L (CCY), P/L %.
+        Costo medio (USD), Investito (USD), Prezzo corrente (USD),
+        Valore corrente (USD), P/L (USD), P/L %.
     """
     if not positions:
         return pd.DataFrame()
 
-    # Raggruppa per ticker canonico (risolto da #ID a ticker reale se possibile)
+    from personal.data_entry.etoro_position_builder import _build_fx_cache
+    fx = _build_fx_cache()
+
+    def _avg_cost_to_usd(cost: float, ccy: str) -> float:
+        c = ccy.upper()
+        if c == "EUR":
+            return cost * fx.get("EUR_USD", 1.08)
+        if c == "GBP":
+            return cost * fx.get("GBP_USD", 1.27)
+        if c == "GBX":
+            return cost / 100.0 * fx.get("GBP_USD", 1.27)
+        return float(cost)
+
     grouped: dict[str, dict] = {}
     for pos in positions:
         canonical = _resolve_canonical_ticker(pos.ticker)
         display = _extract_display_name(pos)
+        cost_usd = _avg_cost_to_usd(pos.avg_cost, pos.currency)
         if canonical not in grouped:
             grouped[canonical] = {
                 "display_name": display if display != pos.ticker else None,
                 "direction": pos.direction,
-                "currency": pos.currency,
                 "total_qty": 0.0,
-                "total_cost": 0.0,
-                "positions_list": [],
+                "total_cost_usd": 0.0,
             }
         else:
-            # Aggiorna display_name solo se ancora sconosciuto e questa posizione
-            # ha un nome significativo (diverso sia dal raw che dal canonical)
             if grouped[canonical]["display_name"] is None and display not in (pos.ticker, canonical):
                 grouped[canonical]["display_name"] = display
         grouped[canonical]["total_qty"] += pos.quantity
-        grouped[canonical]["total_cost"] += pos.quantity * pos.avg_cost
-        grouped[canonical]["positions_list"].append(pos)
+        grouped[canonical]["total_cost_usd"] += pos.quantity * cost_usd
 
     rows = []
     for canonical_ticker, data in grouped.items():
         total_qty = data["total_qty"]
-        total_cost = data["total_cost"]
+        total_cost = data["total_cost_usd"]
         avg_cost_weighted = total_cost / total_qty if total_qty > 0 else 0.0
 
-        # Prezzo corrente: usa il valore salvato nella posizione (già in USD dopo
-        # import v7.4.0), altrimenti fallback a get_live_price_usd via canonical
-        # ticker (già risolto — GBX/EUR→USD incluso).
-        current_price: float | None = None
-        for p in data["positions_list"]:
-            if p.current_price is not None:
-                current_price = p.current_price
-                break
-        if current_price is None:
-            current_price = _get_current_price_yf(canonical_ticker)
-
+        # Prezzo corrente sempre in USD tramite yfinance (mai il valore salvato,
+        # che potrebbe essere in EUR per posizioni manuali).
+        current_price = _get_current_price_yf(canonical_ticker)
         current_value = (current_price * total_qty) if current_price is not None else None
         pl_abs = (current_value - total_cost) if current_value is not None else None
         pl_pct = (
@@ -591,17 +632,16 @@ def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
         )
 
         display_name = data["display_name"] or "—"
-        ccy = data["currency"]
         rows.append({
             "Ticker": canonical_ticker,
             "Nome": display_name,
             "Dir.": data["direction"],
             "Qta totale": round(total_qty, 4),
-            "Costo medio": round(avg_cost_weighted, 2),
-            f"Investito ({ccy})": round(total_cost, 2),
-            "Prezzo corrente": round(current_price, 2) if current_price is not None else "N/D",
-            f"Valore corrente ({ccy})": round(current_value, 2) if current_value is not None else "N/D",
-            f"P/L ({ccy})": round(pl_abs, 2) if pl_abs is not None else "N/D",
+            "Costo medio (USD)": round(avg_cost_weighted, 2),
+            "Investito (USD)": round(total_cost, 2),
+            "Prezzo corrente (USD)": round(current_price, 2) if current_price is not None else "N/D",
+            "Valore corrente (USD)": round(current_value, 2) if current_value is not None else "N/D",
+            "P/L (USD)": round(pl_abs, 2) if pl_abs is not None else "N/D",
             "P/L %": f"{pl_pct:+.2f}%" if pl_pct is not None else "N/D",
         })
 
@@ -609,112 +649,56 @@ def _build_grouped_portfolio(positions: list[PositionInput]) -> pd.DataFrame:
 
 
 def _render_portfolio_totals(st_module, df_grouped: pd.DataFrame) -> None:  # pragma: no cover
-    """Mostra il riepilogo totale del portafoglio.
+    """Mostra il riepilogo totale del portafoglio in USD.
 
-    v7.3.0 — FIX: mostra la valuta esplicitamente nel label delle metric.
-    Se sono presenti colonne con valute diverse (posizioni manuali in EUR
-    mescolate con posizioni importate in USD) mostra un avviso e aggrega
-    separatamente per valuta invece di sommare valori eterogenei.
+    v7.5.0 — Semplificato: le colonne sono ora a nome fisso USD (da
+    _build_grouped_portfolio v7.5.0 che normalizza tutti i costi a USD).
+    Non è più necessario rilevare valute miste.
 
-    Problema v7.2.1: le colonne erano nominate dinamicamente ("Investito (USD)",
-    "Investito (EUR)" ecc.) ma la funzione le sommava tutte senza distinzione,
-    producendo aggregati senza senso quando erano presenti valute diverse.
-    Dopo il fix etoro_importer v7.4.0 tutte le posizioni importate sono in USD,
-    quindi in condizioni normali ci sarà una sola colonna "Investito (USD)".
+    Info banner: avvisa l'utente che i costi in EUR/GBP/GBX sono stati
+    convertiti in USD al tasso di cambio corrente.
     """
     st = st_module
 
-    # Individua tutte le colonne per investito/corrente/P/L e la loro valuta
-    invested_cols = [c for c in df_grouped.columns if c.startswith("Investito (")]
-    value_cols    = [c for c in df_grouped.columns if c.startswith("Valore corrente (")]
+    inv_col = "Investito (USD)"
+    val_col = "Valore corrente (USD)"
 
-    # Estrai le valute uniche presenti nel DataFrame
-    def _extract_ccy(col_name: str) -> str:
-        m = re.search(r'\((\w+)\)', col_name)
-        return m.group(1) if m else "?"
-
-    currencies_invested = {_extract_ccy(c) for c in invested_cols}
-    currencies_value    = {_extract_ccy(c) for c in value_cols}
-    all_currencies = currencies_invested | currencies_value
-
-    # ── Avviso valute miste ────────────────────────────────────────────────
-    if len(all_currencies) > 1:
-        st.warning(
-            f"⚠️ Valute miste rilevate: {', '.join(sorted(all_currencies))}. "
-            "Le posizioni importate da eToro v7.4.0 sono normalizzate in USD; "
-            "le posizioni manuali mantengono la valuta originale. "
-            "I totali sotto sono mostrati separatamente per valuta."
-        )
-        # Mostra un riepilogo per ogni valuta
-        for ccy in sorted(all_currencies):
-            inv_col  = f"Investito ({ccy})"
-            val_col  = f"Valore corrente ({ccy})"
-            pl_col   = f"P/L ({ccy})"
-            if inv_col not in df_grouped.columns:
-                continue
-            t_inv = float(pd.to_numeric(df_grouped[inv_col], errors="coerce").sum())
-            has_val = val_col in df_grouped.columns
-            t_val = float(
-                pd.to_numeric(df_grouped[val_col], errors="coerce").dropna().sum()
-            ) if has_val else None
-            t_pl  = (t_val - t_inv) if t_val is not None else None
-            t_pct = (t_pl / t_inv * 100.0) if (t_pl is not None and t_inv > 0) else None
-
-            st.markdown(f"**{ccy}**")
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                st.metric(f"💼 Investito ({ccy})", f"{t_inv:,.2f}")
-            with c2:
-                st.metric(f"📈 Corrente ({ccy})", f"{t_val:,.2f}" if t_val is not None else "N/D")
-            with c3:
-                if t_pl is not None:
-                    st.metric(f"💹 P/L ({ccy})", f"{t_pl:+,.2f}")
-                else:
-                    st.metric(f"💹 P/L ({ccy})", "N/D")
-            with c4:
-                st.metric("📊 P/L %", f"{t_pct:+.2f}%" if t_pct is not None else "N/D")
-        st.divider()
+    if inv_col not in df_grouped.columns:
+        st.warning("Nessun dato di portafoglio disponibile.")
         return
 
-    # ── Caso normale: singola valuta (USD dopo import v7.4.0) ─────────────
-    ccy = next(iter(all_currencies), "USD") if all_currencies else "USD"
+    st.info(
+        "ℹ️ Tutti i valori sono normalizzati in **USD** al tasso di cambio corrente. "
+        "Le posizioni inserite in EUR/GBP/GBX vengono convertite automaticamente."
+    )
 
-    total_invested = 0.0
-    total_current  = 0.0
-    has_current    = False
+    total_invested = float(pd.to_numeric(df_grouped[inv_col], errors="coerce").sum())
+    has_current = val_col in df_grouped.columns
+    total_current = float(
+        pd.to_numeric(df_grouped[val_col], errors="coerce").dropna().sum()
+    ) if has_current else 0.0
 
-    for col in invested_cols:
-        vals = pd.to_numeric(df_grouped[col], errors="coerce")
-        total_invested += float(vals.sum())
-
-    for col in value_cols:
-        vals = pd.to_numeric(df_grouped[col], errors="coerce")
-        valid = vals.dropna()
-        if not valid.empty:
-            total_current += float(valid.sum())
-            has_current = True
-
-    total_pl     = total_current - total_invested if has_current else None
+    total_pl = (total_current - total_invested) if has_current else None
     total_pl_pct = (
         total_pl / total_invested * 100.0
         if (total_pl is not None and total_invested > 0)
         else None
     )
 
-    st.markdown(f"### 💰 Riepilogo portafoglio · {ccy}")
+    st.markdown("### 💰 Riepilogo portafoglio · USD")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(f"💼 Totale investito ({ccy})", f"{total_invested:,.2f}")
+        st.metric("💼 Totale investito (USD)", f"{total_invested:,.2f}")
     with col2:
         if has_current:
-            st.metric(f"📈 Valore corrente ({ccy})", f"{total_current:,.2f}")
+            st.metric("📈 Valore corrente (USD)", f"{total_current:,.2f}")
         else:
-            st.metric(f"📈 Valore corrente ({ccy})", "N/D")
+            st.metric("📈 Valore corrente (USD)", "N/D")
     with col3:
         if total_pl is not None:
-            st.metric(f"💹 P/L assoluto ({ccy})", f"{total_pl:+,.2f}")
+            st.metric("💹 P/L assoluto (USD)", f"{total_pl:+,.2f}")
         else:
-            st.metric(f"💹 P/L assoluto ({ccy})", "N/D")
+            st.metric("💹 P/L assoluto (USD)", "N/D")
     with col4:
         if total_pl_pct is not None:
             st.metric("📊 P/L %", f"{total_pl_pct:+.2f}%")
