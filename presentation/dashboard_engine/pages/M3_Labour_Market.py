@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from presentation.ui.page_factory import render_page
 from presentation.ui.layout import render_section_header
+from presentation.ui.components import EmptyState  # v8.2 standardization
+from presentation.ui.chart_theme import ChartFactory  # v8.2 standardization
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
