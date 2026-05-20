@@ -1,14 +1,120 @@
-"""KPI card component — labeled metric tile."""
+"""KPI card component — labeled metric tile.
+
+Two patterns coexist:
+  - Legacy functional: ``render_kpi_card()`` / ``render_kpi_row()``  (v6.0)
+  - New class-based:   ``KpiCard(BaseComponent)``                     (v8.2)
+
+New pages use ``KpiCard``; legacy pages keep ``render_kpi_card``.
+"""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from presentation.ui.components.base import BaseComponent
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "6.0.0"
+__version__ = "8.2.0"
 
-__all__ = ["render_kpi_card", "render_kpi_row"]
+__all__ = ["KpiCard", "render_kpi_card", "render_kpi_row"]
+
+
+# ── Quality indicator symbols ─────────────────────────────────────────────────
+_QUALITY_DOTS: dict[str, str] = {
+    "ok":                "●",
+    "low_ic":            "◐",
+    "insufficient_data": "○",
+    "stale":             "◌",
+}
+
+
+@dataclass
+class KpiCard(BaseComponent):
+    """Metric tile with delta, quality flag, and optional tooltip.
+
+    Args:
+        title:        Short label (≤ 20 chars recommended).
+        value:        Numeric value or pre-formatted string.
+        unit:         Unit suffix (e.g. ``"%"``, ``"$"``).
+        delta:        Signed delta (positive = green, negative = red).
+        delta_label:  Short description shown next to delta (e.g. ``"vs 1W"``).
+        quality_flag: Signal quality: ``"ok"`` | ``"low_ic"`` |
+                      ``"insufficient_data"`` | ``"stale"``.
+        icon:         Optional emoji or text icon prefix.
+        tooltip:      Help text shown on hover in Streamlit.
+
+    Example::
+
+        card = KpiCard("VIX", 18.4, delta=-2.1, delta_label="vs ieri")
+        assert "+2" not in card.to_html()   # negative delta
+        card.render()  # pragma: no cover
+    """
+
+    title: str
+    value: float | str
+    unit: str = ""
+    delta: float | None = None
+    delta_label: str = ""
+    quality_flag: str = "ok"
+    icon: str = ""
+    tooltip: str = ""
+
+    def _format_value(self) -> str:
+        if isinstance(self.value, str):
+            return self.value
+        v = float(self.value)
+        if abs(v) >= 1_000_000:
+            return f"{v / 1_000_000:.1f}M"
+        if abs(v) >= 1_000:
+            return f"{v:,.0f}"
+        return f"{v:.2f}"
+
+    def _quality_dot(self) -> str:
+        return _QUALITY_DOTS.get(self.quality_flag, "○")
+
+    def to_html(self) -> str:
+        """Return pure HTML — testable without Streamlit."""
+        delta_str = ""
+        if self.delta is not None:
+            sign = "+" if self.delta >= 0 else ""
+            delta_str = f"{sign}{self.delta:.1f}%"
+            if self.delta_label:
+                delta_str += f" {self.delta_label}"
+        icon_prefix = f"{self.icon} " if self.icon else ""
+        return (
+            f'<div class="kpi-card">'
+            f'<span class="kpi-title">{icon_prefix}{self.title} {self._quality_dot()}</span>'
+            f'<span class="kpi-value">{self._format_value()}{self.unit}</span>'
+            f'<span class="kpi-delta">{delta_str}</span>'
+            f"</div>"
+        )
+
+    def render(self) -> None:  # pragma: no cover
+        import streamlit as st
+
+        delta_color: str
+        if self.delta is None:
+            delta_val = None
+            delta_color = "normal"
+        else:
+            delta_color = "normal" if self.delta >= 0 else "inverse"
+            delta_str = f"{self.delta:+.1f}%"
+            if self.delta_label:
+                delta_str += f" {self.delta_label}"
+            delta_val = delta_str  # type: ignore[assignment]
+
+        label = f"{self.icon} {self.title}" if self.icon else self.title
+        label += f" {self._quality_dot()}"
+
+        st.metric(
+            label=label,
+            value=f"{self._format_value()}{self.unit}",
+            delta=delta_val,
+            delta_color=delta_color,
+            help=self.tooltip or None,
+        )
 
 
 def _build_kpi_html(

@@ -25,7 +25,7 @@ from presentation.ui.components.goal_tracker import (
     render_goals_list,
 )
 from presentation.ui.components.health_status_bar import render_health_status_bar
-from presentation.ui.components.kpi_card import render_kpi_card, render_kpi_row
+from presentation.ui.components.kpi_card import KpiCard, render_kpi_card, render_kpi_row
 from presentation.ui.components.latency_indicator import render_latency_indicator
 from presentation.ui.components.net_worth_chart import render_net_worth_chart
 from presentation.ui.components.pipeline_stepper import (
@@ -44,6 +44,7 @@ __all__ = [
     # v8.2 class-based
     "BaseComponent",
     "EmptyState",
+    "KpiCard",
     "SectionHeader",
     "SignalBadge",
     "StatusDot",
