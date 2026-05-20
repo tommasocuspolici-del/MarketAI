@@ -15,10 +15,7 @@ from __future__ import annotations
 
 from presentation.ui.cache_policy import CACHE_TTL
 
-try:
-    import pandas as pd
-except ImportError:
-    pass
+import pandas as pd
 
 __version__ = "9.0.0"
 __all__ = ["body_k2_equity"]

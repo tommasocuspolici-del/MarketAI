@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import httpx
 import pandas as pd
 
+from shared.config.operational_config import OP_CONFIG
 from shared.exceptions import FetchError
 from shared.logger import get_logger
 
@@ -151,7 +152,7 @@ class CoinGeckoFetcher:
         log.info("coingecko.fetch_fear_greed")
         try:
             time.sleep(_DELAY_S)
-            resp = httpx.get("https://api.alternative.me/fng/?limit=1", timeout=15.0)
+            resp = httpx.get("https://api.alternative.me/fng/?limit=1", timeout=OP_CONFIG.http.default_timeout_s)
             resp.raise_for_status()
             data_list = resp.json().get("data", [])
             if not data_list:

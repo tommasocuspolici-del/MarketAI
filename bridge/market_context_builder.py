@@ -70,8 +70,8 @@ class MarketContextBuilder:
             df = self._repo.read_macro("FEDFUNDS")
             if df is not None and not df.empty:
                 return float(df["value"].dropna().iloc[-1]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.risk_free_fallback", error=str(exc))
         return _FALLBACK_RISK_FREE
 
     def _get_equity_params(self) -> tuple[float, float]:
@@ -87,8 +87,8 @@ class MarketContextBuilder:
                 ann_ret = float(np.clip(np.mean(log_ret) * 252, 0.02, 0.20))
                 ann_vol = float(np.clip(np.std(log_ret, ddof=1) * np.sqrt(252), 0.08, 0.40))
                 return ann_ret, ann_vol
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.equity_params_fallback", error=str(exc))
         return _FALLBACK_EQ_RETURN, _FALLBACK_EQ_VOL
 
     def _get_bond_return(self, risk_free: float) -> float:
@@ -96,8 +96,8 @@ class MarketContextBuilder:
             df = self._repo.read_macro("DGS10")
             if df is not None and not df.empty:
                 return float(df["value"].dropna().iloc[-1]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.bond_return_fallback", error=str(exc))
         return max(risk_free - 0.005, 0.02)
 
     def _get_inflation(self) -> float:
@@ -105,8 +105,8 @@ class MarketContextBuilder:
             df = self._repo.read_macro("CPIAUCSL")
             if df is not None and not df.empty:
                 return float(df["value"].dropna().iloc[-1]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.inflation_fallback", error=str(exc))
         return _FALLBACK_INFLATION
 
     def _get_regime(self) -> str:
@@ -116,8 +116,8 @@ class MarketContextBuilder:
             )
             if rows and rows[0][0]:
                 return str(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.regime_fallback", error=str(exc))
         return "transition"
 
     def _get_vix(self) -> float:
@@ -127,8 +127,8 @@ class MarketContextBuilder:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("market_context.vix_fallback", error=str(exc))
         return 20.0
 
 
