@@ -1,6 +1,6 @@
 # MarketAI — Guida per Claude Code
 
-**v10.1.0** · Python ^3.11 · 3080+ test · coverage ≥ 89.1% · ROADMAP v6.0 (32 regole)
+**v11.0.0** · Python ^3.11 · 965+ test · coverage ≥ 89.1% · ROADMAP v6.0 (32 regole)
 
 ---
 
@@ -38,6 +38,7 @@ from shared.config.operational_config import OP_CONFIG
 
 OP_CONFIG.http.default_timeout_s        # 15.0 s
 OP_CONFIG.cache.live_market_ttl_s       # 900 s
+OP_CONFIG.cache.signals_disk_ttl_s      # 3600 s  ★ v11.0
 OP_CONFIG.fx_fallbacks.gbp_usd          # 1.27
 OP_CONFIG.analytics.vix_weight          # 0.60
 ```
@@ -129,6 +130,7 @@ st.session_state[SK.FORCE_REFRESH] = True
 @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)       # 900 s
 @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION)  # 3600 s
 @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)  # 300 s
+@st.cache_data(ttl=CACHE_TTL.SIGNALS)           # 3600 s — segnali engine da DuckDB ★ v11.0
 ```
 Non usare stringhe literal per session_state né `ttl=NUM` diretto.
 
@@ -143,6 +145,53 @@ with cols_top[1]:
 Ogni pagina deve esporre il bottone `🔄 Aggiorna` in alto a destra. Per pagine con
 azioni aggiuntive (es. caricamento dati da FRED) usare `st.columns([3, 1, 1])` e
 aggiungere il bottone secondario prima del refresh.
+
+### Earnings Calendar Fetcher ★ v11.0
+```python
+from engine.market_data.fetchers.earnings_calendar_fetcher import EarningsCalendarFetcher
+
+db = DuckDBClient(path=...)
+fetcher = EarningsCalendarFetcher(client=db)
+n = fetcher.fetch_and_persist(["AAPL", "NVDA", "MSFT"])   # yfinance, nessuna API key
+df = fetcher.get_upcoming(days=7)       # prossimi 7 giorni → earnings_calendar
+df = fetcher.get_historical("AAPL")    # storico 365gg
+```
+Fonte: `yfinance.Ticker.calendar` + `.earnings_dates`. Migration: `20260521_028_earnings_calendar.sql`.
+
+### Options Flow Fetcher ★ v11.0
+```python
+from engine.market_data.fetchers.options_flow_fetcher import OptionsFlowFetcher
+
+fetcher = OptionsFlowFetcher(client=db)
+n = fetcher.fetch_and_persist(["SPY", "QQQ", "AAPL"])   # yfinance option chain
+d = fetcher.get_latest("SPY")          # dict: put_call_ratio, iv_skew_25d, iv_atm
+df = fetcher.get_history("SPY", days=30)
+```
+Calcola: Put/Call ratio su volume (fallback su OI), IV ATM, IV skew 25-delta (±5% da ATM).
+Migration: `20260521_029_putcall_ratio.sql` → tabella `putcall_ratio_daily`.
+
+### SignalPersistenceService ★ v11.0
+```python
+from engine.alpha_generation.signal_persistence_service import SignalPersistenceService
+from shared.db.duckdb_client import get_duckdb_client
+
+svc = SignalPersistenceService(duckdb=get_duckdb_client())
+result = svc.load_latest(max_age_hours=1)   # None se assente/stale → ricalcolare
+if result is None:
+    result = CompositeSignalAggregator(duckdb=...).compute()
+    svc.persist(result)                     # scrive engine_composite_signal + signal_snapshots
+```
+Garantisce che il composite signal sopravviva ai riavvii di Streamlit.
+Nelle pagine UI usare `CACHE_TTL.SIGNALS` (3600s) su `@st.cache_data`.
+
+### H1 Market Health Matrix ★ v11.0
+Pagina `presentation/dashboard_engine/pages_v2/H1_Market_Health_Matrix.py`.
+- Griglia 3×3 con 12 indicatori (semafori 🟢/🟡/🔴): Yield Curve, Macro, VIX, Vol Surface, HY OAS, TED, Labour, Sentiment, CAPE, Earnings 7gg, P/C Ratio, IV Skew.
+- Health Score 0–100 in cima: `health_score = round((composite_score + 1) / 2 * 100)`.
+- Zero API call — solo letture DuckDB (Regola 12).
+- Prima voce del gruppo **Mercato** in `sidebar_nav.py`.
+- Loader functions testabili senza Streamlit: `load_health_matrix()`, `_load_composite()`, ecc.
+- Patch test: `shared.db.duckdb_client.get_duckdb_client` (lazy import dentro la funzione).
 
 ---
 
@@ -256,4 +305,4 @@ Tipi: `feat` · `fix` · `refactor` · `test` · `docs` · `chore`
 
 ---
 
-*v10.1.0 — aggiornato 2026-05-17*
+*v11.0.0 — aggiornato 2026-05-21*
