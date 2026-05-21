@@ -1,0 +1,461 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.4.2, pluggy-1.6.0
+benchmark: 4.0.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\Q256254\Documents\market-ai\MarketAI 1.0
+configfile: pyproject.toml
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.3, asyncio-0.23.8, benchmark-4.0.0, cov-5.0.0, mock-3.15.1, typeguard-4.5.1
+asyncio: mode=Mode.AUTO
+collected 2427 items
+
+tests\architecture\test_layer_boundaries.py .....                        [  0%]
+tests\bridge\test_clients.py .......                                     [  0%]
+tests\engine\test_alpha_generation\test_composite_aggregator.py ........ [  0%]
+......................                                                   [  1%]
+tests\engine\test_alpha_generation\test_macro_conviction_v2.py ......... [  2%]
+................................................                         [  4%]
+tests\engine\test_alpha_generation\test_vix_strategy.py ................ [  4%]
+...........................                                              [  5%]
+tests\engine\test_analytics\test_composite_signal_v3.py ................ [  6%]
+.                                                                        [  6%]
+tests\engine\test_analytics\test_consensus_loader.py ................... [  7%]
+..                                                                       [  7%]
+tests\engine\test_analytics\test_correlation.py ................         [  8%]
+tests\engine\test_analytics\test_pipeline_alerts.py .................... [  8%]
+.                                                                        [  8%]
+tests\engine\test_analytics\test_sentiment.py ............               [  9%]
+tests\engine\test_analytics\test_shiller_cape_fetcher_v2.py ............ [  9%]
+....                                                                     [ 10%]
+tests\engine\test_backtesting\test_backtest_runner.py .................. [ 10%]
+..                                                                       [ 10%]
+tests\engine\test_backtesting\test_composite_signal_strategy.py ........ [ 11%]
+.............                                                            [ 11%]
+tests\engine\test_backtesting\test_engine.py ..................          [ 12%]
+tests\engine\test_backtesting\test_performance.py ..........             [ 12%]
+tests\engine\test_backtesting\test_results_repo.py .......               [ 13%]
+tests\engine\test_backtesting\test_strategies.py ...................     [ 14%]
+tests\engine\test_backtesting\test_strategy.py .......                   [ 14%]
+tests\engine\test_backtesting\test_strategy_builder.py ................. [ 14%]
+.....                                                                    [ 15%]
+tests\engine\test_cleaning\test_data_cleaner.py ............             [ 15%]
+tests\engine\test_cleaning\test_gap_filler.py .........                  [ 16%]
+tests\engine\test_cleaning\test_outlier_detector.py ..............       [ 16%]
+tests\engine\test_cleaning\test_stale_detector.py .........              [ 17%]
+tests\engine\test_correlation_v2\test_correlation_signal_generator.py .. [ 17%]
+....................                                                     [ 17%]
+tests\engine\test_correlation_v2\test_cross_asset_matrix.py ............ [ 18%]
+..                                                                       [ 18%]
+tests\engine\test_correlation_v2\test_dcc_ewma_enhanced.py ............  [ 18%]
+tests\engine\test_correlation_v2\test_dcc_garch.py ..................    [ 19%]
+tests\engine\test_correlation_v2\test_lead_lag_analyzer.py ............  [ 20%]
+tests\engine\test_correlation_v2\test_lead_lag_persist.py .....          [ 20%]
+tests\engine\test_currency_converter.py ......................           [ 21%]
+tests\engine\test_delta_windows.py ......                                [ 21%]
+tests\engine\test_fetchers\test_alpha_vantage_fetcher.py .............   [ 22%]
+tests\engine\test_fetchers\test_av_fundamentals_fetcher.py ............  [ 22%]
+tests\engine\test_fetchers\test_base_fetcher.py .......                  [ 22%]
+tests\engine\test_fetchers\test_edgar_fetcher.py ...........             [ 23%]
+tests\engine\test_fetchers\test_edgar_fundamentals_parser.py ........... [ 23%]
+............                                                             [ 24%]
+tests\engine\test_fetchers\test_finnhub_fetcher.py ...........           [ 24%]
+tests\engine\test_fetchers\test_fred_fetcher.py ..........               [ 25%]
+tests\engine\test_fetchers\test_yahoo_fetcher.py .......                 [ 25%]
+tests\engine\test_fred_simple_client.py ........                         [ 25%]
+tests\engine\test_futures_analysis\test_futures_analysis.py ............ [ 26%]
+........................................................                 [ 28%]
+tests\engine\test_hardening\test_api_health_checker.py ..............    [ 29%]
+tests\engine\test_hardening\test_data_quality_and_cross_source.py ...... [ 29%]
+................                                                         [ 30%]
+tests\engine\test_hardening\test_live_market_service.py .......          [ 30%]
+tests\engine\test_hardening\test_macro_sanity.py .................       [ 31%]
+tests\engine\test_hardening\test_sanity_checker.py ............          [ 31%]
+tests\engine\test_hardening\test_sanity_checker_v2.py .................. [ 32%]
+..................                                                       [ 33%]
+tests\engine\test_hardening\test_silent_failure_detector.py ............ [ 33%]
+.......                                                                  [ 33%]
+tests\engine\test_hardening\test_silent_failure_detector_v2.py ......... [ 34%]
+.............                                                            [ 34%]
+tests\engine\test_high_impact\test_high_impact_modules.py .............. [ 35%]
+........................................................                 [ 37%]
+tests\engine\test_instrument_registry.py .................               [ 38%]
+tests\engine\test_labour_market\test_claims_cycle_detector.py .....      [ 38%]
+tests\engine\test_labour_market\test_claims_fetcher.py ................. [ 39%]
+                                                                         [ 39%]
+tests\engine\test_labour_market\test_composite_signal_v2.py ........     [ 39%]
+tests\engine\test_labour_market\test_jolts_analyzer.py .........         [ 39%]
+tests\engine\test_labour_market\test_jolts_fetcher.py .............      [ 40%]
+tests\engine\test_labour_market\test_labour_forecast_engine.py ......    [ 40%]
+tests\engine\test_labour_market\test_labour_regime_classifier.py ......  [ 40%]
+tests\engine\test_labour_market\test_payroll_decomposer.py ...           [ 41%]
+tests\engine\test_labour_market\test_payroll_decomposer_extra.py ....... [ 41%]
+......                                                                   [ 41%]
+tests\engine\test_labour_market\test_payroll_fetcher.py .............    [ 42%]
+tests\engine\test_labour_market\test_sector_surprise_aggregator.py ..... [ 42%]
+                                                                         [ 42%]
+tests\engine\test_labour_market\test_surprise_calculator.py ......       [ 42%]
+tests\engine\test_labour_market\test_surprise_momentum.py .............  [ 43%]
+tests\engine\test_simple_forecaster.py ........                          [ 43%]
+tests\engine\test_stress_testing\test_historical_scenarios.py .......... [ 43%]
+                                                                         [ 43%]
+tests\engine\test_stress_testing\test_scenario.py ..............         [ 44%]
+tests\engine\test_stress_testing\test_scenario_generator.py ..........   [ 44%]
+tests\engine\test_stress_testing\test_scenarios_repo.py ..........       [ 45%]
+tests\engine\test_stress_testing\test_tester.py ..........               [ 45%]
+tests\engine\test_surprire_engine\test_claims_cycle_detector.py .....    [ 45%]
+tests\engine\test_surprire_engine\test_claims_detector_extra.py ........ [ 46%]
+.....                                                                    [ 46%]
+tests\engine\test_surprire_engine\test_composite_signal_v2.py ........   [ 46%]
+tests\engine\test_surprire_engine\test_consensus_loader.py ............. [ 47%]
+.........                                                                [ 47%]
+tests\engine\test_surprire_engine\test_jolts_analyzer.py .........       [ 48%]
+tests\engine\test_surprire_engine\test_jolts_persist.py ........         [ 48%]
+tests\engine\test_surprire_engine\test_labour_forecast_engine.py ......  [ 48%]
+tests\engine\test_surprire_engine\test_labour_regime_classifier.py ..... [ 48%]
+.                                                                        [ 48%]
+tests\engine\test_surprire_engine\test_payroll_decomposer.py ...         [ 48%]
+tests\engine\test_surprire_engine\test_sector_surprise_aggregator.py ... [ 49%]
+..                                                                       [ 49%]
+tests\engine\test_surprire_engine\test_standalone_modules.py ........... [ 49%]
+.......                                                                  [ 49%]
+tests\engine\test_surprire_engine\test_surprise_aggregator_v2.py ....... [ 50%]
+...............                                                          [ 50%]
+tests\engine\test_surprire_engine\test_surprise_calculator.py ......     [ 51%]
+tests\engine\test_surprire_engine\test_surprise_schemas.py ......        [ 51%]
+tests\engine\test_surprire_engine\test_surprise_signal_generator.py .... [ 51%]
+.........                                                                [ 51%]
+tests\engine\test_technical\test_indicator_dsl.py ...................... [ 52%]
+...............                                                          [ 53%]
+tests\engine\test_technical\test_pattern_recognition.py ................ [ 54%]
+.........                                                                [ 54%]
+tests\engine\test_technical\test_pattern_signals_repo.py ............... [ 55%]
+.............                                                            [ 55%]
+tests\engine\test_valuation\test_earnings_fetcher.py ................... [ 56%]
+.                                                                        [ 56%]
+tests\engine\test_valuation\test_equity_risk_premium.py ................ [ 57%]
+...........                                                              [ 57%]
+tests\engine\test_valuation\test_forward_estimates_fetcher.py .......... [ 57%]
+......                                                                   [ 58%]
+tests\engine\test_valuation\test_pe_calculator.py .........              [ 58%]
+tests\engine\test_valuation\test_pe_calculator_extra.py ...............  [ 59%]
+tests\engine\test_valuation\test_pe_context_builder.py .......           [ 59%]
+tests\engine\test_valuation\test_shiller_cape_fetcher.py ..............  [ 60%]
+tests\engine\test_valuation\test_valuation_signal_generator.py ......... [ 60%]
+.                                                                        [ 60%]
+tests\engine\test_websocket_manager.py .............                     [ 60%]
+tests\integration\test_claims_cycle_detector.py .....                    [ 61%]
+tests\integration\test_composite_signal_v2.py ........                   [ 61%]
+tests\integration\test_jolts_analyzer.py .........                       [ 61%]
+tests\integration\test_labour_forecast_engine.py ......                  [ 62%]
+tests\integration\test_labour_regime_classifier.py ......                [ 62%]
+tests\integration\test_payroll_decomposer.py ...                         [ 62%]
+tests\integration\test_sector_surprise_aggregator.py .....               [ 62%]
+tests\integration\test_surprise_calculator.py ......                     [ 62%]
+tests\personal\test_cashflow.py .........                                [ 63%]
+tests\personal\test_data_entry\test_etoro_client.py .................... [ 64%]
+..                                                                       [ 64%]
+tests\personal\test_data_entry\test_etoro_importer.py .............      [ 64%]
+tests\personal\test_data_entry\test_etoro_parser_fix.py .............    [ 65%]
+tests\personal\test_data_entry\test_etoro_position_builder.py .......... [ 65%]
+.............................                                            [ 66%]
+tests\personal\test_data_entry\test_goal_form.py .........               [ 67%]
+tests\personal\test_data_entry\test_risk_questionnaire.py .............. [ 67%]
+.......                                                                  [ 68%]
+tests\personal\test_data_entry\test_stores.py ...............            [ 68%]
+tests\personal\test_etoro_models_v713.py .......                         [ 69%]
+tests\personal\test_goal_contributions.py ...........                    [ 69%]
+tests\personal\test_goals.py ................                            [ 70%]
+tests\personal\test_investor_profile.py ...................              [ 70%]
+tests\personal\test_networth.py .......                                  [ 71%]
+tests\personal\test_personal_alerts.py .............                     [ 71%]
+tests\personal\test_risk_profile_bridge.py ............................. [ 72%]
+.....                                                                    [ 73%]
+tests\personal\test_tax.py ................                              [ 73%]
+tests\personal\test_wealth_scenarios.py ...........                      [ 74%]
+tests\presentation\test_auth.py ...........                              [ 74%]
+tests\presentation\test_composite_gauge.py ............................  [ 75%]
+tests\presentation\test_e6_macro.py .....................                [ 76%]
+tests\presentation\test_pages.py ....................................... [ 78%]
+.............................                                            [ 79%]
+tests\presentation\test_ui_redesign.py ................................. [ 80%]
+...............................................                          [ 82%]
+tests\regression\test_bug_004_multiindex.py ........                     [ 83%]
+tests\regression\test_bug_005_006_007_gbx_conversion.py ..........       [ 83%]
+tests\regression\test_bug_008_live_price.py ..........                   [ 84%]
+tests\regression\test_bug_p1_debug_file.py ..                            [ 84%]
+tests\shared\test_backup_manager.py .......                              [ 84%]
+tests\shared\test_dual_writer.py ............                            [ 84%]
+tests\shared\test_duckdb_client.py ...........                           [ 85%]
+tests\shared\test_duckdb_migrator.py ..........                          [ 85%]
+tests\shared\test_env_loader.py .............................            [ 86%]
+tests\shared\test_error_budget.py .......                                [ 87%]
+tests\shared\test_error_policy.py ................                       [ 87%]
+tests\shared\test_feature_flags.py ........                              [ 88%]
+tests\shared\test_fundamentals_repo.py .................                 [ 88%]
+tests\shared\test_fx_service.py .......                                  [ 89%]
+tests\shared\test_glossary\test_lookup.py ...........                    [ 89%]
+tests\shared\test_graceful_degradation.py .............................. [ 90%]
+..                                                                       [ 90%]
+tests\shared\test_health.py ...................                          [ 91%]
+tests\shared\test_macro_repo.py ............                             [ 92%]
+tests\shared\test_metrics.py ....F...                                    [ 92%]
+tests\shared\test_migrations_runner.py ............                      [ 93%]
+tests\shared\test_mutation_targets.py ...................                [ 93%]
+tests\shared\test_operational_config.py ..................               [ 94%]
+tests\shared\test_parquet_io.py ..........                               [ 95%]
+tests\shared\test_prices_repo.py ...............                         [ 95%]
+tests\shared\test_quality.py .............                               [ 96%]
+tests\shared\test_rate_limit_manager.py ..........                       [ 96%]
+tests\shared\test_schemas_pandera_compat.py .....                        [ 96%]
+tests\shared\test_types.py ..................                            [ 97%]
+tests\shared\test_week1_data_layer.py .................................. [ 98%]
+.                                                                        [ 98%]
+tests\shared\test_week2_scheduler.py ..................                  [ 99%]
+tests\test_property_based.py .......                                     [100%]
+
+================================== FAILURES ===================================
+_________________ TestMetrics.test_timer_records_observation __________________
+tests\shared\test_metrics.py:39: in test_timer_records_observation
+    assert snap["mean_ms"] >= 10.0
+E   assert 0.0 >= 10.0
+============================== warnings summary ===============================
+tests/engine/test_correlation_v2/test_lead_lag_analyzer.py: 8 warnings
+tests/engine/test_correlation_v2/test_lead_lag_persist.py: 5 warnings
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\.venv\Lib\site-packages\statsmodels\tsa\stattools.py:1556: FutureWarning: verbose is deprecated since functions should not print results
+    warnings.warn(
+
+tests/engine/test_high_impact/test_high_impact_modules.py::TestDivergenceDetector::test_detect_returns_list
+tests/engine/test_high_impact/test_high_impact_modules.py::TestDivergenceDetector::test_rsi_computed_correctly
+tests/engine/test_high_impact/test_high_impact_modules.py::TestDivergenceDetector::test_signal_type_values
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\engine\technical\divergence_detector.py:209: RuntimeWarning: invalid value encountered in divide
+    rs  = np.where(avg_loss > 0, avg_gain / avg_loss, np.float64(100.0))
+
+tests/personal/test_data_entry/test_goal_form.py: 6 warnings
+tests/personal/test_goal_contributions.py: 20 warnings
+tests/personal/test_personal_alerts.py: 9 warnings
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\personal\data_entry\goal_form.py:151: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "updated_at": datetime.utcnow().isoformat(timespec="seconds"),
+
+tests/personal/test_data_entry/test_goal_form.py: 5 warnings
+tests/personal/test_data_entry/test_stores.py: 13 warnings
+tests/personal/test_goal_contributions.py: 30 warnings
+tests/personal/test_personal_alerts.py: 23 warnings
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\personal\data_entry\user_data_store.py:164: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().isoformat(sep=" ", timespec="seconds")
+
+tests/personal/test_data_entry/test_risk_questionnaire.py::TestSaveAndLoadProfile::test_save_profile_calls_upsert
+tests/personal/test_data_entry/test_risk_questionnaire.py::TestSaveAndLoadProfile::test_save_profile_upsert_has_total_score
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\personal\data_entry\risk_questionnaire.py:343: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "completed_at": datetime.utcnow().isoformat(timespec="seconds"),
+
+tests/personal/test_goal_contributions.py: 11 warnings
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\.venv\Lib\site-packages\pydantic\main.py:212: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+tests/personal/test_personal_alerts.py: 10 warnings
+  C:\Users\Q256254\Documents\market-ai\MarketAI 1.0\personal\alerts\rule_engine.py:154: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+tests/personal/test_personal_alerts.py: 10 warnings
+  <string>:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform win32, python 3.12.10-final-0 ----------
+Name                                                                Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------------------------
+engine\alerts\alert_model.py                                           36      1  97.2%   60
+engine\alerts\rule_engine.py                                          100      9  91.0%   81-82, 97-98, 161, 181-184
+engine\alpha_generation\claims_cross_analyzer.py                       71      1  98.6%   143
+engine\alpha_generation\composite_signal_aggregator.py                209      8  96.2%   252, 377-379, 393, 410, 477-478
+engine\alpha_generation\composite_signal_v2.py                          4      0 100.0%
+engine\alpha_generation\credit_stress_analyzer.py                      72      3  95.8%   158, 172, 174
+engine\alpha_generation\macro_conviction.py                           131      2  98.5%   311, 319
+engine\alpha_generation\schemas.py                                     73      0 100.0%
+engine\alpha_generation\strategy_composer.py                          105     12  88.6%   145-146, 157-160, 254-256, 271, 283-284
+engine\alpha_generation\vix_signal_calculator.py                       93      4  95.7%   192, 239, 241-242
+engine\alpha_generation\yield_curve_analyzer.py                        70      2  97.1%   103, 221
+engine\analytics\composite_signal_v3.py                               108     18  83.3%   105, 109, 145, 158, 160, 175, 181-182, 184-185, 191, 193, 259-261, 282, 325-326
+engine\analytics\correlation\analyzer.py                               91      0 100.0%
+engine\analytics\correlation\correlation_signal_generator.py          117     17  85.5%   92, 119-120, 191-198, 227-228, 273-275, 284-285, 288-289
+engine\analytics\correlation\cross_asset_matrix.py                     94      8  91.5%   141, 183, 186, 189, 219-242
+engine\analytics\correlation\dcc_ewma_enhanced.py                     128      9  93.0%   116, 136-137, 167, 181-182, 220, 234-235
+engine\analytics\correlation\dcc_garch.py                             103     12  88.3%   123-124, 178-187, 192, 210-212
+engine\analytics\correlation\lead_lag_analyzer.py                     139     29  79.1%   165-168, 190, 228-256, 262, 266, 299, 321-322
+engine\analytics\correlation\regime_detector.py                        78      0 100.0%
+engine\analytics\labour_market\claims_cycle_detector.py                98      8  91.8%   89-91, 156-157, 207, 226-227
+engine\analytics\labour_market\claims_fetcher.py                      100      6  94.0%   142, 177-178, 192, 211-212
+engine\analytics\labour_market\jolts_analyzer.py                      123      8  93.5%   128-135, 227, 237, 247, 283-284
+engine\analytics\labour_market\jolts_fetcher.py                        97      8  91.8%   87, 99, 148, 158, 206-207, 218-219
+engine\analytics\labour_market\labour_forecast_engine.py               85     16  81.2%   99-102, 140-141, 153-165, 182-183
+engine\analytics\labour_market\labour_regime_classifier.py             57      8  86.0%   109, 128, 142-161
+engine\analytics\labour_market\payroll_decomposer.py                  103     17  83.5%   101-103, 113-115, 147, 191-192, 229, 234, 238-241, 258-259
+engine\analytics\labour_market\payroll_fetcher.py                      77      5  93.5%   101, 179-180, 193-194
+engine\analytics\labour_market\schemas.py                              52      0 100.0%
+engine\analytics\pipeline\orchestrator.py                              98     11  88.8%   71, 74-76, 137-138, 147-148, 159-161, 222
+engine\analytics\sentiment\aggregator.py                               81      5  93.8%   85, 101-102, 144, 153
+engine\analytics\sentiment\signal_model.py                             27      0 100.0%
+engine\analytics\surprise_engine\consensus_loader.py                  131      2  98.5%   177, 189
+engine\analytics\surprise_engine\schemas.py                            28      0 100.0%
+engine\analytics\surprise_engine\sector_surprise_aggregator.py          5      0 100.0%
+engine\analytics\surprise_engine\surprise_aggregator_v2.py            171     56  67.3%   123, 298-340, 354-371, 375-390, 394-404, 411-413
+engine\analytics\surprise_engine\surprise_calculator.py                 4      0 100.0%
+engine\analytics\surprise_engine\surprise_engine.py                   153     17  88.9%   160-193, 283, 352, 354-365, 462-463
+engine\analytics\surprise_engine\surprise_momentum.py                  31      0 100.0%
+engine\analytics\surprise_engine\surprise_signal_generator.py           4      0 100.0%
+engine\analytics\valuation\earnings_fetcher.py                        128     14  89.1%   84, 150, 167-169, 230-231, 257, 269-271, 278, 303-304
+engine\analytics\valuation\equity_risk_premium.py                     134     11  91.8%   170-172, 213-214, 226-227, 243-244, 316-317
+engine\analytics\valuation\forward_estimates_fetcher.py                86      8  90.7%   75, 140-143, 163-164, 212-213
+engine\analytics\valuation\pe_calculator.py                           136     19  86.0%   41-47, 93, 139-140, 175-176, 181, 199, 226-227, 242-244
+engine\analytics\valuation\pe_context_builder.py                       72      9  87.5%   130-131, 141-142, 153, 158, 170, 174, 177
+engine\analytics\valuation\schemas.py                                  42      0 100.0%
+engine\analytics\valuation\shiller_cape_fetcher.py                    128     30  76.6%   86-135, 170
+engine\analytics\valuation\valuation_signal_generator.py               48      2  95.8%   146-147
+engine\backtesting\backtest_runner.py                                 113     18  84.1%   208-209, 235-254, 295-296, 328-329
+engine\backtesting\engine.py                                          108      4  96.3%   248, 253, 259, 284
+engine\backtesting\performance.py                                      52      1  98.1%   86
+engine\backtesting\results_repo.py                                     75     17  77.3%   58-67, 108-110, 174-178, 211-213, 219
+engine\backtesting\strategies\combined.py                              34      0 100.0%
+engine\backtesting\strategies\ma_cross.py                              31      0 100.0%
+engine\backtesting\strategies\macro_filter.py                          38      3  92.1%   50, 68, 76
+engine\backtesting\strategies\momentum.py                              30      0 100.0%
+engine\backtesting\strategies\rsi.py                                   42      1  97.6%   73
+engine\backtesting\strategy.py                                         37      0 100.0%
+engine\backtesting\strategy_builder.py                                106      2  98.1%   130-131
+engine\fixed_income\real_yield_analyzer.py                             80      6  92.5%   76, 94, 96, 154, 163, 165
+engine\forecasting\simple_forecaster.py                                56      0 100.0%
+engine\futures_analysis\basis_analyzer.py                              92     12  87.0%   93-94, 106-107, 113, 124, 126, 224-226, 246-247
+engine\futures_analysis\commodity_regime.py                            81      6  92.6%   114-115, 120-121, 137, 139
+engine\futures_analysis\open_interest_analyzer.py                      93      4  95.7%   180-182, 232
+engine\futures_analysis\roll_analyzer.py                               82      6  92.7%   99, 116, 204-206, 214
+engine\futures_analysis\schemas.py                                     61      0 100.0%
+engine\market_data\cleaning\data_cleaner.py                            98      3  96.9%   98, 273, 299
+engine\market_data\cleaning\gap_filler.py                              41      0 100.0%
+engine\market_data\cleaning\outlier_detector.py                        34      0 100.0%
+engine\market_data\cleaning\stale_detector.py                          28      0 100.0%
+engine\market_data\currency_converter.py                               51      7  86.3%   169, 175-181
+engine\market_data\delta_windows.py                                    47     11  76.6%   50-56, 66, 70-74, 78-82, 92-93
+engine\market_data\fetchers\alpha_vantage_fetcher.py                   90     13  85.6%   116, 184-201, 245
+engine\market_data\fetchers\alpha_vantage_fundamentals_fetcher.py     139     31  77.7%   119, 151, 165, 183, 197, 223-230, 247, 250-251, 281, 284-285, 296-301, 328-345, 369
+engine\market_data\fetchers\base_fetcher.py                           108     15  86.1%   118-121, 129, 199-202, 291-294, 328-331
+engine\market_data\fetchers\edgar_fetcher.py                          104     19  81.7%   120-123, 160-162, 192-218
+engine\market_data\fetchers\edgar_fundamentals_parser.py              129      3  97.7%   304, 315, 369
+engine\market_data\fetchers\finnhub_fetcher.py                         97     15  84.5%   141, 213-241, 268
+engine\market_data\fetchers\fred_fetcher.py                            54     14  74.1%   106, 127-142, 162, 173
+engine\market_data\fetchers\futures_fetcher.py                         98     34  65.3%   89-96, 130, 145-146, 202-213, 230-233, 240-267, 320, 342-343
+engine\market_data\fetchers\yahoo_fetcher.py                           67     15  77.6%   97, 120-142, 157-158, 171, 181
+engine\market_data\fred_simple_client.py                               85     10  88.2%   111, 113, 120, 125-130, 134-139, 159-160, 164
+engine\market_data\hardening\api_health_checker.py                    104     11  89.4%   136-140, 198-200, 247, 270-272, 310-332
+engine\market_data\hardening\cross_source_validator.py                 92      6  93.5%   310-313, 341, 343-349
+engine\market_data\hardening\data_quality_alerter.py                  104     17  83.7%   74-75, 175-176, 206-211, 228-229, 251-257, 317-321, 343-344
+engine\market_data\hardening\sanity_checker.py                        129      8  93.8%   106-107, 145, 252, 281, 296, 335, 346
+engine\market_data\hardening\silent_failure_detector.py                81     13  84.0%   97-105, 201, 212, 219-220
+engine\market_data\instrument_registry.py                              65     10  84.6%   123-125, 136-138, 186-187, 228-229
+engine\market_data\kpi_computer.py                                    169     60  64.5%   86, 90-92, 111-115, 118, 146-154, 202-203, 210, 212, 215, 218, 226-228, 241-268, 297-298, 302-303, 307, 312-327
+engine\market_data\live_market_service.py                             125     45  64.0%   94-101, 113, 117-131, 134-135, 159-160, 166-173, 184-190, 202-206
+engine\market_data\sanity_checker.py                                   62      0 100.0%
+engine\market_data\silent_failure_detector.py                          68      4  94.1%   190, 192-195
+engine\market_data\websocket_manager.py                               176     76  56.8%   109-129, 133-145, 171, 177-187, 191-221, 230-256, 264-269, 332-333, 341-344
+engine\portfolio\rebalancing_engine.py                                200     17  91.5%   323-326, 339, 351, 411-423
+engine\risk\cvar_calculator.py                                        107     13  87.9%   131, 146-149, 280, 325-345
+engine\risk\risk_contribution.py                                       76      8  89.5%   162-169, 213
+engine\stress_test\forward_scenarios.py                                97      7  92.8%   208-209, 236, 282-288, 319
+engine\stress_testing\historical_scenarios.py                          14      0 100.0%
+engine\stress_testing\scenario.py                                      87      0 100.0%
+engine\stress_testing\scenario_generator.py                            53      0 100.0%
+engine\stress_testing\scenarios_repo.py                                54      7  87.0%   68-71, 173-175, 181
+engine\stress_testing\tester.py                                        81      4  95.1%   81, 167, 201-202
+engine\technical\divergence_detector.py                                99     16  83.8%   53-60, 108-109, 143-146, 165-168, 233-234
+engine\technical\indicator_dsl.py                                     163     29  82.2%   110, 183-186, 194, 229, 241, 251-260, 266, 271, 280, 295, 308, 314, 316, 331, 347, 351-352
+engine\technical\indicator_registry.py                                 94     15  84.0%   141-142, 162-164, 198-200, 226-233, 286-289
+engine\technical\pattern_recognition.py                               170     14  91.8%   103, 107, 113, 218, 227-229, 231-233, 271, 330, 333, 336
+engine\technical\pattern_schemas.py                                   102      3  97.1%   134-135, 169
+engine\technical\pattern_signals_repo.py                               89      4  95.5%   159-160, 182-183
+engine\technical\pivot_utils.py                                        28      3  89.3%   56, 67-68
+engine\technical\volume_analysis.py                                   121      1  99.2%   276
+engine\volatility\vol_surface.py                                      142     24  83.1%   104, 139-140, 144, 183, 236, 240, 260, 262-263, 274-275, 289-295, 336-337, 351, 388-389
+personal\alerts\alert_model.py                                         42      2  95.2%   109, 113
+personal\alerts\rule_engine.py                                        128     17  86.7%   124-125, 159-160, 194, 225-226, 248-250, 273-274, 281, 284-287
+personal\cashflow\engine.py                                            53      2  96.2%   109, 111
+personal\cashflow\entry_model.py                                       25      0 100.0%
+personal\cashflow\projector.py                                         42      0 100.0%
+personal\data_entry\etoro_aggregator.py                                39     20  48.7%   23, 54, 70-91
+personal\data_entry\etoro_client.py                                   176     47  73.3%   99, 135-136, 140-152, 155-167, 176-189, 226-227, 237, 239, 242-243, 246-247, 254-255, 264
+personal\data_entry\etoro_importer.py                                  74      9  87.8%   103, 134-135, 138, 149, 154-157
+personal\data_entry\etoro_models.py                                   213     44  79.3%   77-80, 89-91, 99, 190-194, 199, 211, 238-241, 247, 253, 259, 265, 271, 274-275, 312-314, 316, 331-339, 341, 360, 365-372, 473
+personal\data_entry\etoro_parser.py                                   144     24  83.3%   163, 198-208, 214, 219-220, 237, 261-277, 296, 378-380
+personal\data_entry\etoro_position_builder.py                         229     19  91.7%   51-53, 70-74, 98, 110, 145, 159, 196, 244, 267, 269, 282, 337-338
+personal\data_entry\goal_contributions.py                              58      2  96.6%   160-161
+personal\data_entry\goal_form.py                                       88      5  94.3%   114, 127, 134, 175-176
+personal\data_entry\networth_editor.py                                106     15  85.8%   83, 124, 141, 153-154, 165-166, 171-172, 178-179, 183-184, 190-191
+personal\data_entry\networth_forms.py                                   5      0 100.0%
+personal\data_entry\override_store.py                                  74      5  93.2%   105-108, 112
+personal\data_entry\position_form.py                                   65     25  61.5%   84, 89, 94, 99-101, 105, 109, 127-130, 136-145, 152-153, 160-161
+personal\data_entry\risk_questionnaire.py                              76      6  92.1%   302-304, 306-308
+personal\data_entry\risk_questionnaire_ui.py                            4      0 100.0%
+personal\data_entry\user_data_store.py                                102     10  90.2%   69-71, 82, 234-239
+personal\goals\goal_manager.py                                         64      1  98.4%   103
+personal\goals\goal_model.py                                           44      1  97.7%   67
+personal\goals\progress_calculator.py                                  71      6  91.5%   89, 92, 130, 138, 140-141
+personal\investor_profile\profile_loader.py                            53      4  92.5%   118-120, 126
+personal\investor_profile\profile_model.py                             44      0 100.0%
+personal\investor_profile\risk_profile_bridge.py                       68      0 100.0%
+personal\investor_profile\suitability_checker.py                       42      1  97.6%   48
+personal\networth\tracker.py                                           87      0 100.0%
+personal\tax\calculator.py                                             41      1  97.6%   66
+personal\tax\rules\eu_generic.py                                       21      0 100.0%
+personal\tax\rules\italy.py                                            62      0 100.0%
+personal\wealth_scenarios\retirement_simulator.py                      50      1  98.0%   80
+personal\wealth_scenarios\simulator.py                                 65      5  92.3%   39, 43, 51, 99, 109
+shared\backup_manager.py                                               80      5  93.8%   83-86, 150-151
+shared\config\operational_config.py                                    59      1  98.3%   130
+shared\constants.py                                                    48      2  95.8%   79, 83
+shared\db\dual_writer.py                                              121     18  85.1%   218-220, 243-245, 251-253, 259-261, 273-275, 281-283
+shared\db\duckdb_client.py                                            116     17  85.3%   52-53, 64-65, 104, 111-114, 118-122, 128, 136-137, 189-190
+shared\db\duckdb_migrator.py                                           65      4  93.8%   75-76, 169-170
+shared\db\fundamentals_repo.py                                        144     36  75.0%   95, 133-134, 166-168, 176-192, 196-218, 240, 270-271, 294-296, 326, 356, 387-390
+shared\db\macro_repo.py                                               184     24  87.0%   84-89, 201-203, 209, 307-309, 332-334, 355-357, 381-386, 413-415
+shared\db\migrations_runner.py                                         40     14  65.0%   93-133
+shared\db\parquet_io.py                                                66      8  87.9%   104, 116-117, 156, 183-185, 191
+shared\db\prices_repo.py                                              107     11  89.7%   98-104, 212-213, 255-257, 287
+shared\db\quality.py                                                  100      6  94.0%   145, 215, 323-325, 331
+shared\db\schemas.py                                                   31      5  83.9%   45, 124-125, 159-160
+shared\db\sqlite_client.py                                             71     21  70.4%   74, 79-88, 93-100, 105-110, 119, 122
+shared\env_loader.py                                                  109      3  97.2%   127, 227, 229
+shared\error_budget.py                                                 79      1  98.7%   129
+shared\exceptions.py                                                   63      2  96.8%   75-79
+shared\feature_flags.py                                                42      2  95.2%   50, 113
+shared\fx_service.py                                                   47      6  87.2%   92-96, 108-110
+shared\glossary\lookup.py                                              80      5  93.8%   66, 95-96, 111, 122
+shared\health.py                                                       98      1  99.0%   162
+shared\logger.py                                                       34      2  94.1%   55, 124
+shared\metrics.py                                                      80      1  98.8%   57
+shared\rate_limit_manager.py                                          110     20  81.8%   93, 99-100, 110-115, 154-155, 164, 168-177, 227-229
+shared\resilience\error_policy.py                                      35      0 100.0%
+shared\types.py                                                        97      1  99.0%   158
+-------------------------------------------------------------------------------------------------
+TOTAL                                                               14115   1568  88.9%
+
+
+--------------------------------------------------------------------------------------------------- benchmark: 5 tests ---------------------------------------------------------------------------------------------------
+Name (time in us)                          Min                     Max                  Mean                StdDev                Median                 IQR            Outliers         OPS            Rounds  Iterations
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_claims_analyzer_under_10ms       163.3000 (1.0)       31,635.9000 (37.68)      192.8106 (1.0)        704.0861 (15.65)      168.6000 (1.0)       11.5000 (1.0)         2;232  5,186.4367 (1.0)        1999           1
+test_benchmark_under_200ms            171.9000 (1.05)         839.5000 (1.0)        202.9780 (1.05)        44.9979 (1.0)        193.2000 (1.15)      16.2250 (1.41)        44;78  4,926.6419 (0.95)        937           1
+test_compute_under_500ms              279.0000 (1.71)     128,017.8000 (152.49)     404.5795 (2.10)     3,479.8832 (77.33)      295.6000 (1.75)      24.4750 (2.13)        1;134  2,471.7020 (0.48)       1347           1
+test_benchmark_under_1s             2,002.7000 (12.26)      3,263.9000 (3.89)     2,183.7427 (11.33)      219.7072 (4.88)     2,074.7000 (12.31)    198.9250 (17.30)       48;28    457.9294 (0.09)        293           1
+test_compute_under_300ms            7,596.9000 (46.52)     10,585.0000 (12.61)    8,357.8960 (43.35)      680.5011 (15.12)    8,025.9000 (47.60)    962.2000 (83.67)        25;1    119.6473 (0.02)        101           1
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------- benchmark 'labour_forecast': 3 tests ----------------------------------------------------------------------------
+Name (time in ms)              Min                 Max                Mean             StdDev              Median                IQR            Outliers     OPS            Rounds  Iterations
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+test_compute_under_5s     424.6862 (1.0)      460.4107 (1.02)     441.8039 (1.00)     17.9087 (2.07)     440.3149 (1.01)     26.7934 (2.21)          1;0  2.2634 (1.00)          3           1
+test_compute_under_5s     424.9593 (1.00)     454.4848 (1.01)     442.5618 (1.00)     15.5606 (1.80)     448.2412 (1.02)     22.1441 (1.83)          1;0  2.2596 (1.00)          3           1
+test_compute_under_5s     435.0937 (1.02)     451.2422 (1.0)      441.3738 (1.0)       8.6516 (1.0)      437.7854 (1.0)      12.1114 (1.0)           1;0  2.2657 (1.0)           3           1
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+=========================== short test summary info ===========================
+FAILED tests/shared/test_metrics.py::TestMetrics::test_timer_records_observation
+========== 1 failed, 2426 passed, 155 warnings in 1043.89s (0:17:23) ==========

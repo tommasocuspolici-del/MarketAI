@@ -5,14 +5,14 @@ SignalBadge per ogni timeframe · confluence score · pattern _load_*() pure.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState, SignalBadge
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -30,8 +30,8 @@ _TIMEFRAME_LABELS = {
 def _load_mtf_signal(ticker: str) -> dict:
     try:
         from engine.analytics.technical.multi_timeframe_analyzer import MultiTimeframeAnalyzer
-        from shared.db.prices_repo import PricesRepository
         from shared.db.duckdb_client import get_duckdb_client
+        from shared.db.prices_repo import PricesRepository
 
         db = get_duckdb_client()
         repo = PricesRepository(db)

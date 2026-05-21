@@ -16,8 +16,6 @@ from personal.tax import (
     TaxCalculator,
     TaxRegime,
 )
-from presentation.ui.cache_policy import CACHE_TTL
-from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -44,8 +42,8 @@ def _load_positions_as_events(fiscal_year: int) -> list[TaxableEvent]:
     Restituisce lista vuota se nessuna posizione è presente o DB non disponibile.
     """
     try:
-        from personal.data_entry.position_form import list_positions
         from personal.data_entry.etoro_importer import get_live_price_usd
+        from personal.data_entry.position_form import list_positions
     except Exception:
         return []
 
@@ -132,7 +130,7 @@ def body_fiscale(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
             )
         else:
             st.info(
-                f"ℹ️ Calcolo basato su **{len(events)} posizioni aperte** con P/L stimato "
+                f"(i) Calcolo basato su **{len(events)} posizioni aperte** con P/L stimato "
                 "al prezzo corrente. Per eventi di chiusura precisi, registra le vendite manualmente."
             )
             calc = TaxCalculator(regime=TaxRegime.ITALY)
@@ -165,8 +163,8 @@ def body_fiscale(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
 
     @st.cache_data(ttl=300)
     def _tax_loss_candidates() -> list[dict]:
-        from personal.data_entry.position_form import list_positions
         from personal.data_entry.etoro_importer import get_live_price_usd
+        from personal.data_entry.position_form import list_positions
 
         positions = list_positions()
         candidates = []

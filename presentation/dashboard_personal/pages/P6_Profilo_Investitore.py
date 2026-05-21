@@ -22,7 +22,6 @@ from personal.investor_profile import (
     safe_load_investor_profile,
     save_questionnaire_to_investor_profile,
 )
-from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.components.kpi_card import KpiCard
 from presentation.ui.components.metric_card import (
@@ -126,25 +125,25 @@ def _render_profile_summary(tokens, st_module, result: RiskProfileResult) -> Non
     st.markdown("**Punteggio per dimensione:**")
     metrics = [
         MetricSpec(
-            term=f"Capacità",
+            term="Capacità",
             value=result.dimension_scores.get("capacity", 0),
             format_spec="d",
             unit_override="/30",
         ),
         MetricSpec(
-            term=f"Tolleranza",
+            term="Tolleranza",
             value=result.dimension_scores.get("tolerance", 0),
             format_spec="d",
             unit_override="/30",
         ),
         MetricSpec(
-            term=f"Orizzonte",
+            term="Orizzonte",
             value=result.dimension_scores.get("horizon", 0),
             format_spec="d",
             unit_override="/20",
         ),
         MetricSpec(
-            term=f"Conoscenza",
+            term="Conoscenza",
             value=result.dimension_scores.get("knowledge", 0),
             format_spec="d",
             unit_override="/20",
@@ -241,7 +240,7 @@ def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
                 name=DEFAULT_PROFILE_NAME,
                 base_currency="EUR",
             )
-        except Exception as exc:  # noqa: BLE001 -- DB potrebbe non essere pronto
+        except Exception as exc:  # -- DB potrebbe non essere pronto
             bridge_ok = False
             st.warning(
                 f"⚠️ Profilo salvato ma non propagato all'engine: {exc}. "

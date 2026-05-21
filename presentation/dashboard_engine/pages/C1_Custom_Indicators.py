@@ -6,12 +6,12 @@ Pattern: _load_*() pure + body_custom_indicators() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState, SignalBadge
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens

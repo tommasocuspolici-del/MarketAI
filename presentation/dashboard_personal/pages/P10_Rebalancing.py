@@ -1,6 +1,5 @@
-# presentation/dashboard_personal/pages/P10_Rebalancing.py
-"""
-P10 — Rebalancing Advisor: suggerisce il piano di ribilanciamento portafoglio.
+# ruff: noqa: N999
+"""P10 — Rebalancing Advisor: suggerisce il piano di ribilanciamento portafoglio.
 
 Layout:
   Sezione 1: Configurazione (metodo ottimizzazione, parametri)
@@ -13,6 +12,8 @@ Regola 22: InvestorProfile determina il metodo di default e i vincoli.
 Regola 41: L'utente può modificare qualsiasi parametro prima di eseguire.
 """
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -30,7 +31,6 @@ from shared.db.duckdb_client import get_duckdb_client
 from shared.db.sqlite_client import get_sqlite_client
 from shared.feature_flags import is_enabled
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 

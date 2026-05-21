@@ -6,12 +6,12 @@ Pattern: _load_*() pure + body_stress_test() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -35,8 +35,8 @@ def _load_stress_scenarios() -> list[dict]:
 def _load_risk_metrics(ticker: str) -> dict:
     try:
         from engine.risk.cvar_calculator import CVaRCalculator
-        from shared.db.prices_repo import PricesRepository
         from shared.db.duckdb_client import get_duckdb_client
+        from shared.db.prices_repo import PricesRepository
 
         db = get_duckdb_client()
         repo = PricesRepository(db)
@@ -122,7 +122,7 @@ def _render_var_tab(st, ticker: str) -> None:  # pragma: no cover
         ("VaR 99% (1g)",  f"{metrics['var_99']*100:.2f}%",  "Perdita massima giornaliera al 99° percentile"),
         ("Skewness",      f"{metrics['skewness']:.2f}",      "< 0 = code sinistre (rischio tail)"),
     ]
-    for col, (label, value, help_text) in zip(cols, items):
+    for col, (label, value, help_text) in zip(cols, items, strict=False):
         with col:
             st.metric(label, value, help=help_text)
 

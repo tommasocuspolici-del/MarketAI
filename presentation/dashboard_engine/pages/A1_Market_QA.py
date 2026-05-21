@@ -7,11 +7,11 @@ Feature flag: 'llm_qa_enabled'.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -50,6 +50,7 @@ def _is_llm_available() -> bool:
 
 def body_market_qa(tokens: DesignTokens) -> None:  # pragma: no cover
     import streamlit as st
+
     from shared.feature_flags import is_enabled
 
     render_section_header("🤖 Market Q&A", "Risposte contestualizzate ai dati di mercato via LLM locale")

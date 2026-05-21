@@ -6,6 +6,8 @@ Pattern: _load_*() pure + body_backtesting() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
@@ -13,8 +15,6 @@ from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 from presentation.ui.session_keys import SK
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -62,12 +62,12 @@ def body_backtesting(tokens: DesignTokens) -> None:  # pragma: no cover
 
 def _render_run_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
     from engine.backtesting.backtest_runner import BacktestConfig, get_backtest_runner
+    from engine.backtesting.strategies.combined import CombinedStrategy
     from engine.backtesting.strategies.ma_cross import MovingAverageCrossover
     from engine.backtesting.strategies.momentum import Momentum
     from engine.backtesting.strategies.rsi import RSIMeanReversion
-    from engine.backtesting.strategies.combined import CombinedStrategy
-    from shared.db.prices_repo import PricesRepository
     from shared.db.duckdb_client import get_duckdb_client
+    from shared.db.prices_repo import PricesRepository
 
     col1, col2 = st.columns(2)
     with col1:
@@ -126,7 +126,7 @@ def _render_results_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
         ("Trade", str(result.n_trades), ""),
         ("Calmar", f"{p.calmar_ratio:.2f}", ""),
     ]
-    for col, (label, value, unit) in zip(cols, kpis):
+    for col, (label, value, _unit) in zip(cols, kpis, strict=False):
         with col:
             st.metric(label, value)
 

@@ -6,15 +6,14 @@ Pattern: _load_*() pure + body_strategy_lab() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-from presentation.ui.session_keys import SK
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -100,12 +99,12 @@ def _render_config_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
 def _run_walk_forward(st, ticker: str, strategy_name: str, n_splits: int,
                       train_pct: float, initial_cash: float, days: int) -> None:  # pragma: no cover
     from engine.backtesting.backtest_runner import BacktestConfig, get_backtest_runner
+    from engine.backtesting.strategies.combined import CombinedStrategy
     from engine.backtesting.strategies.ma_cross import MovingAverageCrossover
     from engine.backtesting.strategies.momentum import Momentum
     from engine.backtesting.strategies.rsi import RSIMeanReversion
-    from engine.backtesting.strategies.combined import CombinedStrategy
-    from shared.db.prices_repo import PricesRepository
     from shared.db.duckdb_client import get_duckdb_client
+    from shared.db.prices_repo import PricesRepository
 
     progress = st.progress(0, text="Caricamento dati OHLCV...")
     try:
@@ -170,7 +169,7 @@ def _render_results_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
         ("Win Rate (agg.)", f"{agg.win_rate*100:.1f}%"),
         ("N Splits",        str(wf.n_splits)),
     ]
-    for col, (label, value) in zip(cols, metrics):
+    for col, (label, value) in zip(cols, metrics, strict=False):
         with col:
             st.metric(label, value)
 
@@ -185,7 +184,7 @@ def _render_results_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
         import pandas as _pd
         stitched = _pd.concat(curves).reset_index()
         stitched.columns = ["date", "equity"]
-        fig = ChartFactory.time_series(stitched, x="date", y="equity",
+        fig = ChartFactory.time_series(stitched, x_col="date", y_col="equity",
                                        title="Equity Curve aggregata (tutti gli split)")
         st.plotly_chart(fig, use_container_width=True)
 

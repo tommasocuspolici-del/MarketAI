@@ -6,14 +6,14 @@ Pattern: _load_*() pure + body_correlations() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -27,8 +27,8 @@ _DEFAULT_TICKERS = ("SPY", "QQQ", "GLD", "TLT", "HYG")
 def _load_correlation_report(tickers: tuple[str, ...] = _DEFAULT_TICKERS, days: int = 252) -> dict:
     try:
         from engine.analytics.correlation.analyzer import CorrelationAnalyzer
-        from shared.db.prices_repo import PricesRepository
         from shared.db.duckdb_client import get_duckdb_client
+        from shared.db.prices_repo import PricesRepository
 
         db = get_duckdb_client()
         repo = PricesRepository(db)
@@ -57,8 +57,8 @@ def _load_correlation_report(tickers: tuple[str, ...] = _DEFAULT_TICKERS, days: 
 def _load_cross_asset_snapshot() -> dict:
     try:
         from engine.analytics.correlation.cross_asset_matrix import CrossAssetMatrix
-        from shared.db.prices_repo import PricesRepository
         from shared.db.duckdb_client import get_duckdb_client
+        from shared.db.prices_repo import PricesRepository
 
         db = get_duckdb_client()
         repo = PricesRepository(db)
@@ -140,7 +140,7 @@ def _render_matrix_tab(st, tickers: tuple, days: int) -> None:  # pragma: no cov
 
 
 def _render_cross_asset_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
-    import numpy as np
+
     from presentation.ui.chart_theme import ChartFactory
 
     @st.cache_data(ttl=CACHE_TTL.BACKTESTING)

@@ -6,12 +6,11 @@ Pattern: _load_*() pure + body_optimizer() Streamlit.
 """
 from __future__ import annotations
 
-from presentation.ui.cache_policy import CACHE_TTL
+from typing import TYPE_CHECKING
+
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens

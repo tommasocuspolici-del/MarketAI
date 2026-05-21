@@ -13,9 +13,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from presentation.ui.cache_policy import CACHE_TTL
-from presentation.ui.chart_theme import ChartFactory
-from presentation.ui.components import EmptyState
 from presentation.ui.components.metric_card import (
     MetricSpec,
     render_metric_row,
@@ -82,7 +79,7 @@ Il simulatore Monte Carlo tiene conto di:
 - contributi mensili (ciò che riesci a risparmiare);
 - rendimento atteso del portafoglio ({return_mean * 100:.1f}% medio annuo)
   con la sua volatilità tipica;
-- 1.000–10.000 simulazioni di percorsi possibili (good case / bad case).
+- 1.000-10.000 simulazioni di percorsi possibili (good case / bad case).
 
 L'età FIRE è la prima età in cui ≥80% delle simulazioni superano il
 target di €{target_capital:,.0f}.
@@ -238,7 +235,7 @@ def body_scenari_ricchezza(tokens: DesignTokens) -> None:  # pragma: no cover
         target_capital = expenses * 25
         st.info(
             f"🎯 **Capitale FIRE necessario: €{target_capital:,.0f}** "
-            f"(= €{expenses:,.0f} × 25, regola del 4%)"
+            f"(= €{expenses:,.0f} x 25, regola del 4%)"
         )
 
         if st.button("🔥 Calcola FIRE", type="primary"):

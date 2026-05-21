@@ -62,8 +62,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `tests/presentation/test_p_pages.py` — 20 P1-P5 loader tests
 - **Total: 4141 tests** (from 3977 in v8.1.0, target was ≥ 967)
 
+### Updated — Portfolio Pages (Blocco E Session 11)
+- `P5_Goals.py` — `_load_goals()` pure fn, `_goal_progress_pct()`, `st.progress` per ogni obiettivo + summary KPI row, EmptyState
+- `P6_Profilo_Investitore.py` — `_load_saved_profile()` / `_load_engine_profile()` pure fns, `KpiCard` ×3 (score/equity/drawdown), EmptyState per warning engine sync (Rule 22)
+- `P7_Scenari_Ricchezza.py` — `_load_networth_for_fire()` pure fn, `ChartFactory` + `EmptyState` import
+- `P8_Fiscale.py` — `_load_positions_as_events()` ora graceful su DB error, `EmptyState` import
+- `P9_Alerts_Personali.py` — `_load_alerts(unread_only)` pure fn, `CACHE_TTL` + `EmptyState`
+- `P10_Rebalancing.py` — `render()` → `body_rebalancing(tokens)` normalization, `EmptyState`, `render_page()`
+
+### Quality (Blocco F Session 12 — final pass)
+- ruff auto-fix: 44 issues resolved across all new/modified pages (import order, unused imports, `zip(strict=)`, f-strings)
+- Manual fixes: `B007` unused loop var, `SIM102` nested if, `C408` dict literals, `N999` noqa header, `x_col`/`y_col` runtime fix in Q14
+
 ### Docs
-- `docs/COMPONENTS.md` — Component library reference documentation
+- `docs/COMPONENTS.md` — Component library reference documentation (patterns: _load_*, EmptyState, KpiCard, progress bars)
+- `CHANGELOG.md` — v8.1.0 → v8.2.0 complete documentation
+
+### Tests — Final count
+- **4294 tests collected** (target was ≥ 967)
+- `tests/ui/`: 130 tests — KpiCard, SignalBadge, EmptyState, StatusDot, ICBreakdownBar, ChartFactory, DesignTokens, SidebarNav
+- `tests/presentation/test_p6_p10_pages.py`: 23 tests — P5-P10 loader functions
+- 1137/1137 passing across presentation + ui + personal suites
 
 ---
 

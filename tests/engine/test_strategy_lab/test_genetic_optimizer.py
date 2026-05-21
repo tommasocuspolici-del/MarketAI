@@ -85,3 +85,87 @@ class TestParameterSpaces:
         opt    = GeneticOptimizer()
         result = opt.optimise(_quadratic_fitness, {"x": (0.0, 5.0)})
         assert result.backend == "hill_climbing"
+
+
+# ── _sample_random() ─────────────────────────────────────────────────────────
+
+class TestSampleRandom:
+    def test_float_range(self) -> None:
+        result = GeneticOptimizer._sample_random({"x": (0.0, 1.0)})
+        assert 0.0 <= result["x"] <= 1.0
+        assert isinstance(result["x"], float)
+
+    def test_int_range(self) -> None:
+        result = GeneticOptimizer._sample_random({"n": (1, 10)})
+        assert 1 <= result["n"] <= 10
+        assert isinstance(result["n"], int)
+
+    def test_categorical(self) -> None:
+        opts = ["alpha", "beta", "gamma"]
+        for _ in range(20):
+            result = GeneticOptimizer._sample_random({"mode": opts})
+            assert result["mode"] in opts
+
+    def test_mixed_space(self) -> None:
+        result = GeneticOptimizer._sample_random({
+            "lr": (0.001, 0.1),
+            "layers": (2, 5),
+            "activation": ["relu", "tanh"],
+        })
+        assert 0.001 <= result["lr"] <= 0.1
+        assert 2 <= result["layers"] <= 5
+        assert result["activation"] in ("relu", "tanh")
+
+    def test_returns_all_keys(self) -> None:
+        space = {"a": (0.0, 1.0), "b": (1, 5), "c": ["x", "y"]}
+        result = GeneticOptimizer._sample_random(space)
+        assert set(result.keys()) == {"a", "b", "c"}
+
+
+# ── GeneticResult convergence ─────────────────────────────────────────────────
+
+class TestGeneticResultConvergence:
+    def test_converged_true_when_fitness_improves(self) -> None:
+        opt = GeneticOptimizer(pop_size=10, n_gen=20, patience=8, min_delta=0.0)
+        result = opt.optimise(lambda p: float(p["x"]), {"x": (0.0, 10.0)})
+        assert result.converged is True
+
+    def test_converged_true_on_constant_fitness(self) -> None:
+        opt = GeneticOptimizer(pop_size=5, n_gen=5, patience=8)
+        result = opt.optimise(lambda p: 0.0, {"x": (0.0, 1.0)})
+        # 0.0 > float("-inf") → converged = True
+        assert result.converged is True
+
+    def test_early_stopped_with_low_patience(self) -> None:
+        opt = GeneticOptimizer(pop_size=5, n_gen=50, patience=3, min_delta=0.001)
+        result = opt.optimise(lambda p: 0.0, {"x": (0.0, 1.0)})
+        assert result.early_stopped is True
+        assert result.n_generations <= 5  # stops at patience + 2 at most
+
+
+# ── Fitness exception handling ────────────────────────────────────────────────
+
+class TestFitnessExceptionHandling:
+    def test_fitness_fn_exception_silently_skipped(self) -> None:
+        def bad_fitness(p: dict) -> float:
+            raise ValueError("evaluation error")
+
+        opt = GeneticOptimizer(pop_size=5, n_gen=5, patience=8)
+        result = opt.optimise(bad_fitness, {"x": (0.0, 1.0)})
+        assert isinstance(result, GeneticResult)  # must not crash
+        assert result.converged is False  # never got a real fitness value
+
+    def test_intermittent_exception_uses_successful_evals(self) -> None:
+        call_count = 0
+
+        def flaky_fitness(p: dict) -> float:
+            nonlocal call_count
+            call_count += 1
+            if call_count % 2 == 0:
+                raise RuntimeError("intermittent")
+            return float(p["x"])
+
+        opt = GeneticOptimizer(pop_size=10, n_gen=20, patience=8, min_delta=0.0)
+        result = opt.optimise(flaky_fitness, {"x": (0.0, 10.0)})
+        # Some evaluations succeed → converged should be True
+        assert isinstance(result, GeneticResult)

@@ -6,14 +6,13 @@ Backend options engine non ancora implementato (Phase future).
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
-from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -109,9 +108,9 @@ def _render_greeks_tab(st, ticker: str, tokens: DesignTokens) -> None:  # pragma
 
 
 def _render_surface_tab(st, ticker: str, tokens: DesignTokens) -> None:  # pragma: no cover
-    from presentation.ui.chart_theme import ChartFactory
-    import plotly.graph_objects as go
     import numpy as np
+    import plotly.graph_objects as go
+
 
     @st.cache_data(ttl=CACHE_TTL.BACKTESTING)
     def _cached(t: str) -> pd.DataFrame:
@@ -128,9 +127,10 @@ def _render_surface_tab(st, ticker: str, tokens: DesignTokens) -> None:  # pragm
             x=maturities, y=strikes, z=z,
             colorscale="Viridis", showscale=True,
         ))
+        scene_cfg = {"xaxis_title": "Days to Exp", "yaxis_title": "Strike", "zaxis_title": "IV %"}
         fig.update_layout(
             title="Vol Surface (DEMO)",
-            scene=dict(xaxis_title="Days to Exp", yaxis_title="Strike", zaxis_title="IV %"),
+            scene=scene_cfg,
             height=450, paper_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -145,9 +145,10 @@ def _render_surface_tab(st, ticker: str, tokens: DesignTokens) -> None:  # pragm
         x=maturities, y=strikes, z=z,
         colorscale="Viridis", showscale=True,
     ))
+    scene_cfg = {"xaxis_title": "Days to Exp", "yaxis_title": "Strike", "zaxis_title": "IV %"}
     fig.update_layout(
         title=f"Implied Vol Surface — {ticker}",
-        scene=dict(xaxis_title="Days to Exp", yaxis_title="Strike", zaxis_title="IV %"),
+        scene=scene_cfg,
         height=450, paper_bgcolor="rgba(0,0,0,0)",
     )
     st.plotly_chart(fig, use_container_width=True)

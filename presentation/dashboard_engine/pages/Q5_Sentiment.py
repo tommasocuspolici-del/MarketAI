@@ -6,14 +6,14 @@ Pattern: _load_*() pure + body_sentiment() Streamlit.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
 from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -102,7 +102,7 @@ def _render_live_tab(st, tokens: DesignTokens) -> None:  # pragma: no cover
     pairs = list(_SOURCE_LABELS.items())
     for i in range(0, len(pairs), 4):
         cols = st.columns(4)
-        for col, (key, label) in zip(cols, pairs[i:i + 4]):
+        for col, (key, label) in zip(cols, pairs[i:i + 4], strict=False):
             value = scores.get(key)
             with col:
                 if value is None:

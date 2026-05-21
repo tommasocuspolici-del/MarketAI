@@ -28,8 +28,6 @@ from personal.alerts import (
     run_rules,
     save_thresholds,
 )
-from presentation.ui.cache_policy import CACHE_TTL
-from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -91,12 +89,11 @@ def _render_alert_card(  # pragma: no cover -- Streamlit-rendered
                 st.markdown(alert.detail)
             st.caption(f"🕐 {alert.triggered_at.strftime('%Y-%m-%d %H:%M')}")
         with cols[1]:
-            if not alert.is_read:
-                if st.button(
-                    "✓",
-                    key=f"read_{alert.alert_id}",
-                    help="Segna come letto",
-                ):
+            if not alert.is_read and st.button(
+                "✓",
+                key=f"read_{alert.alert_id}",
+                help="Segna come letto",
+            ):
                     mark_read(alert.alert_id)
                     st.rerun()
 
