@@ -44,6 +44,7 @@ class _CacheDefaults:
     scheduler_job_ttl_s: int
     equities_ohlcv_ttl_s: int
     disk_snapshot_max_age_s: int
+    signals_disk_ttl_s: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +96,7 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
         "scheduler_job_ttl_s": 300,
         "equities_ohlcv_ttl_s": 300,
         "disk_snapshot_max_age_s": 86400,
+        "signals_disk_ttl_s": 3600,
     },
     "alerts": {"dedup_window_minutes": 60},
     "analytics": {

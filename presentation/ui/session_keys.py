@@ -54,5 +54,8 @@ class _SessionKeys:
     # ── Analytics results ─────────────────────────────────────────────────
     BACKTEST_RESULT          = "backtest_result"
 
+    # ── H1 — Market Health Matrix ──────────────────────────────────────────
+    H1_SELECTED_CATEGORY     = "h1_selected_category"
+
 
 SK = _SessionKeys()

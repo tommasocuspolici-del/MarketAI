@@ -31,6 +31,9 @@ cache:
   # Massima età del disco-cache dei KPI di mercato (fallback quando API offline).
   # Dati più vecchi di questo valore vengono scartati anziché mostrati.
   disk_snapshot_max_age_s: 86400
+  # TTL st.cache_data per segnali engine (composite signal, regime).
+  # Al riavvio Streamlit: legge da DuckDB se il DB ha dati entro questa finestra.
+  signals_disk_ttl_s: 3600
 
 alerts:
   dedup_window_minutes: 60

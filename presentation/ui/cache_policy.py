@@ -46,6 +46,9 @@ class _CacheTTL:
     # Backtesting / forecasting — calcoli pesanti
     BACKTESTING       = 900     # 15min: stesso del market KPI
 
+    # Segnali engine (composite signal, regime) — letti da DuckDB al riavvio
+    SIGNALS           = OP_CONFIG.cache.signals_disk_ttl_s           # 3600s
+
     # Senza cache: dati che cambiano ad ogni load
     STATIC            = 0
 

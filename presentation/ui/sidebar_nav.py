@@ -46,6 +46,7 @@ NAV_STRUCTURE: list[NavGroup | NavPage] = [
     NavPage("dashboard", "Dashboard", "ti-layout-dashboard", "K1_Composite_Signal"),
 
     NavGroup("mercato", "Mercato", "ti-chart-line", expanded_by_default=True, pages=[
+        NavPage("h1", "Health Matrix",      "ti-heart-rate-monitor", "H1_Market_Health_Matrix"),
         NavPage("e1", "Market Overview",    "ti-eye",            "E1_Market_Overview"),
         NavPage("m1", "Macro Conviction",   "ti-world",          "M1_Macro_Signals"),
         NavPage("m2", "VIX & Volatility",   "ti-wave-saw-tool",  "M2_VIX_Signals"),
