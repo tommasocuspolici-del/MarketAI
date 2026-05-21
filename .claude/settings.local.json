@@ -280,7 +280,8 @@
       "Bash(Get-Command pytest *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Q256254\" -Recurse -Name \"pytest.exe\" -ErrorAction SilentlyContinue)",
       "Bash(Select-Object -First 5)",
-      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\presentation\\\\dashboard_personal\\\\pages\\\\\" -File | Select-Object Name)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\presentation\\\\dashboard_personal\\\\pages\\\\\" -File | Select-Object Name)",
+      "Bash(pytest --tb=short -q)"
     ]
   },
   "prefersReducedMotion": false
