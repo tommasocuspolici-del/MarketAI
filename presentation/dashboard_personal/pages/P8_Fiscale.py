@@ -16,13 +16,15 @@ from personal.tax import (
     TaxCalculator,
     TaxRegime,
 )
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.0.0"
+__version__ = "8.2.0"
 
 __all__ = ["body_fiscale"]
 
@@ -39,12 +41,18 @@ def _load_positions_as_events(fiscal_year: int) -> list[TaxableEvent]:
     """Legge le posizioni da SQLite e le trasforma in TaxableEvent.
 
     Usa avg_cost vs current_price (o yfinance) per stimare P/L non realizzato.
-    Restituisce lista vuota se nessuna posizione è presente.
+    Restituisce lista vuota se nessuna posizione è presente o DB non disponibile.
     """
-    from personal.data_entry.position_form import list_positions
-    from personal.data_entry.etoro_importer import get_live_price_usd
+    try:
+        from personal.data_entry.position_form import list_positions
+        from personal.data_entry.etoro_importer import get_live_price_usd
+    except Exception:
+        return []
 
-    positions = list_positions()
+    try:
+        positions = list_positions()
+    except Exception:
+        return []
     if not positions:
         return []
 

@@ -28,15 +28,29 @@ from personal.alerts import (
     run_rules,
     save_thresholds,
 )
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.2.0"
+__version__ = "8.2.0"
 
 __all__ = ["body_alerts_personali"]
+
+
+def _load_alerts(unread_only: bool = False) -> list[PersonalAlert]:
+    """Carica alert dal DB. Lista vuota se DB non disponibile."""
+    try:
+        alerts = list_alerts()
+        if unread_only:
+            return [a for a in alerts if not a.is_read]
+        return alerts
+    except Exception:
+        return []
+
 
 # Mapping severita' → emoji (no magic strings nei body — Regola 7).
 _SEVERITY_ICONS: dict[AlertSeverity, str] = {

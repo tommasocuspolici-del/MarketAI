@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.chart_theme import ChartFactory
+from presentation.ui.components import EmptyState
 from presentation.ui.components.metric_card import (
     MetricSpec,
     render_metric_row,
@@ -23,9 +26,18 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.0"
+__version__ = "8.2.0"
 
 __all__ = ["body_scenari_ricchezza"]
+
+
+def _load_networth_for_fire() -> float:
+    """Carica patrimonio netto attuale come punto di partenza simulazione."""
+    try:
+        from personal.data_entry.networth_editor import net_worth_summary
+        return float(net_worth_summary().get("net_worth", 0.0))
+    except Exception:
+        return 0.0
 
 
 def _explain_fire(st_module, age, expenses, savings, return_mean) -> None:  # pragma: no cover

@@ -22,6 +22,9 @@ from personal.investor_profile import (
     safe_load_investor_profile,
     save_questionnaire_to_investor_profile,
 )
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
+from presentation.ui.components.kpi_card import KpiCard
 from presentation.ui.components.metric_card import (
     MetricSpec,
     render_metric_row,
@@ -33,9 +36,25 @@ from presentation.ui.session_keys import SK
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.2"
+__version__ = "8.2.0"
 
 __all__ = ["body_profilo_investitore"]
+
+
+def _load_saved_profile():
+    """Carica il profilo salvato. None se non ancora compilato o DB non pronto."""
+    try:
+        return load_saved_profile()
+    except Exception:
+        return None
+
+
+def _load_engine_profile(profile_id: str = DEFAULT_PROFILE_ID):
+    """Carica InvestorProfile dal motore. None se non presente."""
+    try:
+        return safe_load_investor_profile(profile_id)
+    except Exception:
+        return None
 
 
 _PROFILE_LABELS = {
@@ -81,7 +100,26 @@ def _render_profile_summary(tokens, st_module, result: RiskProfileResult) -> Non
     desc = _PROFILE_DESCRIPTIONS[result.profile]
 
     st.markdown(f"### {label}")
-    st.markdown(f"**Punteggio totale:** {result.total_score}/100")
+    col_score, col_eq, col_dd = st.columns(3)
+    with col_score:
+        KpiCard(
+            title="Score totale",
+            value=float(result.total_score),
+            unit="/100",
+            quality_flag="ok",
+        ).render()
+    with col_eq:
+        KpiCard(
+            title="Equity suggerita",
+            value=float(result.suggested_equity_pct * 100),
+            unit="%",
+        ).render()
+    with col_dd:
+        KpiCard(
+            title="Max drawdown",
+            value=float(result.suggested_max_drawdown_pct * 100),
+            unit="%",
+        ).render()
     st.info(desc)
 
     # Decomposizione punteggi per dimensione
@@ -165,10 +203,11 @@ def body_profilo_investitore(tokens: DesignTokens) -> None:  # pragma: no cover
                 f"asset class consentite: {', '.join(engine_profile.allowed_asset_classes)}"
             )
         else:
-            st.warning(
-                "⚠️ Il profilo e' salvato nel questionario ma NON e' ancora "
-                "attivo a livello engine. Rifai il questionario per propagarlo."
-            )
+            EmptyState(
+                "Profilo non propagato all'engine",
+                hint="Rifai il questionario per sincronizzare il profilo con il motore (Rule 22).",
+                severity="warning",
+            ).render()
 
         render_section_header(
             "🔄 Rifai il questionario",

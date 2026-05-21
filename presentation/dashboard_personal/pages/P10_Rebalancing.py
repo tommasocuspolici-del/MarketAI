@@ -23,17 +23,30 @@ from engine.portfolio.rebalancing_engine import RebalancingEngine
 from engine.risk.risk_contribution import RiskContributionAnalyzer
 from presentation.ui.auth import require_auth
 from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
+from presentation.ui.page_factory import render_page
 from presentation.ui.session_keys import SK
 from shared.db.duckdb_client import get_duckdb_client
 from shared.db.sqlite_client import get_sqlite_client
 from shared.feature_flags import is_enabled
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from presentation.ui.theme import DesignTokens
 
-def render() -> None:
+__all__ = ["body_rebalancing"]
+
+
+def body_rebalancing(tokens: DesignTokens) -> None:  # pragma: no cover
+    """Body Streamlit della pagina P10 (v8.2.0)."""
     require_auth()
 
     if not is_enabled("rebalancing_engine"):
-        st.warning("⚠️ Rebalancing Engine disabilitato in feature_flags.yaml")
+        EmptyState(
+            "Rebalancing Engine disabilitato",
+            hint="Abilita 'rebalancing_engine' in feature_flags.yaml per accedere a questa funzionalità.",
+            severity="warning",
+        ).render()
         return
 
     st.title("⚖️ Rebalancing Advisor")
@@ -49,13 +62,18 @@ def render() -> None:
             st.rerun()
 
     # ─── Carica dati portafoglio corrente ─────────────────────────────────
-    current_weights, portfolio_eur = _load_current_portfolio()
+    @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)
+    def _cached_portfolio() -> tuple[dict, float]:
+        return _load_current_portfolio()
+
+    current_weights, portfolio_eur = _cached_portfolio()
 
     if not current_weights:
-        st.warning(
-            "⚠️ Nessuna posizione trovata nel portafoglio. "
-            "Importa le posizioni in P2 — Portafoglio eToro per continuare."
-        )
+        EmptyState(
+            "Nessuna posizione trovata",
+            hint="Importa le posizioni in P2 — Portafoglio eToro per continuare.",
+            severity="warning",
+        ).render()
         return
 
     # ─── Configurazione ───────────────────────────────────────────────────
@@ -323,3 +341,7 @@ def _render_history() -> None:
             st.info("Nessun piano storico ancora.")
     except Exception as exc:
         st.caption(f"Storico non disponibile: {exc}")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    render_page("Rebalancing Advisor", "⚖️", body_rebalancing)

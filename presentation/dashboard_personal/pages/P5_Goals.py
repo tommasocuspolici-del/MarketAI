@@ -23,6 +23,7 @@ from personal.data_entry.goal_form import (
     render_goal_form,
     save_goal,
 )
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
@@ -30,9 +31,24 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.2.0"
+__version__ = "8.2.0"
 
 __all__ = ["body_goals"]
+
+
+def _load_goals() -> list:
+    """Carica tutti gli obiettivi dal DB. Lista vuota se DB non disponibile."""
+    try:
+        return list_goals()
+    except Exception:
+        return []
+
+
+def _goal_progress_pct(goal) -> float:
+    """Calcola la percentuale di completamento [0.0, 1.0]."""
+    if not goal.target_amount or goal.target_amount <= 0:
+        return 0.0
+    return min(1.0, float(goal.current_amount) / float(goal.target_amount))
 
 
 _PRIORITY_BADGES = {
@@ -312,14 +328,39 @@ def body_goals(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit-r
         "Specific · Measurable · Achievable · Relevant · Time-bound",
     )
 
-    goals = list_goals()
+    @st.cache_data(ttl=CACHE_TTL.PORTFOLIO_TOTALS)
+    def _cached_goals() -> list:
+        return _load_goals()
+
+    goals = _cached_goals()
     if not goals:
-        st.info(
-            "Nessun obiettivo definito. Crea il tuo primo obiettivo qui sotto. "
-            "Un obiettivo SMART include: nome, importo target, data target, priorita'."
-        )
+        EmptyState(
+            "Nessun obiettivo definito",
+            hint="Crea il tuo primo obiettivo SMART qui sotto: nome, importo target, data, priorità.",
+        ).render()
     else:
+        # Progress summary KPIs
+        total_target = sum(g.target_amount or 0 for g in goals)
+        total_current = sum(g.current_amount or 0 for g in goals)
+        overall_pct = min(1.0, total_current / total_target) if total_target > 0 else 0.0
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Obiettivi attivi", str(len(goals)))
+        with col2:
+            st.metric("Risparmiato totale", f"€{total_current:,.0f}")
+        with col3:
+            st.metric("Target totale", f"€{total_target:,.0f}")
+
+        st.progress(overall_pct, text=f"Progresso complessivo: {overall_pct:.0%}")
+        st.divider()
+
         for goal in goals:
+            pct = _goal_progress_pct(goal)
+            badge = _PRIORITY_BADGES.get(goal.priority, "⚪")
+            icon = _CATEGORY_ICONS.get(goal.category, "📌")
+            st.markdown(f"**{icon} {goal.name}** {badge}")
+            st.progress(pct, text=f"€{goal.current_amount:,.0f} / €{goal.target_amount:,.0f} ({pct:.0%})")
             _render_goal_card(st, goal)
 
     st.divider()
