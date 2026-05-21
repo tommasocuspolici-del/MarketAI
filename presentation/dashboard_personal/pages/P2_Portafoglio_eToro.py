@@ -90,6 +90,8 @@ from personal.data_entry.position_form import (
     render_position_form,
     save_position,
 )
+from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState, StatusDot
 from presentation.ui.components.metric_card import (
     MetricSpec,
     render_metric_row,
@@ -101,10 +103,42 @@ from presentation.ui.session_keys import SK
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.5.0"
+__version__ = "8.2.0"
 
 __all__ = ["body_portafoglio_etoro"]
 
+
+# ── Pure loader functions (testabili senza Streamlit) ─────────────────────────
+
+def _load_positions() -> list:
+    """Carica lista posizioni dal DB personale. Lista vuota se DB non disponibile."""
+    try:
+        return list_positions()
+    except Exception:
+        return []
+
+
+def _load_portfolio_snapshot() -> pd.DataFrame:
+    """Carica e aggrega le posizioni in un DataFrame USD-normalizzato."""
+    try:
+        positions = list_positions()
+        return _build_grouped_portfolio(positions)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _get_api_import_status() -> str:
+    """Ritorna 'ok' se ETORO_API_KEY è configurata, 'error' altrimenti."""
+    import os
+    return "ok" if os.environ.get("ETORO_API_KEY") else "error"
+
+
+def _get_xlsx_import_status(session_result) -> str:
+    """Ritorna 'ok' se c'è un risultato XLSX in session, 'unknown' altrimenti."""
+    return "ok" if session_result is not None else "unknown"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _kpi_specs_demo() -> tuple[list[MetricSpec], list[MetricSpec]]:
     """Metriche demo — usate come fallback se i dati reali non sono disponibili."""
@@ -979,10 +1013,42 @@ def _render_collar_suggestion_section(st_module) -> None:  # pragma: no cover --
         pass    # suggestions are best-effort
 
 
+def _render_registry_tab(st) -> None:  # pragma: no cover -- Streamlit
+    """Tab 4: Gestione Ticker — InstrumentRegistry overview."""
+    import pandas as _pd
+    from engine.market_data.instrument_registry import InstrumentRegistry
+
+    render_section_header("🗂 Gestione Ticker", "Mapping #ID eToro → ticker Yahoo Finance reale")
+
+    try:
+        reg = InstrumentRegistry()
+        all_mappings = reg.list_all() if hasattr(reg, "list_all") else []
+    except Exception:
+        all_mappings = []
+
+    if not all_mappings:
+        EmptyState(
+            "Nessun ticker registrato",
+            hint="I ticker vengono registrati automaticamente all'import da eToro API.",
+        ).render()
+        return
+
+    rows = [
+        {
+            "ID eToro":       m.instrument_id,
+            "Ticker YF":      m.ticker,
+            "Nome":           m.display_name or "—",
+            "Valuta nativa":  m.native_currency or "USD",
+            "Sorgente":       m.source or "unknown",
+        }
+        for m in all_mappings
+    ]
+    st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.caption(f"{len(rows)} ticker registrati · aggiornato ad ogni import eToro")
+
+
 def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
-    """Body Streamlit della pagina P2 (v7.3.0)."""
-    # [v8.1.0 FIX-P9] rimosso try/except ImportError silenzioso;
-    # funzione body già #pragma:no cover — ImportError qui è un errore reale
+    """Body Streamlit della pagina P2 (v8.2.0)."""
     import streamlit as st
 
     cols_top = st.columns([4, 1])
@@ -991,8 +1057,21 @@ def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover --
             st.cache_data.clear()
             st.rerun()
 
-    tab_positions, tab_import, tab_metrics = st.tabs(
-        ["💼 Posizioni", "📥 Import", "📊 Metriche"]
+    # Status sorgenti dati (import)
+    api_status  = _get_api_import_status()
+    xlsx_result = st.session_state.get(SK.ETORO_IMPORT_RESULT_XLSX)
+    xlsx_status = _get_xlsx_import_status(xlsx_result)
+
+    col_s1, col_s2, _ = st.columns([1, 1, 4])
+    with col_s1:
+        StatusDot("eToro API", api_status,
+                  detail="ETORO_API_KEY configurata" if api_status == "ok" else "ETORO_API_KEY mancante in .env").render()
+    with col_s2:
+        StatusDot("XLSX", xlsx_status,
+                  detail="File caricato" if xlsx_status == "ok" else "Nessun file importato").render()
+
+    tab_positions, tab_import, tab_metrics, tab_registry = st.tabs(
+        ["💼 Posizioni", "📥 Import", "📊 Metriche", "🗂 Gestione Ticker"]
     )
     with tab_positions:
         _render_positions_tab(st)
@@ -1000,6 +1079,8 @@ def body_portafoglio_etoro(tokens: DesignTokens) -> None:  # pragma: no cover --
         _render_import_tab(st)
     with tab_metrics:
         _render_metrics_tab(tokens, st)
+    with tab_registry:
+        _render_registry_tab(st)
 
 
 if __name__ == "__main__":  # pragma: no cover

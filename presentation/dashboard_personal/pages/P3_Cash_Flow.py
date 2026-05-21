@@ -22,6 +22,7 @@ import streamlit as st
 
 from personal.cashflow import CashFlowDirection, CashFlowEngine, CashFlowEntry
 from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
 from presentation.ui.components.cash_flow_waterfall import (
     render_cash_flow_waterfall,
 )

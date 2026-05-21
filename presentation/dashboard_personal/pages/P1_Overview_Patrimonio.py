@@ -24,6 +24,7 @@ from personal.cashflow import CashFlowEngine
 from personal.data_entry.networth_editor import net_worth_summary
 from personal.goals import Goal, GoalManager, GoalStatus
 from presentation.ui.cache_policy import CACHE_TTL
+from presentation.ui.components import EmptyState
 from presentation.ui.components.goal_tracker import render_goals_list
 from presentation.ui.components.kpi_card import render_kpi_row
 from presentation.ui.layout import render_section_header
@@ -32,12 +33,21 @@ from presentation.ui.page_factory import render_page
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
 
-__version__ = "7.1.2"
+__version__ = "8.2.0"
 
 __all__ = ["body_overview_patrimonio"]
 
 # Profilo "corrente" — convenzione single-user dell'app.
 _CURRENT_PROFILE_ID = "current"
+
+
+def _load_networth_summary() -> dict:
+    """Carica riepilogo patrimonio. Ritorna dict con zeri se DB non disponibile."""
+    try:
+        return net_worth_summary()
+    except Exception:
+        return {"total_assets": 0.0, "total_liabilities": 0.0, "net_worth": 0.0,
+                "liquid_assets": 0.0, "n_assets": 0, "n_liabilities": 0}
 
 
 def _get_ytd_savings_rate(
@@ -140,17 +150,18 @@ def body_overview_patrimonio(
 
     # ── 3. Stato vuoto: messaggio educativo, nessun dato inventato ─────────
     if not has_networth_data:
-        st.info(
-            "👋 **Inizia da qui:** non hai ancora registrato asset o passivita'. "
-            "Vai alla pagina **💰 Net Worth** per aggiungere conti, investimenti, "
-            "immobili e mutui — il patrimonio totale verra' calcolato automaticamente."
-        )
+        EmptyState(
+            "Nessun asset o passività registrata",
+            hint="Vai alla pagina 💰 Net Worth per aggiungere conti, investimenti e mutui.",
+            severity="info",
+        ).render()
 
     if not has_cashflow_data:
-        st.info(
-            "💸 **Cash flow vuoto:** registra entrate e uscite nella pagina "
-            "**💸 Cash Flow** per ottenere il tasso di risparmio reale."
-        )
+        EmptyState(
+            "Cash flow vuoto",
+            hint="Registra entrate e uscite nella pagina 💸 Cash Flow per ottenere il tasso di risparmio reale.",
+            severity="info",
+        ).render()
 
     # ── 4. Top obiettivi ───────────────────────────────────────────────────
     render_section_header("🎯 Top 3 Obiettivi")
@@ -158,11 +169,11 @@ def body_overview_patrimonio(
     if goals:
         render_goals_list(tokens, goals)
     else:
-        st.info(
-            "🎯 **Nessun obiettivo attivo:** definisci i tuoi obiettivi SMART "
-            "(casa, auto, pensione...) nella pagina **🎯 Obiettivi SMART** per "
-            "vedere il progresso qui."
-        )
+        EmptyState(
+            "Nessun obiettivo attivo",
+            hint="Definisci obiettivi SMART (casa, pensione...) nella pagina 🎯 Obiettivi SMART.",
+            severity="info",
+        ).render()
 
 
 if __name__ == "__main__":  # pragma: no cover

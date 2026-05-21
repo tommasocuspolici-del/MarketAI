@@ -23,6 +23,7 @@ from personal.data_entry.goal_form import (
     render_goal_form,
     save_goal,
 )
+from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 

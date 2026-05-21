@@ -21,6 +21,7 @@ from personal.data_entry.networth_forms import (
     render_asset_form,
     render_liability_form,
 )
+from presentation.ui.components import EmptyState
 from presentation.ui.components.metric_card import (
     MetricSpec,
     render_metric_row,
