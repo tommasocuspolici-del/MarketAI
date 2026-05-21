@@ -6,6 +6,69 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [8.2.0] — 2026-05-21
+
+### Added — UI Component Library (Blocco A)
+- `presentation/ui/design_tokens.py` — `TOKENS` singleton backed by `config/ui_theme.yaml`; `signal_color()`, `regime_color()`, `ic_color()` methods
+- `presentation/ui/chart_theme.py` — `ChartFactory` (time_series, signal_breakdown, correlation_heatmap, pie_allocation), `regime_shade()`, `event_markers()`, `get_base_layout()`
+- `presentation/ui/sidebar_nav.py` — `SidebarNavigator` with 5-group hierarchy, fuzzy search, system status pill
+- `presentation/ui/components/base.py` — `BaseComponent` ABC
+- `presentation/ui/components/kpi_card.py` — `KpiCard(BaseComponent)` with quality dot (●◐○◌)
+- `presentation/ui/components/signal_badge.py` — `SignalBadge(BaseComponent)` for signals ∈ [-1, 1]
+- `presentation/ui/components/empty_state.py` — `EmptyState(BaseComponent)` (info/warning/error/loading)
+- `presentation/ui/components/status_dot.py` — `StatusDot(BaseComponent)` 🟢/🟡/🔴/⚪
+- `presentation/ui/components/section_header.py` — `SectionHeader(BaseComponent)`
+- `presentation/ui/components/ic_breakdown_bar.py` — `ICBreakdownBar(BaseComponent)` for per-signal IC
+- `shared/monitoring/system_status.py` — `get_system_status()` → OPERATIONAL / DEGRADED / DOWN
+- `shared/monitoring/log_store.py` — `InMemoryLogStore` structlog circular-buffer processor
+- 16 new color tokens in `config/ui_theme.yaml`: signal_*, ic_*, chart_*, shade_*
+
+### Rebuilt — Infrastructure Pages (Blocco B)
+- `S0_Health.py` — 7-tab Health Monitor (Sorgenti, Motori, Signal Quality, LLM, News & IB, Scheduler, Log)
+- `S2_Settings.py` — 7-section Settings (API Keys, Feature Flags, LLM, Retention, Scheduler, Backup, Notifiche)
+
+### Rebuilt — Market Pages (Blocco C)
+- `E1_Market_Overview.py` — KpiCard grid + regime shading + 3 lazy tabs
+- `K1_Composite_Signal.py` — Gauge indicator + ICBreakdownBar + 30d trend + deterministic narrative
+- `M1_Macro_Signals.py` — Testable `_load_macro_data()` / `_load_macro_series()` pattern
+- `M2_VIX_Signals.py` — `_load_vix_series()`, `_load_vix_current()`, `_vix_to_regime_label()`
+- `M4_Yield_Curve.py` — `YieldSnapshot`, `_load_yield_snapshot()`, `_load_yield_series()`
+- `M3`, `M5`, `M6` — EmptyState + ChartFactory standardization
+
+### Added — Analytics & Quant Pages (Blocco D)
+- `Q1_Backtesting.py` — BacktestRunner + MA/RSI/Momentum/Combined, 3-tab, progress bar
+- `Q2_Stress_Test.py` — CVaRCalculator + 5 historical stress scenarios
+- `Q3_Correlations.py` — CorrelationAnalyzer + CrossAssetMatrix, `correlation_heatmap`
+- `Q4_Optimizer.py` — RebalancingEngine (HRP / Equal Weight / Risk Parity / Markowitz)
+- `Q5_Sentiment.py` — LiveSentimentService 8 sources, 2-tab Live + Storico
+- `Q11_Options.py` — Greeks table + vol surface 3D (stub with demo fallback)
+- `Q12_MultiTimeframe.py` — MultiTimeframeAnalyzer + SignalBadge per D/W/M timeframe
+- `Q14_Strategy_Lab.py` — Walk-forward with 4-step progress bar + splits DataTable
+- `C1_Custom_Indicators.py` — Registry + DSL Editor + IC Quality tab (SignalBadge per indicatore)
+
+### Updated — Portfolio Pages (Blocco E)
+- `P1_Overview_Patrimonio.py` — EmptyState, `_load_networth_summary()` pure function
+- `P2_Portafoglio_eToro.py` — 4th tab "Gestione Ticker", StatusDot for API/XLSX import, pure loaders
+- `P3_Cash_Flow.py`, `P4_Net_Worth.py`, `P5_Goals.py` — EmptyState standardization
+
+### Added — Stubs (Blocco F)
+- `A1_Market_QA.py` — LLM Market Q&A stub with EmptyState + demo preview (flag: `llm_qa_enabled`)
+
+### Tests
+- `tests/ui/` (new) — 130 tests: KpiCard, SignalBadge, EmptyState, StatusDot, ICBreakdownBar, ChartFactory, DesignTokens, SidebarNav
+- `tests/presentation/test_m_pages.py` — 19 M1/M2/M4 loader tests
+- `tests/presentation/test_q_pages.py` — 23 Q1-Q5 loader tests
+- `tests/presentation/test_q9_c1_pages.py` — 23 Q11/Q12/Q14/C1 loader tests
+- `tests/presentation/test_p_pages.py` — 20 P1-P5 loader tests
+- **Total: 4141 tests** (from 3977 in v8.1.0, target was ≥ 967)
+
+### Docs
+- `docs/COMPONENTS.md` — Component library reference documentation
+
+---
+
+---
+
 ## [8.3.0] — 2026-05-15 — Roadmap Analisi Mercato v4 (Blocchi 1–6)
 
 > Trasformazione MarketAI in strumento di analisi professionale investment-bank grade.
