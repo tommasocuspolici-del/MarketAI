@@ -1,6 +1,6 @@
 # MarketAI — Guida per Claude Code
 
-**v12.0.0** · Python ^3.11 · 4728+ test · coverage ≥ 89.1% · ROADMAP v6.0 (32 regole) + Convenzioni 33–40
+**v12.1.0** · Python ^3.11 · 4910+ test · coverage ≥ 89.1% · ROADMAP v6.0 (32 regole) + Convenzioni 33–40
 
 ---
 
@@ -231,6 +231,19 @@ audit = AuditLogger(client=db)
 audit.log_fetch(source="fred", endpoint="/ICSA", record_count=n, duration_ms=ms)
 ```
 
+```python
+from engine.data_universe.cross_source_validator_v2 import CrossSourceValidatorV2
+
+validator = CrossSourceValidatorV2(db)
+results = validator.run_all()           # list[ValidationResult]
+# Confronti: FRED PAYEMS vs BLS CES0000000001, FRED CPIAUCSL vs BLS, FRED VIXCLS vs Yahoo ^VIX
+for r in results:
+    print(r.severity, r.discrepancy_pct, r.message)
+# r.severity: "ok" | "warn" | "critical"
+# "warn" se discrepanza > soglia, "critical" se discrepanza > 10× soglia
+```
+**Soglie:** employment 1%, CPI 0.1%, VIX 0.5 punti.
+
 ### Signal Quality Framework ★ v12.0
 ```python
 from engine.analytics.signals import ICCalculator, ICResult, SignalScorecard
@@ -373,6 +386,22 @@ liq_result = liq.analyze_position("AAPL", position_usd=1e5, volume_series=vol, p
 # liq_result.days_to_liquidate, is_illiquid
 ```
 
+```python
+from engine.analytics.risk.tail_hedge_advisor import TailHedgeAdvisor, HedgeRecommendation
+
+advisor = TailHedgeAdvisor()
+recs: list[HedgeRecommendation] = advisor.recommend(
+    cvar_blended_95=0.18,
+    vol_regime="high",
+    portfolio_value_usd=100_000,
+    current_regime="contraction",
+)
+# recs[i].instrument, estimated_cost_pct, protection_level, regime_trigger
+# Strumenti suggeriti: "SPY put OTM 5%", "VIX call 25-strike", "SH (ProShares Short S&P500)"
+# Logica: CVaR > 15% OR vol_regime high/extreme OR regime contraction → attiva raccomandazioni
+# Feature flag: tail_hedge_advisor (default: false)
+```
+
 ### Derivati e Volatilità ★ v12.0
 ```python
 from engine.analytics.derivatives import (
@@ -414,6 +443,12 @@ Feature flags: `vol_surface_svi`, `vrp_calculator`, `vol_regime_markov`. Default
 | Q15 Risk Attribution | `portfolio_risk_metrics`, `position_risk_contribution` | `CACHE_TTL.PORTFOLIO_TOTALS` |
 | Q16 Backtesting Pro | `wfo_results`, `model_registry` | `CACHE_TTL.SIGNALS` |
 | Q17 Vol Surface | `vol_surface_snapshots`, `vix_signals`, `putcall_ratio_daily` | `CACHE_TTL.MARKET_KPI` |
+
+**S0 Health ★ v12.1** — sezione SLO/Error Budget aggiunta:
+- 5 metriche SLI da `audit_log`: API success rate 7d (≥99.5%), scheduler uptime (≥99%), data freshness (≤30min), p95 latency (≤2000ms), monthly error budget (≤0.5%)
+- Progress bar consumo error budget mensile
+- Expander con tabella definizioni SLO
+- Funzione `load_slo_metrics()` esportata da `S0_Health_API_Status.py`
 
 ---
 
@@ -550,4 +585,4 @@ Tipi: `feat` · `fix` · `refactor` · `test` · `docs` · `chore`
 
 ---
 
-*v12.0.0 — aggiornato 2026-05-22*
+*v12.1.0 — aggiornato 2026-05-22*
