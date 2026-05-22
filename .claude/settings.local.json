@@ -302,7 +302,12 @@
       "Bash(.venv/Scripts/python.exe -m pytest --tb=no -q)",
       "Bash(.venv/Scripts/python.exe -m pytest --tb=no -q --ignore=tests/integration)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/ --ignore=tests/integration --ignore=tests/presentation -q --tb=short)",
-      "Bash(.venv/Scripts/python.exe -m pytest tests/presentation/test_ui_redesign.py::TestAppV8Navigation::test_total_page_count -q)"
+      "Bash(.venv/Scripts/python.exe -m pytest tests/presentation/test_ui_redesign.py::TestAppV8Navigation::test_total_page_count -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/engine/analytics/regime/test_regime_change_detector.py tests/engine/alpha_generation/backtest_engine/test_wfo_runner.py tests/engine/alpha_generation/backtest_engine/test_capacity_estimator.py tests/engine/analytics/forecasting/test_var_vecm_engine.py tests/engine/analytics/forecasting/test_ensemble_combiner.py tests/engine/analytics/forecasting/test_scenario_tree_builder.py tests/engine/analytics/risk/test_factor_risk_attribution.py tests/engine/analytics/derivatives/test_vol_surface_svi.py tests/engine/analytics/derivatives/test_gex_calculator.py tests/engine/analytics/risk/test_tail_hedge_advisor.py tests/engine/data_universe/test_cross_source_validator_v2.py -x -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/engine/analytics/regime/test_regime_change_detector.py tests/engine/alpha_generation/backtest_engine/test_wfo_runner.py tests/engine/alpha_generation/backtest_engine/test_capacity_estimator.py tests/engine/analytics/forecasting/test_var_vecm_engine.py tests/engine/analytics/forecasting/test_ensemble_combiner.py tests/engine/analytics/forecasting/test_scenario_tree_builder.py tests/engine/analytics/risk/test_factor_risk_attribution.py tests/engine/analytics/derivatives/test_vol_surface_svi.py tests/engine/analytics/derivatives/test_gex_calculator.py tests/engine/analytics/risk/test_tail_hedge_advisor.py tests/engine/data_universe/test_cross_source_validator_v2.py -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/engine/analytics/risk/test_factor_risk_attribution.py::TestCompute::test_pct_systematic_in_unit_interval tests/engine/analytics/risk/test_tail_hedge_advisor.py::TestContractionRegime::test_contraction_triggers_sh_recommendation -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest --ignore=tests/integration --tb=no -q)",
+      "Bash(git restore *)"
     ]
   },
   "prefersReducedMotion": false

@@ -1,13 +1,123 @@
 # ruff: noqa: N999
-"""S0 — Health & API Status (v8.0).
+"""S0 — Health & API Status (v8.2.0).
 
 Eredita ApiHealthChecker (v7.1.1) + aggiunge status scheduler e DB.
 Sostituisce E0_API_Health.py.
+v8.2.0: aggiunta sezione SLO / Error Budget.
 """
 from __future__ import annotations
 
-__version__ = "8.1.0"
-__all__ = ["body_s0_health_api_status"]
+from presentation.ui.cache_policy import CACHE_TTL
+
+__version__ = "8.2.0"
+__all__ = ["body_s0_health_api_status", "load_slo_metrics"]
+
+# ── SLO targets (module-level, documentano i contratti di qualità) ────────────
+_SLO_TARGETS: dict[str, tuple[float, str]] = {
+    "api_success_rate_7d":     (0.995, "≥ 99.5%"),
+    "scheduler_uptime_7d":     (0.990, "≥ 99.0%"),
+    "data_freshness_critical": (1800.0, "≤ 30 min"),
+    "p95_query_latency_ms":    (2000.0, "≤ 2000 ms"),
+    "error_budget_monthly":    (0.005, "≤ 0.5%"),
+}
+
+_SLO_LABELS: dict[str, str] = {
+    "api_success_rate_7d":     "API Success Rate 7d",
+    "scheduler_uptime_7d":     "Scheduler Uptime 7d",
+    "data_freshness_critical": "Data Freshness (s)",
+    "p95_query_latency_ms":    "p95 Query Latency",
+    "error_budget_monthly":    "Error Budget (mese)",
+}
+
+_SLO_DEFINITIONS: list[tuple[str, str, str]] = [
+    ("API Success Rate 7d", "≥ 99.5%", "% chiamate API con outcome='success' negli ultimi 7 giorni (da audit_log)"),
+    ("Scheduler Uptime 7d", "≥ 99.0%", "Percentuale di run scheduler completati senza errore nelle ultime 168h"),
+    ("Data Freshness Critical", "≤ 30 min", "Secondi dall'ultimo aggiornamento per le serie critiche (VIX, macro)"),
+    ("p95 Query Latency", "≤ 2000 ms", "Latenza al 95° percentile per le query DuckDB (da audit_log.duration_ms)"),
+    ("Error Budget Mensile", "≤ 0.5%", "Quota di errori permessa nel mese corrente (1 - success_rate_30d)"),
+]
+
+
+def load_slo_metrics() -> dict[str, float]:  # pragma: no cover
+    """Carica le metriche SLI correnti da DuckDB audit_log.
+
+    Restituisce 0.0 per le metriche non ancora disponibili (nessun dato).
+    Regola 12: solo letture DB, nessuna chiamata API.
+    """
+    from shared.db.duckdb_client import get_duckdb_client  # lazy import
+
+    metrics: dict[str, float] = {k: 0.0 for k in _SLO_TARGETS}
+    try:
+        db = get_duckdb_client()
+
+        # 1. API success rate 7d
+        try:
+            rows = db.query(
+                """
+                SELECT
+                    CAST(COUNT(*) FILTER (WHERE outcome = 'success') AS DOUBLE)
+                    / NULLIF(COUNT(*), 0)
+                FROM audit_log
+                WHERE event_ts >= NOW() - INTERVAL '7 days'
+                """
+            )
+            if rows and rows[0][0] is not None:
+                metrics["api_success_rate_7d"] = float(rows[0][0])
+        except Exception:
+            pass
+
+        # 2. Scheduler uptime 7d — approssimato da % run scheduler senza errore
+        try:
+            rows = db.query(
+                """
+                SELECT
+                    CAST(COUNT(*) FILTER (WHERE outcome = 'success') AS DOUBLE)
+                    / NULLIF(COUNT(*), 0)
+                FROM audit_log
+                WHERE event_ts >= NOW() - INTERVAL '7 days'
+                  AND operation LIKE '%scheduler%'
+                """
+            )
+            if rows and rows[0][0] is not None:
+                metrics["scheduler_uptime_7d"] = float(rows[0][0])
+        except Exception:
+            pass
+
+        # 3. p95 query latency ms
+        try:
+            rows = db.query(
+                """
+                SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)
+                FROM audit_log
+                WHERE event_ts >= NOW() - INTERVAL '7 days'
+                  AND duration_ms IS NOT NULL
+                """
+            )
+            if rows and rows[0][0] is not None:
+                metrics["p95_query_latency_ms"] = float(rows[0][0])
+        except Exception:
+            pass
+
+        # 4. Error budget monthly = 1 - success_rate_30d
+        try:
+            rows = db.query(
+                """
+                SELECT
+                    CAST(COUNT(*) FILTER (WHERE outcome = 'success') AS DOUBLE)
+                    / NULLIF(COUNT(*), 0)
+                FROM audit_log
+                WHERE event_ts >= NOW() - INTERVAL '30 days'
+                """
+            )
+            if rows and rows[0][0] is not None:
+                metrics["error_budget_monthly"] = round(1.0 - float(rows[0][0]), 6)
+        except Exception:
+            pass
+
+    except Exception:
+        pass  # DB non disponibile: restituisce tutti 0.0
+
+    return metrics
 
 
 def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
@@ -131,6 +241,67 @@ def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
             st.error(LLM_ERROR_MESSAGES[LLMErrorCode.OLLAMA_UNAVAILABLE])
     except Exception as exc:
         st.warning(f"LLM status non disponibile: {exc}")
+
+    st.divider()
+
+    # ── SLO / Error Budget ────────────────────────────────────────────────────
+    st.subheader("📊 SLO / Error Budget")
+
+    @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
+    def _cached_slo_metrics() -> dict[str, float]:
+        return load_slo_metrics()
+
+    slo_data = _cached_slo_metrics()
+
+    slo_cols = st.columns(5)
+    slo_keys = list(_SLO_TARGETS.keys())
+    for col, key in zip(slo_cols, slo_keys):
+        target_val, target_label = _SLO_TARGETS[key]
+        current = slo_data.get(key, 0.0)
+        label = _SLO_LABELS[key]
+        no_data = current == 0.0
+
+        # Format display value
+        if key in ("api_success_rate_7d", "scheduler_uptime_7d"):
+            display = f"{current * 100:.2f}%" if not no_data else "—"
+            delta = f"target {target_label}"
+            meeting = current >= target_val
+        elif key == "data_freshness_critical":
+            display = f"{current:.0f}s" if not no_data else "—"
+            delta = f"target {target_label}"
+            meeting = current <= target_val and not no_data
+        elif key == "p95_query_latency_ms":
+            display = f"{current:.0f} ms" if not no_data else "—"
+            delta = f"target {target_label}"
+            meeting = current <= target_val and not no_data
+        else:  # error_budget_monthly
+            display = f"{current * 100:.3f}%" if not no_data else "—"
+            delta = f"target {target_label}"
+            meeting = current <= target_val
+
+        delta_color = "normal" if (meeting and not no_data) else "inverse"
+        col.metric(label=label, value=display, delta=delta, delta_color=delta_color)
+
+    # Error budget progress bar
+    budget_used = slo_data.get("error_budget_monthly", 0.0)
+    budget_limit = _SLO_TARGETS["error_budget_monthly"][0]  # 0.005
+    if budget_used > 0.0:
+        consumption_pct = min(budget_used / budget_limit, 1.0)
+        st.caption(
+            f"🔋 Error budget mensile consumato: {consumption_pct * 100:.1f}%"
+            f" ({budget_used * 100:.3f}% / {budget_limit * 100:.1f}% limite)"
+        )
+        st.progress(consumption_pct)
+    else:
+        st.caption("🔋 Error budget mensile: nessun dato disponibile (audit_log vuoto o assente).")
+
+    with st.expander("ℹ️ SLO Definizioni"):
+        import pandas as pd
+        df_slo = pd.DataFrame(
+            _SLO_DEFINITIONS,
+            columns=["Metrica", "Target", "Descrizione"],
+        )
+        st.dataframe(df_slo, use_container_width=True, hide_index=True)
 
     # ── Bottone refresh ────────────────────────────────────────────────────
     if st.button("🔄 Aggiorna stato"):
