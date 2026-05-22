@@ -470,7 +470,7 @@ class TestAppV8Navigation:
             "presentation.dashboard_engine.app_v8"
         )
         total = sum(len(pages) for pages in app.PAGES.values())
-        assert total == 29, f"Attese 29 pagine, trovate {total}"
+        assert total == 30, f"Attese 30 pagine, trovate {total}"
 
     def test_new_pages_are_starred(self):
         """Le 5 nuove pagine hanno ★ nel label."""
