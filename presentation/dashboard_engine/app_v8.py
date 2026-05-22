@@ -35,6 +35,7 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("M7 IB Consensus ★",        "M7_IB_Consensus"),
     ],
     "📊 MERCATI": [
+        ("H1 Health Matrix ★",       "H1_Market_Health_Matrix"),
         ("K1 Market Overview ★",     "K1_Market_Overview"),
         ("K2 Equity",                "K2_Equity"),
         ("K3 Bonds & Credit",        "K3_Bonds_Credit"),
@@ -74,7 +75,7 @@ def _render_page(active: str) -> None:
         fn_name = f"body_{active.lower()}"
         if hasattr(module, fn_name):
             import streamlit as st
-            from presentation.ui.theme import get_design_tokens
+            from presentation.ui.theme import load_design_tokens as get_design_tokens
             getattr(module, fn_name)(st, get_design_tokens())
         else:
             import streamlit as st
@@ -90,7 +91,7 @@ def _render_page(active: str) -> None:
 def main() -> None:  # pragma: no cover
     """Entry point per `streamlit run app_v8.py`."""
     import streamlit as st
-    from presentation.ui.theme import get_design_tokens
+    from presentation.ui.theme import load_design_tokens as get_design_tokens
 
     st.set_page_config(
         page_title="MarketAI v8.0", page_icon="📊",
