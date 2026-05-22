@@ -52,6 +52,12 @@ PAGES: dict[str, list[tuple[str, str]]] = {
         ("Q9 Labour Forecasting ★",  "Q9_Labour_Forecasting"),
         ("Q10 Surprise Heatmap ★",   "Q10_Surprise_Heatmap"),
         ("Q11 Options Analytics",    "Q11_Options_Analytics"),
+        ("Q12 Signal Scorecard ★",   "Q12_Signal_Scorecard"),
+        ("Q13 Model Registry ★",     "Q13_Model_Registry"),
+        ("Q14 Regime Timeline ★",    "Q14_Regime_Timeline"),
+        ("Q15 Risk Attribution ★",   "Q15_Risk_Attribution"),
+        ("Q16 Backtesting Pro ★",    "Q16_Backtesting_Pro"),
+        ("Q17 Vol Surface ★",        "Q17_Vol_Surface"),
     ],
     "📰 NEWS & IB FORECAST": [
         ("N1 News Feed ★",           "N1_News_Feed"),

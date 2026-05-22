@@ -274,3 +274,71 @@ mini_sprint_enabled: true             # 0.5 sett. mini-sprint per fase
 silent_failure_detector: true         # Rileva fallback silenziosi
 no_hardcode_enforcement: true         # ★ Regola 33 — verificato in CI
 cache_compliance_check: true          # ★ Regola 34 — verificato in CI
+
+# ══════════════════════════════════════════════════════════════════════════
+# ROADMAP MIGLIORAMENTO v1.0 — Phase A-G flags
+# ══════════════════════════════════════════════════════════════════════════
+
+# ━━ FASE A — Data Universe ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+bls_api:                      true
+cot_data_v2:                  true
+oecd_data:                    true
+world_bank_data:              true
+cboe_vol_data:                true
+fed_banking_data:             false
+sec_edgar_extended:           false
+data_vintage_tracking:        true
+audit_log_enabled:            true
+
+# ━━ FASE B — Signal Quality ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ic_rolling_calculator:        true
+signal_scorecard:             true
+alpha_decay_analysis:         true
+adaptive_composite_weights:   true
+hmm_macro_regime_v2:          true
+regime_change_detection:      true
+international_regime:         false
+
+# ━━ FASE C — Modelli Previsionali ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+conformal_prediction:         true
+model_registry:               true
+wfo_runner:                   true
+psr_calculator:               true
+fdr_correction:               true
+var_vecm_engine:              true
+xgboost_forecaster:           true
+prophet_forecaster_v2:        true
+nowcasting_midas:             false
+lstm_forecaster:              false
+tft_forecaster:               false
+scenario_tree:                true
+signal_ensemble_stacking:     true
+
+# ━━ FASE D — Risk & Portfolio ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+cvar_regime_conditional:      true
+factor_risk_attribution:      true
+component_var:                true
+liquidity_risk_analyzer:      true
+tail_hedge_advisor:           false
+portfolio_optimizer_cvxpy:    true
+
+# ━━ FASE E — Backtesting Pro ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+monte_carlo_paths:            true
+regime_conditional_backtest:  true
+capacity_estimation:          true
+
+# ━━ FASE F — Derivati e Volatilità ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+vol_surface_svi:              true
+vrp_calculator:               true
+vol_regime_markov:            true
+options_strategy_scanner:     false
+gex_calculator:               false
+cot_vix_signal:               true
+
+# ━━ FASE G — UI Dashboard Pages Q12-Q17 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ui_q12_signal_scorecard:      true
+ui_q13_model_registry:        true
+ui_q14_regime_timeline:       true
+ui_q15_risk_attribution:      true
+ui_q16_backtesting_pro:       true
+ui_q17_vol_surface:           true

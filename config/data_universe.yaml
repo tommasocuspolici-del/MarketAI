@@ -1,0 +1,729 @@
+# Data Universe — fonte di verità per tutte le serie dati (Convenzione 38)
+# 90+ serie catalogate con frequenza, lag, retention e provider
+#
+# Struttura per ogni serie:
+#   id                    — codice FRED (o provider equivalente)
+#   name                  — descrizione leggibile
+#   frequency             — daily | weekly | monthly | quarterly | annual
+#   publication_lag_days  — giorni tipici tra fine periodo e pubblicazione
+#   revision_frequency    — none | monthly | quarterly | annual
+#   retention_years       — anni di storico da mantenere in DuckDB
+#
+# v1.0 — 2026-05-22 — ROADMAP_MIGLIORAMENTO_v1 Phase A
+
+version: "1.0"
+generated: "2026-05-22"
+
+fred_series:
+
+  # ─── Labour Market ──────────────────────────────────────────────────────
+  labour:
+    existing:
+      - id: ICSA
+        name: "Initial Jobless Claims"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 25
+
+      - id: CCSA
+        name: "Continued Jobless Claims (Insured Unemployment)"
+        frequency: weekly
+        publication_lag_days: 11
+        revision_frequency: none
+        retention_years: 25
+
+      - id: PAYEMS
+        name: "All Employees: Total Nonfarm (NFP)"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: UNRATE
+        name: "Unemployment Rate"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 30
+
+    new:
+      - id: JTSJOL
+        name: "Job Openings: Total Nonfarm (JOLTS)"
+        frequency: monthly
+        publication_lag_days: 35
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: JTSQUR
+        name: "Quits Rate: Total Nonfarm (JOLTS)"
+        frequency: monthly
+        publication_lag_days: 35
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: JTSHIR
+        name: "Hires Rate: Total Nonfarm (JOLTS)"
+        frequency: monthly
+        publication_lag_days: 35
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: U6RATE
+        name: "Total Unemployed + Marginally Attached + Part-time (U-6)"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: CIVPART
+        name: "Civilian Labor Force Participation Rate"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: AHETPI
+        name: "Average Hourly Earnings: Total Private"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: AWHI
+        name: "Average Weekly Hours: Total Private"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: MANEMP
+        name: "All Employees: Manufacturing"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: USCONS
+        name: "All Employees: Construction"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: monthly
+        retention_years: 25
+
+  # ─── Inflation ──────────────────────────────────────────────────────────
+  inflation:
+    existing:
+      - id: CPIAUCSL
+        name: "Consumer Price Index: All Urban Consumers (CPI-U)"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: annual
+        retention_years: 30
+
+      - id: CPILFESL
+        name: "CPI: All Items Less Food & Energy (Core CPI)"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: annual
+        retention_years: 30
+
+      - id: PCEPI
+        name: "Personal Consumption Expenditures Price Index (PCE)"
+        frequency: monthly
+        publication_lag_days: 30
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: PCEPILFE
+        name: "PCE Excluding Food and Energy (Core PCE)"
+        frequency: monthly
+        publication_lag_days: 30
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: T5YIE
+        name: "5-Year Breakeven Inflation Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: T10YIE
+        name: "10-Year Breakeven Inflation Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+    new:
+      - id: CPIMEDSL
+        name: "CPI: Medical Care"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: annual
+        retention_years: 20
+
+      - id: CPIFABSL
+        name: "CPI: Food at Home"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: annual
+        retention_years: 20
+
+      - id: CPIENGSL
+        name: "CPI: Energy"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: annual
+        retention_years: 20
+
+      - id: PPIFIS
+        name: "Producer Price Index: Finished Goods"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: PPIACO
+        name: "Producer Price Index: All Commodities"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: MICH
+        name: "University of Michigan Inflation Expectations (1Y)"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: none
+        retention_years: 20
+
+      - id: EXPINF1YR
+        name: "1-Year Expected Inflation (Cleveland Fed)"
+        frequency: monthly
+        publication_lag_days: 21
+        revision_frequency: none
+        retention_years: 15
+
+      - id: EXPINF10YR
+        name: "10-Year Expected Inflation (Cleveland Fed)"
+        frequency: monthly
+        publication_lag_days: 21
+        revision_frequency: none
+        retention_years: 15
+
+  # ─── Interest Rates / Yield Curve ───────────────────────────────────────
+  rates:
+    existing:
+      - id: FEDFUNDS
+        name: "Effective Federal Funds Rate"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: none
+        retention_years: 30
+
+      - id: DFF
+        name: "Effective Federal Funds Rate (Daily)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DGS2
+        name: "2-Year Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DGS5
+        name: "5-Year Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DGS10
+        name: "10-Year Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DGS30
+        name: "30-Year Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: T10Y2Y
+        name: "10-Year minus 2-Year Treasury Spread"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: T10Y3M
+        name: "10-Year minus 3-Month Treasury Spread"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+    new:
+      - id: DGS1MO
+        name: "1-Month Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DGS3MO
+        name: "3-Month Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DGS1
+        name: "1-Year Treasury Constant Maturity Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DPRIME
+        name: "Bank Prime Loan Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: SOFR
+        name: "Secured Overnight Financing Rate (SOFR)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 10
+
+      - id: MORTGAGE30US
+        name: "30-Year Fixed Rate Mortgage Average"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 20
+
+      - id: MORTGAGE15US
+        name: "15-Year Fixed Rate Mortgage Average"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 15
+
+  # ─── Growth / Output ────────────────────────────────────────────────────
+  growth:
+    existing:
+      - id: GDP
+        name: "Gross Domestic Product (Nominal, Billions USD)"
+        frequency: quarterly
+        publication_lag_days: 28
+        revision_frequency: quarterly
+        retention_years: 30
+
+      - id: GDPC1
+        name: "Real Gross Domestic Product (Chained 2017 USD)"
+        frequency: quarterly
+        publication_lag_days: 28
+        revision_frequency: quarterly
+        retention_years: 30
+
+      - id: A191RL1Q225SBEA
+        name: "Real GDP Growth Rate (SAAR, quarterly annualized)"
+        frequency: quarterly
+        publication_lag_days: 28
+        revision_frequency: quarterly
+        retention_years: 30
+
+      - id: GDPPOT
+        name: "Real Potential Gross Domestic Product"
+        frequency: quarterly
+        publication_lag_days: 28
+        revision_frequency: quarterly
+        retention_years: 30
+
+      - id: INDPRO
+        name: "Industrial Production Index"
+        frequency: monthly
+        publication_lag_days: 17
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: IPMAN
+        name: "Industrial Production: Manufacturing"
+        frequency: monthly
+        publication_lag_days: 17
+        revision_frequency: monthly
+        retention_years: 25
+
+    new:
+      - id: RSAFS
+        name: "Advance Retail Sales: Retail & Food Services"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: PCE
+        name: "Personal Consumption Expenditures"
+        frequency: monthly
+        publication_lag_days: 30
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: PI
+        name: "Personal Income"
+        frequency: monthly
+        publication_lag_days: 30
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: DGORDER
+        name: "Manufacturers' New Orders: Durable Goods"
+        frequency: monthly
+        publication_lag_days: 27
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: NEWORDER
+        name: "Manufacturers' New Orders: Nondefense Capital Goods Ex Aircraft"
+        frequency: monthly
+        publication_lag_days: 27
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: CAPUTLB00004SQ
+        name: "Capacity Utilization: Total Industry"
+        frequency: monthly
+        publication_lag_days: 17
+        revision_frequency: monthly
+        retention_years: 20
+
+  # ─── Credit / Money Supply ──────────────────────────────────────────────
+  credit:
+    existing:
+      - id: M2SL
+        name: "M2 Money Supply"
+        frequency: monthly
+        publication_lag_days: 21
+        revision_frequency: monthly
+        retention_years: 30
+
+      - id: BOGMBASE
+        name: "Monetary Base (Adjusted)"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: TOTRESNS
+        name: "Total Reserves of Depository Institutions"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: WALCL
+        name: "Federal Reserve Total Assets (Balance Sheet)"
+        frequency: weekly
+        publication_lag_days: 11
+        revision_frequency: none
+        retention_years: 15
+
+      - id: BAMLH0A0HYM2
+        name: "ICE BofA US High Yield OAS (HY Spread)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: BAMLC0A0CM
+        name: "ICE BofA US Corporate Bond OAS (IG Spread)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: TEDRATE
+        name: "TED Spread (3M LIBOR minus 3M T-Bill)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+    new:
+      - id: DPSACBW027SBOG
+        name: "Deposits at Commercial Banks"
+        frequency: weekly
+        publication_lag_days: 11
+        revision_frequency: none
+        retention_years: 15
+
+      - id: CONSUMER
+        name: "Consumer Loans at Commercial Banks"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 15
+
+      - id: BUSLOANS
+        name: "Commercial and Industrial Loans"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: monthly
+        retention_years: 15
+
+      - id: BAMLHE00EHYIOAS
+        name: "ICE BofA Europe High Yield OAS"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: STLFSI4
+        name: "St. Louis Fed Financial Stress Index"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 15
+
+      - id: NFCI
+        name: "Chicago Fed National Financial Conditions Index"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 15
+
+  # ─── International / FX ─────────────────────────────────────────────────
+  international:
+    existing:
+      - id: DEXUSEU
+        name: "USD/EUR Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DEXJPUS
+        name: "JPY/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DEXCHUS
+        name: "CNY/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DEXUSUK
+        name: "USD/GBP Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+    new:
+      - id: DEXCAUS
+        name: "CAD/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DEXSFUS
+        name: "CHF/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DEXBZUS
+        name: "BRL/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DEXKOUS
+        name: "KRW/USD Exchange Rate"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 10
+
+  # ─── Risk / Volatility Indicators ───────────────────────────────────────
+  risk:
+    existing:
+      - id: VIXCLS
+        name: "CBOE Volatility Index (VIX)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+    new:
+      - id: OVXCLS
+        name: "CBOE Crude Oil Volatility Index (OVX)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 10
+
+      - id: GVZCLS
+        name: "CBOE Gold Volatility Index (GVZ)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 10
+
+      - id: VXEEMCLS
+        name: "CBOE Emerging Markets ETF Volatility Index (VXEEM)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 10
+
+  # ─── Housing ────────────────────────────────────────────────────────────
+  housing:
+    existing:
+      - id: HOUST
+        name: "Housing Starts: Total New Privately Owned"
+        frequency: monthly
+        publication_lag_days: 17
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: PERMIT
+        name: "New Private Housing Units Authorized by Building Permits"
+        frequency: monthly
+        publication_lag_days: 17
+        revision_frequency: monthly
+        retention_years: 25
+
+      - id: CSUSHPISA
+        name: "S&P/Case-Shiller U.S. National Home Price Index"
+        frequency: monthly
+        publication_lag_days: 56
+        revision_frequency: monthly
+        retention_years: 20
+
+    new:
+      - id: MSPUS
+        name: "Median Sales Price of Houses Sold"
+        frequency: quarterly
+        publication_lag_days: 28
+        revision_frequency: quarterly
+        retention_years: 20
+
+      - id: NHSLTOT
+        name: "Total New Homes Sold"
+        frequency: monthly
+        publication_lag_days: 27
+        revision_frequency: monthly
+        retention_years: 20
+
+  # ─── Energy / Commodities ───────────────────────────────────────────────
+  energy:
+    existing:
+      - id: DCOILWTICO
+        name: "Crude Oil Prices: WTI (USD/Barrel)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: DCOILBRENTEU
+        name: "Crude Oil Prices: Brent (USD/Barrel)"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 20
+
+      - id: GASREGW
+        name: "US Regular Conventional Gas Price"
+        frequency: weekly
+        publication_lag_days: 4
+        revision_frequency: none
+        retention_years: 15
+
+      - id: DHHNGSP
+        name: "Henry Hub Natural Gas Spot Price"
+        frequency: daily
+        publication_lag_days: 1
+        revision_frequency: none
+        retention_years: 15
+
+    new:
+      - id: PCOPPUSDM
+        name: "Global Price of Copper (USD/MT)"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: none
+        retention_years: 15
+
+      - id: PIORECRUSDM
+        name: "Global Price of Iron Ore (USD/DMT)"
+        frequency: monthly
+        publication_lag_days: 7
+        revision_frequency: none
+        retention_years: 15
+
+  # ─── Surveys / Sentiment Indicators ─────────────────────────────────────
+  surveys:
+    existing:
+      - id: UMCSENT
+        name: "University of Michigan Consumer Sentiment"
+        frequency: monthly
+        publication_lag_days: 14
+        revision_frequency: none
+        retention_years: 20
+
+    new:
+      - id: MTSDS133FMS
+        name: "Federal Surplus or Deficit"
+        frequency: monthly
+        publication_lag_days: 30
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: ISRATIO
+        name: "Total Business: Inventories to Sales Ratio"
+        frequency: monthly
+        publication_lag_days: 45
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: USSLIND
+        name: "US Leading Index"
+        frequency: monthly
+        publication_lag_days: 21
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: USALOLITONOSTSAM
+        name: "Composite Leading Indicators: Normalised (OECD)"
+        frequency: monthly
+        publication_lag_days: 45
+        revision_frequency: monthly
+        retention_years: 20
+
+      - id: RECPROUSM156N
+        name: "Smoothed U.S. Recession Probabilities (Chauvet-Piger)"
+        frequency: monthly
+        publication_lag_days: 45
+        revision_frequency: monthly
+        retention_years: 20
