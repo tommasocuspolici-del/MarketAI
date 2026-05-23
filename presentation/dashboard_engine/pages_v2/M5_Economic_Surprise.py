@@ -439,26 +439,35 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
 
     # ── Tab 3: Momentum ──────────────────────────────────────────────────────
     with tab_momentum:
-        st.subheader("Momentum ESI — Score Ultimi 12 Mesi")
+        st.subheader("Momentum ESI — Z-Score Mensile per Settore (12M)")
         try:
             import pandas as pd
+            # Aggrega economic_consensus per mese+settore: dà una serie storica
+            # immediata anche con una sola esecuzione della pipeline.
             rows = db.query(
-                "SELECT snapshot_date, sector, surprise_index, momentum_1m "
-                "FROM sector_surprise_index "
-                "WHERE snapshot_date >= CURRENT_DATE - INTERVAL 365 DAY "
-                "ORDER BY snapshot_date, sector"
+                "SELECT DATE_TRUNC('month', release_date::DATE) AS month_date, "
+                "       sector, AVG(surprise_z) AS avg_z, COUNT(*) AS n_obs "
+                "FROM economic_consensus "
+                "WHERE sector IN ('labour','growth','inflation','housing') "
+                "  AND surprise_z IS NOT NULL "
+                "  AND release_date >= CURRENT_DATE - INTERVAL 12 MONTH "
+                "GROUP BY 1, 2 "
+                "ORDER BY 1, 2"
             )
             if not rows:
                 st.info("Nessun dato momentum disponibile. Premi 'Carica consensus' per eseguire la pipeline.")
             else:
-                df = pd.DataFrame(rows, columns=["Data", "Settore", "Score", "Momentum"])
-                latest = pd.Timestamp(max(r[0] for r in rows)).date()
-                st.caption(f"Dati al {latest} · {len(rows)} osservazioni")
+                df = pd.DataFrame(rows, columns=["Data", "Settore", "Score", "N"])
+                df["Data"] = pd.to_datetime(df["Data"])
+                latest = df["Data"].max().date()
+                n_months = df["Data"].nunique()
+                st.caption(f"Dati al {latest} · {n_months} mesi · media z-score per settore")
                 for sector in sectors:
-                    sub = df[df["Settore"] == sector]
-                    if not sub.empty:
-                        st.line_chart(sub.set_index("Data")["Score"], height=150)
-                        st.caption(f"{sector_icons.get(sector, '')} {sector.capitalize()}")
+                    sub = df[df["Settore"] == sector].set_index("Data")["Score"]
+                    if not sub.empty and len(sub) > 0:
+                        icon = sector_icons.get(sector, "")
+                        st.caption(f"{icon} **{sector.capitalize()}**")
+                        st.line_chart(sub.sort_index(), height=150)
         except Exception as exc:
             st.warning(f"Momentum non disponibile: {exc}")
 
@@ -467,26 +476,48 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
         st.subheader("Contributo ESI al Composite Signal v2")
         try:
             import pandas as pd
+            import datetime as _dt
+
+            # KPI: valore segnale corrente da surprise_signal
+            sig_rows = db.query(
+                "SELECT signal_value, generated_at "
+                "FROM surprise_signal ORDER BY generated_at DESC LIMIT 1"
+            )
+            if sig_rows:
+                sig_val = sig_rows[0][0]
+                sig_ts  = sig_rows[0][1]
+                days_stale = (_dt.date.today() - pd.Timestamp(sig_ts).date()).days
+                col_sig, col_info = st.columns([1, 3])
+                with col_sig:
+                    st.metric(
+                        "Segnale ESI corrente",
+                        f"{sig_val:+.3f}" if sig_val is not None else "N/A",
+                        help="[-1,+1]: +1 sorprese positive · -1 negative",
+                    )
+                with col_info:
+                    if days_stale > 30:
+                        st.warning(f"⚠️ Segnale aggiornato {days_stale}g fa — premi 'Carica consensus' per aggiornare.")
+                    else:
+                        st.caption(f"Aggiornato il {pd.Timestamp(sig_ts).date()}")
+
+            # Grafico storico: media mensile z-score da economic_consensus
             rows = db.query(
-                "SELECT generated_at::DATE AS index_date, signal_value "
-                "FROM surprise_signal "
-                "ORDER BY generated_at DESC LIMIT 52"
+                "SELECT DATE_TRUNC('month', release_date::DATE) AS month_date, "
+                "       AVG(surprise_z) AS avg_z "
+                "FROM economic_consensus "
+                "WHERE surprise_z IS NOT NULL "
+                "  AND release_date >= CURRENT_DATE - INTERVAL 24 MONTH "
+                "GROUP BY 1 ORDER BY 1"
             )
             if not rows:
-                st.info("Nessun dato segnale disponibile. Premi 'Carica consensus' per eseguire la pipeline.")
+                st.info("Nessun dato storico. Premi 'Carica consensus' per eseguire la pipeline.")
             else:
-                import datetime as _dt
                 df = pd.DataFrame(rows, columns=["Data", "Segnale"])
-                df = df.sort_values("Data")
-                latest_sig = df["Data"].max()
-                days_stale = (_dt.date.today() - latest_sig).days if hasattr(latest_sig, "days") else (
-                    (_dt.date.today() - pd.Timestamp(latest_sig).date()).days
-                )
-                if days_stale > 30:
-                    st.warning(f"⚠️ Segnale aggiornato {days_stale}g fa — premi 'Carica consensus' per aggiornare.")
-                st.line_chart(df.set_index("Data")["Segnale"], height=300)
+                df["Data"] = pd.to_datetime(df["Data"])
+                df = df.set_index("Data").sort_index()
+                st.line_chart(df["Segnale"], height=280)
                 st.caption(
-                    "**Segnale** = ESI normalizzato [-1,+1] per Composite Signal v2. "
+                    "**Segnale mensile** = media z-score su tutti i settori. "
                     "+1 = economia sorprende positivamente · -1 = sorprese negative diffuse."
                 )
         except Exception as exc:
