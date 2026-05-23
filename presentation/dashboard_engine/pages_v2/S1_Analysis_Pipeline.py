@@ -43,7 +43,7 @@ def body_s1_analysis_pipeline(st, tokens) -> None:  # pragma: no cover
             db = get_duckdb_client()
             rows = db.query(
                 "SELECT computed_at, composite_score, recommended_action, confidence, "
-                "breakdown_json FROM engine_composite_signal "
+                "component_breakdown_json FROM engine_composite_signal "
                 "ORDER BY computed_at DESC LIMIT 1"
             )
             if not rows:

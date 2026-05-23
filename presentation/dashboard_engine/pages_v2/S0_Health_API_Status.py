@@ -131,15 +131,9 @@ def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
     # ── Health check componenti ────────────────────────────────────────────
     st.subheader("🔧 Componenti Sistema")
     try:
-        from shared.db.duckdb_client import get_duckdb_client
-        from shared.db.sqlite_client import get_sqlite_client
         from shared.health import HealthChecker
 
-        checker = HealthChecker(
-            duckdb_client=get_duckdb_client(),
-            sqlite_client=get_sqlite_client(),
-            cache_manager=None,
-        )
+        checker = HealthChecker()
         health = checker.check_all()
         render_health_status_bar(st, health)
 
