@@ -1,6 +1,7 @@
 """macro_heatmap — Settimana 6.
 
-Griglia 4×7 con semaforo (Verde/Giallo/Rosso) per le 28 serie FRED.
+Griglia per tematica con semaforo (Verde/Giallo/Rosso) per le serie FRED.
+Max 5 celle per riga, raggruppate per categoria.
 Regola 20: zero colori hardcoded → usa variabili CSS/token.
 """
 from __future__ import annotations
@@ -33,14 +34,13 @@ _FRED_THRESHOLDS: dict[str, tuple[str, bool, float, float]] = {
     "TEDRATE":       ("TED",     False, 40, 80),
     "NFCI":          ("NFCI",    False, 0.0, 1.0),
     # Growth
-    "INDPRO":  ("IndProd",  True,  0.0, -1.0),
-    "GDP":     ("GDP",      True,  2.0,  0.5),
+    "INDPRO":          ("IndProd",  True,  0.0, -1.0),
+    "A191RL1Q225SBEA": ("GDP%",     True,  2.0,  0.5),
     # Sentiment / Housing
     "UMCSENT": ("Sentiment",True,  70.0, 55.0),
     "HOUST":   ("Housing",  True,  1400, 1000),
     # International / Trade
     "USSLIND": ("LeadInd",  True,  100, 98),
-    "BAMLH0A0HYM2OAS": ("HY Spr", False, 350, 600),
     # PMI / ISM (proxy: NAPM)
     "NAPM":    ("ISM",      True,  50.0, 45.0),
     # Oil / Commodity
@@ -54,35 +54,67 @@ _FRED_THRESHOLDS: dict[str, tuple[str, bool, float, float]] = {
     "UNRATE":  ("Unemp", False, 4.5,  6.0),
 }
 
+# Raggruppamento tematico — max 5 serie per riga
+_FRED_GROUPS: list[tuple[str, list[str]]] = [
+    ("💼 Mercato del Lavoro", ["ICSA", "CCSA", "PAYEMS", "UNRATE"]),
+    ("🔥 Inflazione",         ["CPIAUCSL", "CPILFESL", "T10YIE"]),
+    ("📈 Tassi & Curva",      ["FEDFUNDS", "DGS3MO", "DGS2", "DGS10", "T10Y2Y", "T10Y3M"]),
+    ("💳 Credit & Liquidità", ["BAMLH0A0HYM2", "BAMLC0A0CM", "TEDRATE", "NFCI"]),
+    ("🏭 Crescita & PMI",     ["A191RL1Q225SBEA", "INDPRO", "NAPM", "HOUST"]),
+    ("😊 Sentiment",          ["UMCSENT", "USSLIND"]),
+    ("🛢 Commodity & FX",     ["DCOILWTICO", "DTWEXBGS", "VIXCLS", "M2SL"]),
+]
+
 
 def render_macro_heatmap(st, series_data: dict[str, Optional[float]]) -> None:
-    """Renderizza la griglia 4×7 delle 28 serie FRED con semaforo.
+    """Renderizza le serie FRED per tematica con semaforo, max 5 per riga.
 
     Args:
         st:           Modulo streamlit.
         series_data:  {series_id: latest_value}. Valori None → grigio.
     """
-    cells_html = []
-    for sid, (label, positive_good, green_thr, yellow_thr) in _FRED_THRESHOLDS.items():
-        val = series_data.get(sid)
-        color, emoji = _classify_traffic(val, positive_good, green_thr, yellow_thr)
-        val_str = _format_val(val, sid)
-        cells_html.append(
-            f'<div style="background:{color}22;border:1px solid {color};'
-            f'border-radius:6px;padding:6px 4px;text-align:center;min-width:80px">'
-            f'<div style="font-size:1rem">{emoji}</div>'
-            f'<div style="font-size:0.7rem;font-weight:600;color:{color}">{label}</div>'
-            f'<div style="font-size:0.68rem;color:#9CA3AF">{val_str}</div>'
-            f'</div>'
-        )
-
-    # Layout griglia 7 colonne × 4 righe
-    grid_html = (
-        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'
-        + "".join(cells_html)
-        + "</div>"
+    _HEADER_STYLE = (
+        "font-size:0.72rem;font-weight:700;color:#9CA3AF;"
+        "text-transform:uppercase;letter-spacing:0.07em;margin:10px 0 4px 2px"
     )
-    st.markdown(grid_html, unsafe_allow_html=True)
+    _CELL_STYLE = (
+        "border-radius:6px;padding:8px 4px;text-align:center"
+    )
+
+    for group_label, sids in _FRED_GROUPS:
+        st.markdown(
+            f'<div style="{_HEADER_STYLE}">{group_label}</div>',
+            unsafe_allow_html=True,
+        )
+        # Split into chunks of max 5
+        for chunk_start in range(0, len(sids), 5):
+            chunk = sids[chunk_start:chunk_start + 5]
+            cells_html = []
+            for sid in chunk:
+                if sid not in _FRED_THRESHOLDS:
+                    continue
+                label, positive_good, green_thr, yellow_thr = _FRED_THRESHOLDS[sid]
+                val = series_data.get(sid)
+                color, emoji = _classify_traffic(val, positive_good, green_thr, yellow_thr)
+                val_str = _format_val(val, sid)
+                cells_html.append(
+                    f'<div style="background:{color}22;border:1px solid {color};'
+                    f'{_CELL_STYLE}">'
+                    f'<div style="font-size:1rem">{emoji}</div>'
+                    f'<div style="font-size:0.7rem;font-weight:600;color:{color}">{label}</div>'
+                    f'<div style="font-size:0.68rem;color:#9CA3AF">{val_str}</div>'
+                    f'</div>'
+                )
+            n_cols = len(cells_html)
+            if n_cols == 0:
+                continue
+            grid_html = (
+                f'<div style="display:grid;grid-template-columns:repeat({n_cols},1fr);'
+                f'gap:4px;margin-bottom:4px">'
+                + "".join(cells_html)
+                + "</div>"
+            )
+            st.markdown(grid_html, unsafe_allow_html=True)
 
 
 def build_series_data_from_repo(macro_repo) -> dict[str, Optional[float]]:

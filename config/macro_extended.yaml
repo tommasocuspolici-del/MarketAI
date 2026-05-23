@@ -37,9 +37,10 @@ liquidity:                              # Miglioria #15
   - { id: "NFCI",    label: "Chicago Fed Financial Conditions",   freq: "weekly" }
 
 growth_activity:
-  - { id: "GDPC1",   label: "Real GDP QoQ annualizzato",          freq: "quarterly" }
-  - { id: "INDPRO",  label: "Industrial Production",               freq: "monthly" }
-  - { id: "RETAILSMNSA", label: "Retail Sales (NSA)",              freq: "monthly" }
+  - { id: "GDPC1",            label: "Real GDP (level, chained 2017 USD)",       freq: "quarterly" }
+  - { id: "A191RL1Q225SBEA",  label: "Real GDP Growth Rate (SAAR, quarterly)",   freq: "quarterly" }
+  - { id: "INDPRO",           label: "Industrial Production",                     freq: "monthly" }
+  - { id: "RETAILSMNSA",      label: "Retail Sales (NSA)",                        freq: "monthly" }
 
 housing:                                # Miglioria #13
   - { id: "HOUST",   label: "Housing Starts",                      freq: "monthly" }
@@ -49,3 +50,15 @@ housing:                                # Miglioria #13
 pmi_surveys:                            # Miglioria #12
   - { id: "MANEMP",  label: "Manufacturing Employment",            freq: "monthly" }
   - { id: "NAPM",    label: "ISM Manufacturing PMI (proxy)",       freq: "monthly" }
+
+sentiment_leading:
+  - { id: "UMCSENT",  label: "University of Michigan Consumer Sentiment", freq: "monthly" }
+  - { id: "USSLIND",  label: "US Conference Board Leading Economic Index", freq: "monthly" }
+
+commodities_fx:
+  - { id: "DCOILWTICO", label: "WTI Crude Oil Price",              freq: "daily" }
+  - { id: "DTWEXBGS",   label: "Nominal Broad Dollar Index (Fed)", freq: "daily" }
+  - { id: "VIXCLS",     label: "CBOE Volatility Index (VIX)",      freq: "daily" }
+
+money_supply:
+  - { id: "M2SL",  label: "M2 Money Supply",                       freq: "monthly" }

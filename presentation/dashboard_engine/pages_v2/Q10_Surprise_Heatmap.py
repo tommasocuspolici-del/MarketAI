@@ -57,7 +57,7 @@ def body_q10_surprise_heatmap(st, tokens) -> None:  # pragma: no cover
                 except Exception as exc:
                     st.error(f"Errore pipeline: {type(exc).__name__}: {exc}")
     with cols_top[2]:
-        if st.button("Aggiorna", key="q10v2_refresh"):
+        if st.button("🔄 Aggiorna", key="q10v2_refresh"):
             st.cache_data.clear()
             st.rerun()
 
