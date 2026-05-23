@@ -59,11 +59,17 @@ CREATE TABLE IF NOT EXISTS valuation_signal (
 );
 
 -- ─── Aggiunta colonne mancanti se tabelle già esistono ───────────────────────
--- DuckDB supporta ALTER TABLE ADD COLUMN IF NOT EXISTS dalla v0.9+
+-- DuckDB non permette ALTER TABLE su tabelle con indici dipendenti:
+-- rimuoviamo l'indice prima dell'ALTER e lo ricreiamo dopo.
+
+DROP INDEX IF EXISTS idx_pe_metrics_ticker_date;
 
 ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS risk_free_rate DOUBLE;
 ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS data_source VARCHAR DEFAULT 'edgar+fred';
 ALTER TABLE pe_metrics ADD COLUMN IF NOT EXISTS forward_pe_pct DOUBLE;
+
+CREATE INDEX IF NOT EXISTS idx_pe_metrics_ticker_date
+    ON pe_metrics (ticker, metric_date DESC);
 
 -- ─── OHLCV data (tabella generica per prezzi storici e crypto) ───────────────
 CREATE TABLE IF NOT EXISTS ohlcv_data (

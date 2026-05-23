@@ -6,11 +6,12 @@
 # ============================================================================
 
 labour_market:                          # Miglioria #2: Claims + JOLTS
-  - { id: "ICSA",    label: "Initial Jobless Claims (weekly)",    freq: "weekly" }
-  - { id: "CCSA",    label: "Continued Claims (weekly)",          freq: "weekly" }
-  - { id: "JTSJOL",  label: "Job Openings (JOLTS monthly)",       freq: "monthly" }
-  - { id: "PAYEMS",  label: "Nonfarm Payrolls (monthly)",         freq: "monthly" }
-  - { id: "UNRATE",  label: "Unemployment Rate",                  freq: "monthly" }
+  - { id: "ICSA",          label: "Initial Jobless Claims (weekly)",    freq: "weekly" }
+  - { id: "CCSA",          label: "Continued Claims (weekly)",          freq: "weekly" }
+  - { id: "JTSJOL",        label: "Job Openings (JOLTS monthly)",       freq: "monthly" }
+  - { id: "PAYEMS",        label: "Nonfarm Payrolls (monthly)",         freq: "monthly" }
+  - { id: "UNRATE",        label: "Unemployment Rate",                  freq: "monthly" }
+  - { id: "CES0500000003", label: "Average Hourly Earnings MoM",        freq: "monthly" }
 
 inflation:
   - { id: "CPIAUCSL", label: "CPI Urban All Items YoY",           freq: "monthly" }
@@ -41,6 +42,8 @@ growth_activity:
   - { id: "A191RL1Q225SBEA",  label: "Real GDP Growth Rate (SAAR, quarterly)",   freq: "quarterly" }
   - { id: "INDPRO",           label: "Industrial Production",                     freq: "monthly" }
   - { id: "RETAILSMNSA",      label: "Retail Sales (NSA)",                        freq: "monthly" }
+  - { id: "RSAFS",            label: "Retail and Food Services Sales",            freq: "monthly" }
+  - { id: "BOPGSTB",          label: "Trade Balance (Goods & Services)",          freq: "monthly" }
 
 housing:                                # Miglioria #13
   - { id: "HOUST",   label: "Housing Starts",                      freq: "monthly" }

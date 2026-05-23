@@ -139,13 +139,77 @@ def _load_indicator_weights_from_yaml() -> dict[str, dict[str, float]]:
     return weights
 
 
+def _fetch_surprise_fred_if_needed(db) -> int:
+    """Fetch FRED series for surprise indicators into macro_series if missing."""
+    import asyncio
+    from pathlib import Path
+    import yaml
+
+    yaml_path = Path(__file__).resolve().parents[3] / "config" / "surprise_engine.yaml"
+    try:
+        with yaml_path.open() as f:
+            cfg = yaml.safe_load(f) or {}
+    except Exception:
+        return 0
+
+    needed = {
+        ind.get("fred_actual", "")
+        for sector_cfg in cfg.get("sectors", {}).values()
+        for ind in sector_cfg.get("indicators", [])
+        if ind.get("fred_actual")
+    }
+    needed.discard("")
+    if not needed:
+        return 0
+
+    try:
+        placeholders = ", ".join(["?"] * len(needed))
+        existing = {
+            r[0] for r in db.query(
+                f"SELECT DISTINCT series_id FROM macro_series WHERE series_id IN ({placeholders})",
+                list(needed),
+            )
+        }
+        missing = needed - existing
+    except Exception:
+        missing = needed
+
+    if not missing:
+        return 0
+
+    try:
+        from engine.market_data.fetchers.fred_fetcher import FREDFetcher
+        from shared.db.macro_repo import get_macro_repository
+
+        fetcher = FREDFetcher()
+        repo = get_macro_repository()
+        rows_total = 0
+
+        async def _fetch_all() -> None:
+            nonlocal rows_total
+            for sid in sorted(missing):
+                try:
+                    outcome = await fetcher.fetch(series_id=sid)
+                    if outcome and not outcome.cleaned_df.empty:
+                        rows_total += repo.write_macro_series(
+                            series_id=sid, df=outcome.cleaned_df, source="fred"
+                        )
+                except Exception:
+                    pass
+
+        asyncio.run(_fetch_all())
+        return rows_total
+    except Exception:
+        return 0
+
+
 def _run_surprise_pipeline(db, st_module) -> dict:
     """Esegue la pipeline completa economic surprise.
 
     Ritorna dict con campi: yaml_rows, macro_rows, calc_rows, sector_count, signal_value.
     """
     st = st_module
-    result = {"yaml_rows": 0, "macro_rows": 0, "calc_rows": 0, "sector_count": 0, "signal_value": None, "extended_window": False}
+    result = {"yaml_rows": 0, "macro_rows": 0, "calc_rows": 0, "sector_count": 0, "signal_value": None, "extended_window": False, "fred_fetched": 0}
 
     try:
         from shared.db.duckdb_migrator import run_pending_migrations
@@ -162,6 +226,8 @@ def _run_surprise_pipeline(db, st_module) -> dict:
     except Exception as exc:
         st.error(f"Errore ConsensusLoader: {type(exc).__name__}: {exc}")
         return result
+
+    result["fred_fetched"] = _fetch_surprise_fred_if_needed(db)
 
     # Fallback consensus FRED-derived per dati storici (non sostituisce yaml_manual)
     try:
@@ -238,9 +304,11 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
                     db_pipe = get_duckdb_client()
                     r = _run_surprise_pipeline(db_pipe, st)
                     parts = [f"Consensus YAML: {r['yaml_rows']} righe"]
+                    if r["fred_fetched"] > 0:
+                        parts.append(f"FRED auto-fetch: {r['fred_fetched']} righe")
                     if r["macro_rows"] > 0:
                         parts.append(f"Actuals da FRED: {r['macro_rows']} righe")
-                    else:
+                    elif r["fred_fetched"] == 0:
                         parts.append("Actuals: 0 — carica prima FRED da M3 Labour Market")
                     if r["calc_rows"] > 0:
                         parts.append(f"Z-score calcolati: {r['calc_rows']} righe")
