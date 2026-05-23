@@ -86,13 +86,13 @@ def body_s1_analysis_pipeline(st, tokens) -> None:  # pragma: no cover
                 df_h = pd.DataFrame(rows_h, columns=["ts", "score"]).sort_values("ts")
                 fig = go.Figure(go.Scatter(
                     x=df_h["ts"], y=df_h["score"].astype(float),
-                    mode="lines+markers", line=dict(color=tokens.accent_primary, width=2),
+                    mode="lines+markers", line=dict(color=tokens.colors.accent_primary, width=2),
                 ))
                 fig.add_hline(y=0, line_dash="dash", line_color="gray")
                 fig.update_layout(
                     height=200, margin=dict(l=0, r=0, t=10, b=0),
-                    plot_bgcolor=tokens.bg_secondary, paper_bgcolor=tokens.bg_secondary,
-                    font=dict(color=tokens.text_primary),
+                    plot_bgcolor=tokens.colors.bg_secondary, paper_bgcolor=tokens.colors.bg_secondary,
+                    font=dict(color=tokens.colors.text_primary),
                     yaxis=dict(range=[-1.05, 1.05], title="Score"),
                 )
                 st.plotly_chart(fig, use_container_width=True)
@@ -139,8 +139,8 @@ def body_s1_analysis_pipeline(st, tokens) -> None:  # pragma: no cover
             fig_ic.add_hline(y=IC_MIN_THRESHOLD, line_dash="dash", line_color="red")
             fig_ic.update_layout(
                 height=260, margin=dict(l=0, r=0, t=20, b=80),
-                plot_bgcolor=tokens.bg_secondary, paper_bgcolor=tokens.bg_secondary,
-                font=dict(color=tokens.text_primary),
+                plot_bgcolor=tokens.colors.bg_secondary, paper_bgcolor=tokens.colors.bg_secondary,
+                font=dict(color=tokens.colors.text_primary),
                 xaxis=dict(tickangle=-30), yaxis_title="IC",
             )
             st.plotly_chart(fig_ic, use_container_width=True)
@@ -176,7 +176,7 @@ def body_s1_analysis_pipeline(st, tokens) -> None:  # pragma: no cover
                 ))
                 fig_e.update_layout(
                     height=280, margin=dict(l=0, r=0, t=10, b=0),
-                    paper_bgcolor=tokens.bg_secondary, font=dict(color=tokens.text_primary),
+                    paper_bgcolor=tokens.colors.bg_secondary, font=dict(color=tokens.colors.text_primary),
                 )
                 st.plotly_chart(fig_e, use_container_width=True)
         except Exception as exc:
@@ -255,8 +255,8 @@ def body_s1_analysis_pipeline(st, tokens) -> None:  # pragma: no cover
                             fig_wf.add_hline(y=0.5, line_dash="dash", line_color="green")
                             fig_wf.update_layout(
                                 height=240, margin=dict(l=0,r=0,t=20,b=0),
-                                plot_bgcolor=tokens.bg_secondary, paper_bgcolor=tokens.bg_secondary,
-                                font=dict(color=tokens.text_primary), yaxis_title="OOS Sharpe",
+                                plot_bgcolor=tokens.colors.bg_secondary, paper_bgcolor=tokens.colors.bg_secondary,
+                                font=dict(color=tokens.colors.text_primary), yaxis_title="OOS Sharpe",
                             )
                             st.plotly_chart(fig_wf, use_container_width=True)
                     except Exception as exc:

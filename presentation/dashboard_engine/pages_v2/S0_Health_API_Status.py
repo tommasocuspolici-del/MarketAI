@@ -135,7 +135,7 @@ def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
 
         checker = HealthChecker()
         health = checker.check_all()
-        render_health_status_bar(st, health)
+        render_health_status_bar(tokens, health)
 
         cols = st.columns(len(health.components))
         for col, comp in zip(cols, health.components):
