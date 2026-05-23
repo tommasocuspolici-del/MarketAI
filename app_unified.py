@@ -79,8 +79,8 @@ def _engine_page(module_name: str) -> Callable[[], None]:
             )
             fn_name = f"body_{module_name.lower()}"
             if hasattr(mod, fn_name):
-                from presentation.ui.theme import get_design_tokens
-                getattr(mod, fn_name)(st, get_design_tokens())
+                from presentation.ui.theme import load_design_tokens
+                getattr(mod, fn_name)(st, load_design_tokens())
             else:
                 st.info(f"Pagina `{module_name}` in costruzione.")
         except ModuleNotFoundError:
