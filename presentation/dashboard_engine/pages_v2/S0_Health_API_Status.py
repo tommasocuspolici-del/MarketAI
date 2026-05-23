@@ -155,7 +155,7 @@ def body_s0_health_api_status(st, tokens) -> None:  # pragma: no cover
     # ── Status API fonti dati ──────────────────────────────────────────────
     st.subheader("🌐 Fonti Dati API")
     try:
-        from engine.market_data.api_health_checker import ApiHealthChecker
+        from engine.market_data.hardening.api_health_checker import ApiHealthChecker
         checker_api = ApiHealthChecker()
         results = checker_api.check_all()
 

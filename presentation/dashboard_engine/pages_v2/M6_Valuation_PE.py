@@ -42,8 +42,8 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
         st.subheader("Metriche Valuation Correnti")
         try:
             rows = db.query(
-                "SELECT pe_trailing, pe_forward, cape, erp_implied, pe_date "
-                "FROM pe_metrics ORDER BY pe_date DESC LIMIT 1"
+                "SELECT trailing_pe, forward_pe, shiller_cape, erp_implied, metric_date "
+                "FROM pe_metrics ORDER BY metric_date DESC LIMIT 1"
             )
             if not rows:
                 st.info("Nessun dato PE disponibile. Eseguire il ValuationSignalGenerator.")
@@ -111,8 +111,8 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
             import plotly.graph_objects as go
 
             rows = db.query(
-                "SELECT pe_date, pe_trailing, pe_forward, cape "
-                "FROM pe_metrics ORDER BY pe_date ASC LIMIT 5000"
+                "SELECT metric_date, trailing_pe, forward_pe, shiller_cape "
+                "FROM pe_metrics ORDER BY metric_date ASC LIMIT 5000"
             )
             if not rows:
                 st.info("Nessuna storia disponibile.")
@@ -153,9 +153,9 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
         st.subheader("Z-Score vs 20Y (contestualizzazione storica)")
         try:
             rows = db.query(
-                "SELECT pe_date, zscore_trailing, zscore_forward, zscore_cape "
-                "FROM pe_metrics WHERE zscore_trailing IS NOT NULL "
-                "ORDER BY pe_date ASC LIMIT 5000"
+                "SELECT metric_date, trailing_pe_zscore, forward_pe_zscore, cape_zscore "
+                "FROM pe_metrics WHERE trailing_pe_zscore IS NOT NULL "
+                "ORDER BY metric_date ASC LIMIT 5000"
             )
             if rows:
                 import pandas as pd
@@ -195,8 +195,8 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
             import pandas as pd
             import plotly.graph_objects as go
             rows = db.query(
-                "SELECT pe_date, erp_implied FROM pe_metrics "
-                "WHERE erp_implied IS NOT NULL ORDER BY pe_date ASC LIMIT 5000"
+                "SELECT metric_date, erp_implied FROM pe_metrics "
+                "WHERE erp_implied IS NOT NULL ORDER BY metric_date ASC LIMIT 5000"
             )
             if not rows:
                 st.info("ERP non disponibile — verificare TY10 in yield_curve_snapshots.")

@@ -110,6 +110,8 @@ def body_k4_commodity_futures(st, tokens) -> None:  # pragma: no cover
         unsafe_allow_html=True,
     )
 
-    if st.button("🔄 Aggiorna"):
-        _load_futures_analyses.clear()
-        st.rerun()
+    cols_top = st.columns([4, 1])
+    with cols_top[1]:
+        if st.button("🔄 Aggiorna", key="k4_refresh"):
+            st.cache_data.clear()
+            st.rerun()

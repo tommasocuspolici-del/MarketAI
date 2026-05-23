@@ -58,6 +58,8 @@ def body_m1_macro_dashboard(st, tokens) -> None:  # pragma: no cover
     except Exception:
         pass
 
-    if st.button("🔄 Aggiorna"):
-        _load_series_data.clear()
-        st.rerun()
+    cols_top2 = st.columns([4, 1])
+    with cols_top2[1]:
+        if st.button("🔄 Aggiorna", key="m1_refresh"):
+            st.cache_data.clear()
+            st.rerun()

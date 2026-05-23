@@ -319,7 +319,15 @@
       "Bash(xargs grep -n \"= 42\\\\|= \\\\\"42\\\\\"\\\\|seed.*42\")",
       "Bash(python -m pytest tests/architecture/test_layer_boundaries.py -v)",
       "Bash(xargs grep -l \"^def \")",
-      "Bash(grep -r \"def [a-zA-Z_].*\\([^\\)]*\\)[^:]*$\\\\|def [a-zA-Z_].*\\([^\\)]*\\) -> None:\\\\|def [a-zA-Z_].*\\([^\\)]*\\) ->\" \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\engine\")"
+      "Bash(grep -r \"def [a-zA-Z_].*\\([^\\)]*\\)[^:]*$\\\\|def [a-zA-Z_].*\\([^\\)]*\\) -> None:\\\\|def [a-zA-Z_].*\\([^\\)]*\\) ->\" \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\engine\")",
+      "Bash(python -m pytest tests/presentation/ tests/regression/ -x -q --no-header)",
+      "Bash(py -m pytest tests/presentation/ tests/regression/ -x -q --no-header)",
+      "Bash(./.venv/Scripts/python.exe -c \"import scripts.run_scheduler; print\\('OK scheduler'\\)\")",
+      "Bash(./.venv/Scripts/python.exe -m py_compile presentation/dashboard_engine/pages_v2/*.py)",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(./.venv/Scripts/pytest.exe tests/presentation tests/regression tests/architecture -x -q --no-header --no-cov)",
+      "Bash(./.venv/Scripts/pytest.exe tests/engine -q --no-header --no-cov -x -m \"not slow and not integration\" --ignore=tests/engine/test_fetchers)",
+      "Bash(./.venv/Scripts/pytest.exe tests/shared tests/bridge tests/personal -q --no-header --no-cov -x -m \"not slow and not integration\")"
     ]
   },
   "prefersReducedMotion": false
