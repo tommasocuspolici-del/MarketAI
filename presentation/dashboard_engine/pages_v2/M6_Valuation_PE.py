@@ -241,7 +241,7 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
                 "WHERE erp_implied IS NOT NULL ORDER BY metric_date ASC LIMIT 5000"
             )
             if not rows:
-                st.info("ERP non disponibile — verificare TY10 in yield_curve_snapshots.")
+                st.info("ERP non disponibile — richiede Forward PE da fundamentals_valuation (Alpha Vantage).")
             else:
                 df = pd.DataFrame(rows, columns=["date", "erp"])
                 df["date"] = pd.to_datetime(df["date"])
