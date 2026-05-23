@@ -7,10 +7,10 @@ Regola 8: numpy per calcoli statistici.
 """
 from __future__ import annotations
 
-import logging
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import numpy as np
 from scipy import stats
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Medie storiche approssimate S&P 500 (1990-2025) per fallback senza storico DB
 _HISTORICAL_FALLBACK = {

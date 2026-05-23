@@ -87,7 +87,13 @@ def _job_vix_strategy() -> None:
 # Settimana 8: usa CompositeSignalAggregator (modulo definitivo)
 
 def _job_analysis_pipeline() -> None:
-    """CompositeSignalAggregator → engine_composite_signal."""
+    """Aggiorna valuation signal, correlation regime e CompositeSignalAggregator.
+
+    Ordine esecuzione:
+      1. ValuationSignalGenerator.compute() → valuation_signal
+      2. CrossAssetMatrix.compute()         → cross_asset_regime
+      3. CompositeSignalAggregator.compute()→ engine_composite_signal
+    """
     t0 = time.monotonic()
     try:
         from engine.alpha_generation.composite_signal_aggregator import (
@@ -99,6 +105,61 @@ def _job_analysis_pipeline() -> None:
         db         = get_duckdb_client()
         macro_repo = get_macro_repository()
 
+        # ── 1. Valuation signal (12% peso nel composite) ──────────────────
+        try:
+            from engine.analytics.valuation.valuation_signal_generator import (
+                ValuationSignalGenerator,
+            )
+            val_gen = ValuationSignalGenerator(client=db)
+            val_result = val_gen.compute("^GSPC")
+            log.info(
+                "scheduler.pipeline.valuation_updated",
+                score=round(val_result.valuation_score, 3),
+                label=val_result.label,
+            )
+        except Exception as exc:
+            log.warning("scheduler.pipeline.valuation_failed", error=str(exc)[:120])
+
+        # ── 2. Cross-asset correlation signal (5% peso nel composite) ─────
+        try:
+            import pandas as pd
+            from engine.analytics.correlation.cross_asset_matrix import CrossAssetMatrix
+            from shared.db.prices_repo import get_prices_repository
+            from shared.types import TimeFrame
+
+            prices_repo = get_prices_repository()
+            _universe_tickers = [
+                "SPY", "IWM", "QQQ", "TLT", "IEF",
+                "HYG", "LQD", "GLD", "USO", "COPX", "UUP", "FXE",
+            ]
+            frames: dict[str, pd.Series] = {}
+            for _tkr in _universe_tickers:
+                try:
+                    _df = prices_repo.read_prices(_tkr, timeframe=TimeFrame.D1, limit=504)
+                    if _df is not None and not _df.empty and "close" in _df.columns:
+                        frames[_tkr] = _df["close"].rename(_tkr)
+                except Exception:
+                    pass
+
+            if len(frames) >= 3:
+                prices_df = pd.concat(frames, axis=1).sort_index().dropna(how="all")
+                returns_df = prices_df.pct_change(fill_method=None).dropna(how="all")
+                matrix = CrossAssetMatrix(client=db)
+                mat_result = matrix.compute(returns_df)
+                log.info(
+                    "scheduler.pipeline.correlation_updated",
+                    diversification=round(mat_result.diversification_score, 3),
+                    signal=round(mat_result.correlation_signal, 3),
+                    vix_regime=mat_result.vix_regime,
+                    n_assets=len(mat_result.asset_names),
+                )
+            else:
+                log.warning("scheduler.pipeline.correlation_insufficient_prices",
+                            n_available=len(frames))
+        except Exception as exc:
+            log.warning("scheduler.pipeline.correlation_failed", error=str(exc)[:120])
+
+        # ── 3. Composite signal aggregation ───────────────────────────────
         agg    = CompositeSignalAggregator(duckdb=db, macro_repo=macro_repo)
         output = agg.compute()
 
@@ -351,14 +412,6 @@ def _job_retention() -> None:
     except Exception as exc:
         error_budget.record_error()
         log.error("scheduler.retention_failed", error=str(exc))
-
-
-def _check_error_budget() -> None:
-    if error_budget.is_tripped:
-        status = error_budget.status()
-        log.warning("scheduler.error_budget_tripped",
-                    error_rate_pct=status.error_rate_pct,
-                    threshold_pct=status.threshold_pct)
 
 
 # ─── JOB: Labour Regime Classifier (venerdì 18:00 UTC) ──────────────────────

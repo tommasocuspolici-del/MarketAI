@@ -13,18 +13,19 @@ Regola 8: numpy/scipy per calcoli.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+from shared.logger import get_logger
+
 if TYPE_CHECKING:
     pass
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Grid search lambda EWMA (range: 0.90 - 0.99, step 0.01)
 _LAMBDA_GRID   = np.arange(0.90, 1.00, 0.01)
@@ -92,7 +93,7 @@ class DCCEWMAEnhanced:
             DCCEWMAEnhancedResult con matrice correlazione + pairwise details.
         """
         if returns.empty or len(returns) < self._min_periods:
-            log.warning("dcc_ewma_enhanced.insufficient_data n_rows=%d", len(returns))
+            log.warning("dcc_ewma_enhanced.insufficient_data", n_rows=len(returns))
             n = len(returns.columns)
             return DCCEWMAEnhancedResult(
                 correlation_matrix=np.eye(n),

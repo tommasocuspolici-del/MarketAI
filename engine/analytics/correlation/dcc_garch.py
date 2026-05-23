@@ -20,10 +20,10 @@ Regola 8: numpy per calcoli matriciali.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import numpy as np
 import pandas as pd
 
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 __version__ = "1.0.0"
 __all__ = ["DCCGARCHAnalyzer", "DCCGARCHResult"]
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # DCC parametri α e β (stima iniziale — MLE completo richiede ottimizzazione)
 _DCC_ALPHA_DEFAULT = 0.04

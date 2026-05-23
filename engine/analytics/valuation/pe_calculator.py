@@ -12,10 +12,10 @@ Regola 12: legge da DuckDB, non fa fetch inline.
 """
 from __future__ import annotations
 
-import logging
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import numpy as np
 
 from engine.analytics.valuation.schemas import PEMetrics
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Regimi ERP (Equity Risk Premium) basati su dati storici S&P 500 1990-2025
 _ERP_ATTRACTIVE  =  0.03   # > 3%  → azioni attraenti vs bond

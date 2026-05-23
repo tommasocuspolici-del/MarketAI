@@ -9,7 +9,6 @@ Regola 27: persist via DuckDB.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING
@@ -18,12 +17,13 @@ import numpy as np
 import pandas as pd
 
 from engine.analytics.correlation.dcc_ewma_enhanced import DCCEWMAEnhanced
+from shared.logger import get_logger
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Asset universe cross-class (configurabile in correlation_v2.yaml)
 _DEFAULT_UNIVERSE: dict[str, str] = {
@@ -65,7 +65,7 @@ class CrossAssetMatrix:
 
     Args:
         client:    DuckDBClient per persistenza.
-        universe:  Dict ticker â†’ categoria asset.
+        universe:  Dict ticker → categoria asset.
 
     Usage::
 
@@ -104,7 +104,7 @@ class CrossAssetMatrix:
         # Filtra per asset universe disponibili
         available = [a for a in self._universe if a in returns.columns]
         if len(available) < 3:
-            log.warning("cross_asset_matrix.insufficient_assets n=%d", len(available))
+            log.warning("cross_asset_matrix.insufficient_assets", n=len(available))
             return self._empty_result(snapshot_date, available)
 
         r = returns[available].dropna(how="all")
@@ -197,11 +197,11 @@ class CrossAssetMatrix:
         """Segnale [-1,+1] per Composite v2.
 
         Logica:
-          Alta diversificazione + bassa correlazione crisi â†’ segnale positivo (ambiente sano)
-          Bassa diversificazione + high corr in stress â†’ segnale negativo
+          Alta diversificazione + bassa correlazione crisi → segnale positivo (ambiente sano)
+          Bassa diversificazione + high corr in stress → segnale negativo
         """
         # Diversification contribuisce positivamente (alta div = buono)
-        d_signal = float(2 * diversification - 1)  # [0,1] â†’ [-1,+1]
+        d_signal = float(2 * diversification - 1)  # [0,1] → [-1,+1]
 
         # Credit-equity correlation: alta correlazione HY/SPY in rialzo = risk-on positivo
         cr_eq = CrossAssetMatrix._avg_correlation(matrix, names, ["HYG"], ["SPY"])
@@ -239,7 +239,7 @@ class CrossAssetMatrix:
                  result.diversification_score, result.correlation_signal],
             )
         except Exception as exc:
-            log.warning("cross_asset_matrix.persist_failed: %s", str(exc)[:120])
+            log.warning("cross_asset_matrix.persist_failed", error=str(exc)[:120])
 
     @staticmethod
     def _empty_result(snapshot_date: date, available: list[str]) -> CrossAssetMatrixResult:

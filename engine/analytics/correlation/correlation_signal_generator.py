@@ -15,15 +15,15 @@ Regola 29: gated da feature flag 'correlation_signal_composite'.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from shared.feature_flags import is_enabled
 from shared.exceptions import FeatureDisabledError
+from shared.feature_flags import is_enabled
+from shared.logger import get_logger
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 __version__ = "1.0.0"
 __all__ = ["CorrelationSignalGenerator", "CorrelationSignalResult"]
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Pesi aggregazione segnale
 _W_CORR     = 0.85   # peso correlation_signal da cross_asset_regime
@@ -120,11 +120,11 @@ class CorrelationSignalGenerator:
                 regime_date = datetime.fromisoformat(regime_date).date()
             staleness = (date.today() - regime_date).days
             if staleness > _MAX_STALENESS_DAYS:
-                log.debug("correlation_signal.stale days=%d", staleness)
+                log.debug("correlation_signal.stale", days=staleness)
                 return None
             return float(np.clip(raw_signal, -1.0, 1.0))
         except Exception as exc:
-            log.debug("correlation_signal.read_failed: %s", str(exc)[:80])
+            log.debug("correlation_signal.read_failed", error=str(exc)[:80])
             return None
 
     def compute_from_db(self, as_of: date | None = None) -> CorrelationSignalResult:
@@ -225,7 +225,7 @@ class CorrelationSignalGenerator:
                     "regime_date":           rows[0][6],
                 }
         except Exception as exc:
-            log.debug("correlation_signal.cross_asset_read_failed: %s", str(exc)[:80])
+            log.debug("correlation_signal.cross_asset_read_failed", error=str(exc)[:80])
         return {}
 
     def _read_lead_lag_signal(self, as_of: date) -> tuple[float | None, int]:
@@ -271,7 +271,7 @@ class CorrelationSignalGenerator:
             return net, len(rows)
 
         except Exception as exc:
-            log.debug("correlation_signal.lead_lag_read_failed: %s", str(exc)[:80])
+            log.debug("correlation_signal.lead_lag_read_failed", error=str(exc)[:80])
             return None, 0
 
     @staticmethod

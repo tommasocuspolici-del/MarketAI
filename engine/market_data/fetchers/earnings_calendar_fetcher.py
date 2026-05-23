@@ -17,10 +17,10 @@ Regola 12: solo fetch→persist qui, nessuna analisi inline.
 """
 from __future__ import annotations
 
-import logging
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import pandas as pd
 
 from shared.exceptions import DataValidationError
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _TABLE = "earnings_calendar"
 

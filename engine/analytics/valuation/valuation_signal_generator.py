@@ -10,7 +10,6 @@ Regola 27: persist via DuckDB client.
 """
 from __future__ import annotations
 
-import logging
 from datetime import date, UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -19,12 +18,13 @@ import numpy as np
 from engine.analytics.valuation.pe_calculator import PECalculator
 from engine.analytics.valuation.pe_context_builder import PEContextBuilder
 from engine.analytics.valuation.schemas import PEMetrics, ValuationSignalResult
+from shared.logger import get_logger
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _TABLE = "valuation_signal"
 
@@ -69,7 +69,7 @@ class ValuationSignalGenerator:
         f_signal = float(np.clip(-z_f / 2.0, -1, 1)) if ctx.get("forward_zscore")  is not None else 0.0
         c_signal = float(np.clip(-z_c / 2.0, -1, 1)) if ctx.get("cape_zscore")     is not None else 0.0
 
-        # ERP signal: ERP > 3% â†’ positivo; ERP < 0% â†’ molto negativo
+        # ERP signal: ERP > 3% → positivo; ERP < 0% → molto negativo
         erp_signal = 0.0
         if metrics.erp_implied is not None:
             erp_signal = float(np.clip((metrics.erp_implied - 0.02) / 0.02, -1, 1))
@@ -90,7 +90,7 @@ class ValuationSignalGenerator:
         return result
 
     def get_latest_signal(self, ticker: str = "^GSPC") -> float | None:
-        """Legge il segnale piÃ¹ recente da valuation_signal.
+        """Legge il segnale più recente da valuation_signal.
 
         Usato dal CompositeSignalAggregator.
 
@@ -105,7 +105,7 @@ class ValuationSignalGenerator:
             )
             return float(rows[0][0]) if rows and rows[0][0] is not None else None
         except Exception as exc:
-            log.debug("valuation_signal.read_failed: %s", str(exc)[:80])
+            log.debug("valuation_signal.read_failed", error=str(exc)[:80])
             return None
 
     def _persist(self, result: ValuationSignalResult, ctx: dict) -> None:  # type: ignore[type-arg]
@@ -144,5 +144,5 @@ class ValuationSignalGenerator:
                     pct_cape=ctx.get("cape_pct"),
                 )
         except Exception as exc:
-            log.warning("valuation_signal.persist_failed ticker=%s: %s",
-                        result.ticker, str(exc)[:120])
+            log.warning("valuation_signal.persist_failed",
+                        ticker=result.ticker, error=str(exc)[:120])

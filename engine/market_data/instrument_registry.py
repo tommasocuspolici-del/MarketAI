@@ -21,9 +21,9 @@ Test: tests/engine/test_instrument_registry.py
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
+from shared.logger import get_logger
 from shared.db.duckdb_client import DuckDBClient, get_duckdb_client
 from shared.exceptions import DuckDBError
 
@@ -31,7 +31,7 @@ __version__ = "8.1.0"
 
 __all__ = ["InstrumentMapping", "InstrumentRegistry"]
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _TABLE = "instrument_registry"
 

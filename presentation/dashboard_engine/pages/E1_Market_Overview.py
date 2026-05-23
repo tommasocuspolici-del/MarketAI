@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components import EmptyState, KpiCard, SignalBadge
 from presentation.ui.layout import setup_page
 from presentation.ui.session_keys import SK

@@ -13,12 +13,12 @@ Regola 29: gated da feature flag 'forward_pe_estimates'.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import date, datetime, UTC
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from shared.logger import get_logger
 import yaml
 
 from shared.feature_flags import is_enabled
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 __version__ = "1.0.0"
 __all__ = ["ForwardEstimatesFetcher", "ForwardEstimate"]
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _VALUATION_YAML = Path(__file__).resolve().parents[4] / "config" / "valuation.yaml"
 _TABLE = "fundamentals_valuation"

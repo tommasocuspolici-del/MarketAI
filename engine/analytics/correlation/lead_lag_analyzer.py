@@ -14,11 +14,11 @@ Regola 8: numpy per calcoli.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import numpy as np
 import pandas as pd
 
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Lag candidati (giorni trading) per test Granger
 _CANDIDATE_LAGS = [1, 2, 5, 10, 21]

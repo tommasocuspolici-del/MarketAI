@@ -11,8 +11,8 @@ Regola 27: persist via DuckDB client.
 """
 from __future__ import annotations
 
+from shared.logger import get_logger
 import io
-import logging
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 # Yale URL dataset Shiller (aggiornamento mensile)
 _SHILLER_URL = "http://www.econ.yale.edu/~shiller/data/ie_data.xls"

@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Coroutine
 from pathlib import Path
+from typing import Any
 
 # ROOT del progetto — 2 livelli sopra scripts/
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -31,7 +33,7 @@ log = get_logger("scheduler")
 __all__ = ["_PROJECT_ROOT", "_run_async", "error_budget", "log"]
 
 
-def _run_async(coro) -> object:  # type: ignore[no-untyped-def]
+def _run_async(coro: Coroutine[Any, Any, Any]) -> Any:
     """Esegui una coroutine da un contesto sincrono (APScheduler).
 
     ANTI-REGRESSIONE: APScheduler chiama i job in thread sincroni.

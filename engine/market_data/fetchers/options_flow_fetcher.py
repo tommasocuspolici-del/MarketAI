@@ -16,10 +16,10 @@ Regola 12: solo fetch→persist, nessuna analisi inline.
 """
 from __future__ import annotations
 
-import logging
 from datetime import date
 from typing import TYPE_CHECKING
 
+from shared.logger import get_logger
 import pandas as pd
 
 from shared.resilience.error_policy import apply_error_policy
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
 __version__ = "1.0.0"
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 _TABLE = "putcall_ratio_daily"
 

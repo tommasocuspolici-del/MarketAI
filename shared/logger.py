@@ -85,6 +85,7 @@ def configure_logging(
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
+        structlog.stdlib.PositionalArgumentsFormatter(),  # compat con log.warning("msg %s", val)
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),

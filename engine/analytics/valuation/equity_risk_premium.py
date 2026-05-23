@@ -18,11 +18,11 @@ Regola 12: legge da DuckDB — nessun fetch inline.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Literal
 
+from shared.logger import get_logger
 import numpy as np
 from shared.resilience.error_policy import error_policy, ErrorLevel
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 __version__ = "1.0.0"
 __all__ = ["EquityRiskPremium", "ERPResult", "ERPRegime"]
 
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 ERPRegime = Literal["attractive", "fair", "expensive", "extreme"]
 
