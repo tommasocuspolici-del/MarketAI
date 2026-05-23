@@ -1,25 +1,27 @@
 # ruff: noqa: N999
-"""K1 — Market Overview ★ aggiornato v8.3 (Composite Signal v2 breakdown).
+"""K1 — Market Overview ★ aggiornato v8.4 (Composite Signal 9-componenti reali).
 
 Sezioni:
-  1. Composite Signal v2 — 7 componenti pesati con gauge e breakdown
-  2. KPI Mercati         — S&P500, NASDAQ, Gold, Oil, EUR/USD, VIX
-  3. Regime Badge        — regime attuale + credit stress
+  1. Composite Signal — 9 componenti reali da engine_composite_signal
+  2. KPI Mercati      — S&P500, NASDAQ, Gold, Oil, EUR/USD, VIX
+  3. Regime Badge     — regime attuale + credit stress
 """
 from __future__ import annotations
 
-__version__ = "8.3.0"
+__version__ = "8.4.0"
 __all__ = ["body_k1_market_overview"]
 
-# Composite v2: 7 componenti con pesi base
+# 9 componenti reali da _WEIGHTS in composite_signal_aggregator.py
 _COMPOSITE_COMPONENTS = [
-    ("technical",  "📐 Technical",   0.15),
-    ("macro",      "🌐 Macro",        0.20),
-    ("labour",     "👷 Labour",       0.15),
-    ("sentiment",  "😊 Sentiment",    0.10),
-    ("valuation",  "💰 Valuation",    0.15),
-    ("surprise",   "⚡ Surprise",     0.10),
-    ("volatility", "📉 Volatility",   0.15),
+    ("vix",           "📉 VIX",         0.18),
+    ("macro",         "🌐 Macro",        0.17),
+    ("yield_curve",   "📈 Yield Curve",  0.15),
+    ("credit",        "💳 Credit",       0.11),
+    ("labour_market", "👷 Labour",       0.10),
+    ("valuation",     "💰 Valuation",    0.12),
+    ("claims",        "📋 Claims",       0.07),
+    ("surprise",      "⚡ Surprise",     0.05),
+    ("correlation",   "🔗 Correlation",  0.05),
 ]
 
 
@@ -34,75 +36,57 @@ def body_k1_market_overview(st, tokens) -> None:  # pragma: no cover
             st.cache_data.clear()
             st.rerun()
 
-    # ── 1. Composite Signal v2 ─────────────────────────────────────────────
-    st.subheader("🔬 Composite Signal v2 — 7 Componenti")
+    # ── 1. Composite Signal — 9 Componenti reali ──────────────────────────
+    st.subheader("🔬 Composite Signal — 9 Componenti")
     try:
+        import json
         from shared.db.duckdb_client import get_duckdb_client
         db = get_duckdb_client()
 
         rows = db.query(
-            "SELECT signal_date, composite_score, technical_score, macro_score, "
-            "labour_score, sentiment_score, valuation_score, surprise_score, "
-            "volatility_score, regime "
-            "FROM composite_signal_v2 ORDER BY signal_date DESC LIMIT 1"
+            "SELECT computed_at, composite_score, recommended_action, confidence, "
+            "regime, component_breakdown_json "
+            "FROM engine_composite_signal ORDER BY computed_at DESC LIMIT 1"
         )
 
         if not rows:
-            # Fallback: old composite signal
-            try:
-                from shared.db.macro_repo import get_macro_repository
-                from presentation.ui.components.engine_signal_summary import render_engine_signal_summary
-                repo = get_macro_repository()
-                composite = repo.read_composite_signal()
-                render_engine_signal_summary(st, composite)
-            except Exception:
-                st.info("Composite Signal v2 non disponibile. Eseguire CompositeSignalAggregator.")
+            st.info("Composite Signal non disponibile. Avviare lo scheduler per calcolare.")
         else:
             r = rows[0]
-            composite_score = r[1]
-            scores = {
-                "technical":  r[2],
-                "macro":      r[3],
-                "labour":     r[4],
-                "sentiment":  r[5],
-                "valuation":  r[6],
-                "surprise":   r[7],
-                "volatility": r[8],
-            }
-            regime = r[9] or "unknown"
+            computed_at      = r[0]
+            composite_score  = float(r[1]) if r[1] is not None else 0.0
+            action           = str(r[2]) if r[2] else "HOLD"
+            confidence       = str(r[3]) if r[3] else "LOW"
+            regime           = str(r[4]) if r[4] else "unknown"
+            scores: dict[str, float] = json.loads(r[5]) if r[5] else {}
 
-            # Score gauge
             score_label = (
                 "🟢 RIALZISTA" if composite_score > 0.3 else
                 "🔴 RIBASSISTA" if composite_score < -0.3 else
                 "🟡 NEUTRO"
             )
-            col_gauge, col_regime = st.columns([2, 1])
+            col_gauge, col_action, col_regime, col_conf = st.columns(4)
             with col_gauge:
-                st.metric(
-                    "Composite Signal v2",
-                    f"{composite_score:+.3f}" if composite_score is not None else "N/A",
-                    delta=score_label,
-                )
+                st.metric("Composite Score", f"{composite_score:+.3f}", delta=score_label)
+            with col_action:
+                st.metric("Azione", action)
             with col_regime:
                 st.metric("Regime", regime.upper())
+            with col_conf:
+                st.metric("Confidence", confidence)
 
-            st.caption(f"Data: {r[0]}")
+            st.caption(f"Calcolato: {computed_at}")
             st.divider()
 
-            # 7-component breakdown
-            st.markdown("**Breakdown Componenti**")
+            # 9-component breakdown da component_breakdown_json
+            st.markdown("**Breakdown 9 Componenti**")
             for key, label, weight in _COMPOSITE_COMPONENTS:
                 score = scores.get(key)
                 if score is None:
-                    st.progress(0.5, text=f"{label} (peso {weight:.0%}) — N/A")
+                    st.progress(0.5, text=f"{label} (peso {weight:.0%}) — non calcolato")
                     continue
-
-                # Map [-1,+1] → [0,1] for progress bar
                 bar_val = max(0.0, min(1.0, (score + 1.0) / 2.0))
-                color_txt = (
-                    "🟢" if score > 0.2 else "🔴" if score < -0.2 else "🟡"
-                )
+                color_txt = "🟢" if score > 0.2 else "🔴" if score < -0.2 else "🟡"
                 st.progress(
                     bar_val,
                     text=f"{color_txt} {label} (peso {weight:.0%})  →  {score:+.3f}",
@@ -148,8 +132,8 @@ def body_k1_market_overview(st, tokens) -> None:  # pragma: no cover
         import pandas as pd
         db = get_duckdb_client()
         hist = db.query(
-            "SELECT signal_date, composite_score FROM composite_signal_v2 "
-            "ORDER BY signal_date DESC LIMIT 30"
+            "SELECT computed_at, composite_score FROM engine_composite_signal "
+            "ORDER BY computed_at DESC LIMIT 30"
         )
         if hist and len(hist) >= 4:
             df_t = pd.DataFrame(hist, columns=["Data", "Composite"])
