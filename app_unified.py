@@ -87,6 +87,8 @@ def _engine_page(module_name: str) -> Callable[[], None]:
             st.info(f"Modulo `{module_name}` non trovato.")
         except Exception as exc:
             st.error(f"Errore rendering `{module_name}`: {exc}")
+    _render.__name__ = module_name
+    _render.__qualname__ = module_name
     return _render
 
 
