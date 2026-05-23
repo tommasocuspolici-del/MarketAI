@@ -1,12 +1,13 @@
 # ruff: noqa: N999
-"""M6 — Valuation & PE Analysis ★ NUOVO (v8.2 — Blocco 3).
+"""M6 — Valuation & PE Analysis ★ NUOVO (v8.4 — Blocco 3).
 
 Dashboard valuation: P/E trailing, P/E forward, Shiller CAPE, ERP.
-Legge da valuation_signal e pe_metrics (migration 018).
+Storia CAPE e ERP da shiller_cape_historical (Yale dataset, 1996+).
+Tab Storia/ERP/Segnale leggono dallo storico (non da pe_metrics che è snapshot).
 """
 from __future__ import annotations
 
-__version__ = "8.3.0"
+__version__ = "8.4.0"
 __all__ = ["body_m6_valuation_pe"]
 
 
@@ -147,101 +148,109 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
 
     # ── Tab 2: Storia PE / CAPE ────────────────────────────────────────────
     with tab_history:
-        st.subheader("Storia P/E e CAPE (20 anni)")
+        st.subheader("Storia Shiller CAPE (da Yale dataset)")
         try:
             import pandas as pd
+            import numpy as np
             import plotly.graph_objects as go
 
             rows = db.query(
-                "SELECT metric_date, trailing_pe, forward_pe, shiller_cape "
-                "FROM pe_metrics ORDER BY metric_date ASC LIMIT 5000"
+                "SELECT data_date, cape_ratio FROM shiller_cape_historical "
+                "WHERE cape_ratio IS NOT NULL ORDER BY data_date ASC"
             )
             if not rows:
-                st.info("Nessuna storia disponibile.")
+                st.info("Nessuna storia CAPE disponibile. Premere 📥 Carica valuation.")
             else:
-                df = pd.DataFrame(rows, columns=["date", "trailing", "forward", "cape"])
+                df = pd.DataFrame(rows, columns=["date", "cape"])
                 df["date"] = pd.to_datetime(df["date"])
 
                 fig = go.Figure()
-                if df["trailing"].notna().any():
-                    fig.add_trace(go.Scatter(
-                        x=df["date"], y=df["trailing"],
-                        name="Trailing P/E", mode="lines",
-                        line=dict(color=tokens.colors.positive, width=1.8),
-                    ))
-                if df["forward"].notna().any():
-                    fig.add_trace(go.Scatter(
-                        x=df["date"], y=df["forward"],
-                        name="Forward P/E", mode="lines",
-                        line=dict(color=tokens.colors.info, width=1.5, dash="dot"),
-                    ))
-                if df["cape"].notna().any():
-                    fig.add_trace(go.Scatter(
-                        x=df["date"], y=df["cape"],
-                        name="Shiller CAPE", mode="lines",
-                        line=dict(color=tokens.colors.warning, width=2),
-                    ))
+                fig.add_trace(go.Scatter(
+                    x=df["date"], y=df["cape"],
+                    name="Shiller CAPE", mode="lines",
+                    line=dict(color=tokens.colors.warning, width=2),
+                ))
+                # Reference lines: mean and ±1σ over full history
+                cape_mean = float(df["cape"].mean())
+                cape_std  = float(df["cape"].std())
+                fig.add_hline(y=cape_mean, line_color="gray", line_dash="dot",
+                              annotation_text=f"Media {cape_mean:.1f}x", opacity=0.5)
+                fig.add_hline(y=cape_mean + cape_std, line_color="red", line_dash="dash",
+                              annotation_text=f"+1σ {cape_mean+cape_std:.1f}x", opacity=0.4)
+                fig.add_hline(y=cape_mean - cape_std, line_color="green", line_dash="dash",
+                              annotation_text=f"-1σ {cape_mean-cape_std:.1f}x", opacity=0.4)
                 fig.update_layout(
-                    height=400, title="P/E Ratios — Storia",
+                    height=400,
+                    title=f"Shiller CAPE — {df['date'].min().year}–{df['date'].max().year} ({len(df)} mesi)",
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                     legend=dict(orientation="h", y=1.1),
                     margin=dict(l=0, r=0, t=40, b=0),
                 )
                 st.plotly_chart(fig, use_container_width=True)
+                latest = df.iloc[-1]
+                pct = (df["cape"] <= latest["cape"]).mean() * 100
+                st.caption(
+                    f"CAPE corrente: **{latest['cape']:.1f}x** "
+                    f"(percentile {pct:.0f}° vs storia · media {cape_mean:.1f}x)"
+                )
         except Exception as exc:
             st.warning(f"Grafico storia non disponibile: {exc}")
 
         st.divider()
-        st.subheader("Z-Score vs 20Y (contestualizzazione storica)")
+        st.subheader("Z-Score CAPE rolling 20Y (contestualizzazione storica)")
         try:
             rows = db.query(
-                "SELECT metric_date, trailing_pe_zscore, forward_pe_zscore, cape_zscore "
-                "FROM pe_metrics WHERE trailing_pe_zscore IS NOT NULL "
-                "ORDER BY metric_date ASC LIMIT 5000"
+                "SELECT data_date, cape_ratio FROM shiller_cape_historical "
+                "WHERE cape_ratio IS NOT NULL ORDER BY data_date ASC"
             )
             if rows:
                 import pandas as pd
+                import numpy as np
                 import plotly.graph_objects as go
-                df = pd.DataFrame(rows, columns=["date", "z_trailing", "z_forward", "z_cape"])
+                df = pd.DataFrame(rows, columns=["date", "cape"])
                 df["date"] = pd.to_datetime(df["date"])
+                roll_mean = df["cape"].rolling(240, min_periods=60).mean()
+                roll_std  = df["cape"].rolling(240, min_periods=60).std()
+                df["z_cape"] = (df["cape"] - roll_mean) / roll_std.replace(0, np.nan)
+
                 fig = go.Figure()
-                for col, label, color in [
-                    ("z_trailing", "Z Trailing PE", tokens.colors.positive),
-                    ("z_forward",  "Z Forward PE",  tokens.colors.info),
-                    ("z_cape",     "Z CAPE",         tokens.colors.warning),
-                ]:
-                    if df[col].notna().any():
-                        fig.add_trace(go.Scatter(
-                            x=df["date"], y=df[col],
-                            name=label, mode="lines",
-                            line=dict(color=color, width=1.5),
-                        ))
-                fig.add_hline(y=2.0, line_color="red", line_dash="dash", opacity=0.5)
-                fig.add_hline(y=-2.0, line_color="green", line_dash="dash", opacity=0.5)
+                if df["z_cape"].notna().any():
+                    fig.add_trace(go.Scatter(
+                        x=df["date"], y=df["z_cape"],
+                        name="Z CAPE (20Y rolling)", mode="lines",
+                        line=dict(color=tokens.colors.warning, width=1.8),
+                    ))
+                fig.add_hline(y=2.0, line_color="red", line_dash="dash", opacity=0.5,
+                              annotation_text="+2σ estremo costoso")
+                fig.add_hline(y=-2.0, line_color="green", line_dash="dash", opacity=0.5,
+                              annotation_text="-2σ estremo economico")
                 fig.add_hline(y=0.0, line_color="gray", line_dash="dot", opacity=0.3)
                 fig.update_layout(
-                    height=300, title="Z-Score vs 20Y Media",
+                    height=300, title="Z-Score CAPE vs Rolling 20Y",
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                     margin=dict(l=0, r=0, t=40, b=0),
                 )
                 st.plotly_chart(fig, use_container_width=True)
-                st.caption("Linee rosse: ±2σ (estremo). Area grigia: fair value.")
+                st.caption(
+                    "Z > +2: estremamente costoso · Z < -2: estremamente economico · "
+                    "calcolato su finestra rolling 240 mesi (20 anni)."
+                )
         except Exception as exc:
             st.caption(f"Z-score non disponibile: {exc}")
 
     # ── Tab 3: Equity Risk Premium ─────────────────────────────────────────
     with tab_erp:
         st.subheader("Equity Risk Premium Implicito")
-        st.caption("ERP = Earnings Yield (1/PE) − Risk Free Rate (TY10)")
+        st.caption("ERP = Earnings Yield (1/CAPE) − Bond Yield (TY10) · fonte: Shiller Yale")
         try:
             import pandas as pd
             import plotly.graph_objects as go
             rows = db.query(
-                "SELECT metric_date, erp_implied FROM pe_metrics "
-                "WHERE erp_implied IS NOT NULL ORDER BY metric_date ASC LIMIT 5000"
+                "SELECT data_date, erp_implied FROM shiller_cape_historical "
+                "WHERE erp_implied IS NOT NULL ORDER BY data_date ASC"
             )
             if not rows:
-                st.info("ERP non disponibile — richiede Forward PE da fundamentals_valuation (Alpha Vantage).")
+                st.info("ERP non disponibile — premere 📥 Carica valuation per popolare shiller_cape_historical.")
             else:
                 df = pd.DataFrame(rows, columns=["date", "erp"])
                 df["date"] = pd.to_datetime(df["date"])
