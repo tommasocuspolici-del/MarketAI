@@ -248,12 +248,12 @@ class PECalculator:
         return None
 
     def _get_risk_free_rate(self, as_of: date) -> float | None:
-        """DGS10 (US 10Y yield) da macro_data o shiller_cape_historical."""
+        """DGS10 (US 10Y yield) da macro_series o shiller_cape_historical."""
         try:
             rows = self._client.query(
-                "SELECT value FROM macro_data "
-                "WHERE series_id='DGS10' AND series_date <= ? "
-                "ORDER BY series_date DESC LIMIT 1", [as_of]
+                "SELECT value FROM macro_series "
+                "WHERE series_id='DGS10' AND ts::DATE <= ? "
+                "ORDER BY ts DESC LIMIT 1", [as_of]
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0

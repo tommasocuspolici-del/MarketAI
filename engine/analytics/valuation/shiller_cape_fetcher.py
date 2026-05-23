@@ -92,17 +92,33 @@ class ShillerCAPEFetcher:
         # Foglio "Data" con skiprows per header multi-riga Shiller
         df_raw = pd.read_excel(xls, sheet_name="Data", skiprows=7, header=0)
 
-        # Colonne Shiller: A=Date(YYYY.MM), B=P, C=D, D=E, E=CPI, F=Fraction
-        # G=Real Price, H=Real Dividend, I=Real Earnings, J=CAPE
+        # Shiller XLS "Data" sheet layout (2024+ version, 22 columns):
+        #   [0] Date(YYYY.MM)  [1] P  [2] D  [3] E  [4] CPI  [5] Fraction
+        #   [6] Rate GS10      [7] Price(real) [8] Dividend(real)
+        #   [9] Price.1        [10] Earnings(real) [11] Earnings.1
+        #   [12] CAPE          [13] Unnamed  [14] TR CAPE  …
         df_raw.columns = [str(c).strip() for c in df_raw.columns]
 
+        # Locate CAPE column by name first, then fall back to known index 12
+        col_names_lower = [c.lower() for c in df_raw.columns]
+        if "cape" in col_names_lower:
+            cape_idx = col_names_lower.index("cape")
+        else:
+            cape_idx = 12
+
+        # 'Rate GS10' is the 10Y bond yield (percentage, e.g. 4.57 = 4.57%)
+        if "rate gs10" in col_names_lower:
+            yield_idx: int | None = col_names_lower.index("rate gs10")
+        else:
+            yield_idx = 6 if df_raw.shape[1] > 6 else None
+
         # Parse Date (format: 1881.01 = January 1881)
-        date_col = df_raw.iloc[:, 0]
-        prices   = pd.to_numeric(df_raw.iloc[:, 1], errors="coerce")
-        earnings = pd.to_numeric(df_raw.iloc[:, 3], errors="coerce")
-        cpi      = pd.to_numeric(df_raw.iloc[:, 4], errors="coerce")
-        # CAPE in colonna J (index 9)
-        cape_col = pd.to_numeric(df_raw.iloc[:, 9] if df_raw.shape[1] > 9 else pd.Series([np.nan]*len(df_raw)), errors="coerce")
+        date_col  = df_raw.iloc[:, 0]
+        prices    = pd.to_numeric(df_raw.iloc[:, 1], errors="coerce")
+        earnings  = pd.to_numeric(df_raw.iloc[:, 3], errors="coerce")
+        cpi       = pd.to_numeric(df_raw.iloc[:, 4], errors="coerce")
+        cape_col  = pd.to_numeric(df_raw.iloc[:, cape_idx] if df_raw.shape[1] > cape_idx else pd.Series([np.nan] * len(df_raw)), errors="coerce")
+        yield_col = pd.to_numeric(df_raw.iloc[:, yield_idx] if yield_idx is not None else pd.Series([np.nan] * len(df_raw)), errors="coerce")
 
         records = []
         for i, raw_date in enumerate(date_col):
@@ -116,18 +132,23 @@ class ShillerCAPEFetcher:
             except (TypeError, ValueError):
                 continue
 
-            price = float(prices.iloc[i]) if pd.notna(prices.iloc[i]) else None
-            eps   = float(earnings.iloc[i]) if pd.notna(earnings.iloc[i]) else None
-            cape  = float(cape_col.iloc[i]) if pd.notna(cape_col.iloc[i]) else None
-            cpi_v = float(cpi.iloc[i]) if pd.notna(cpi.iloc[i]) else None
+            price  = float(prices.iloc[i])   if pd.notna(prices.iloc[i])   else None
+            eps    = float(earnings.iloc[i])  if pd.notna(earnings.iloc[i]) else None  # noqa: F841
+            cape   = float(cape_col.iloc[i])  if pd.notna(cape_col.iloc[i]) else None
+            cpi_v  = float(cpi.iloc[i])       if pd.notna(cpi.iloc[i])      else None
+            gs10   = float(yield_col.iloc[i]) if pd.notna(yield_col.iloc[i]) else None
+
+            ey = (1.0 / cape) if (cape and cape > 0) else None
+            ry = gs10 / 100.0 if gs10 is not None else None
+            erp = (ey - ry) if (ey is not None and ry is not None) else None
 
             records.append({
                 "data_date":        data_date,
                 "sp500_price":      price,
                 "eps_10y_real_avg": price / cape if (cape and cape > 0 and price) else None,
                 "cape_ratio":       cape,
-                "bond_yield":       None,
-                "erp_implied":      None,
+                "bond_yield":       gs10,   # stored as %, e.g. 4.57
+                "erp_implied":      erp,
                 "cpi_level":        cpi_v,
                 "source":           "shiller_yale",
             })

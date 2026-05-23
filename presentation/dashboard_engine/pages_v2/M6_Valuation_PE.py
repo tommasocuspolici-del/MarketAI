@@ -6,8 +6,35 @@ Legge da valuation_signal e pe_metrics (migration 018).
 """
 from __future__ import annotations
 
-__version__ = "8.2.0"
+__version__ = "8.3.0"
 __all__ = ["body_m6_valuation_pe"]
+
+
+def _run_valuation_pipeline() -> dict:  # pragma: no cover
+    """Carica CAPE Shiller da Yale/FRED e calcola segnale valuation per ^GSPC."""
+    result: dict = {"cape_rows": 0, "signal_ok": False, "error": None}
+    try:
+        from shared.db.duckdb_client import get_duckdb_client
+        db = get_duckdb_client()
+    except Exception as exc:
+        result["error"] = f"DB: {exc}"
+        return result
+
+    try:
+        from engine.analytics.valuation.shiller_cape_fetcher import ShillerCAPEFetcher
+        result["cape_rows"] = ShillerCAPEFetcher(client=db).fetch_and_persist(lookback_years=30)
+    except Exception as exc:
+        result["error"] = f"CAPE fetch: {str(exc)[:120]}"
+
+    try:
+        from engine.analytics.valuation.valuation_signal_generator import ValuationSignalGenerator
+        ValuationSignalGenerator(client=db).compute("^GSPC")
+        result["signal_ok"] = True
+    except Exception as exc:
+        err = f"Signal: {str(exc)[:120]}"
+        result["error"] = f"{result['error']} | {err}" if result["error"] else err
+
+    return result
 
 
 def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
@@ -15,8 +42,23 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
     require_auth()
 
     st.title("📊 Valuation — P/E & CAPE")
-    cols_top = st.columns([4, 1])
+    cols_top = st.columns([3, 1, 1])
     with cols_top[1]:
+        if st.button("📥 Carica valuation", key="m6_load"):
+            with st.spinner("Caricamento CAPE Shiller e segnali..."):
+                r = _run_valuation_pipeline()
+            if r["signal_ok"] or r["cape_rows"] > 0:
+                parts = []
+                if r["cape_rows"] > 0:
+                    parts.append(f"CAPE: {r['cape_rows']} righe")
+                if r["signal_ok"]:
+                    parts.append("Segnale ^GSPC calcolato")
+                st.success(" · ".join(parts))
+            else:
+                st.error(f"Caricamento fallito: {r['error']}")
+            st.cache_data.clear()
+            st.rerun()
+    with cols_top[2]:
         if st.button("🔄 Aggiorna", key="m6_refresh"):
             st.cache_data.clear()
             st.rerun()
