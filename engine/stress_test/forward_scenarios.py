@@ -31,13 +31,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from shared.config.operational_config import OP_CONFIG
 from shared.logger import get_logger
+from shared.exceptions import StressTestError
 
 if TYPE_CHECKING:
     from engine.backtesting.engine import BacktestResult
     from engine.backtesting.strategy import Strategy
 
-__version__ = "9.0.0"
+__version__ = "9.1.0"
 __all__ = [
     "ScenarioType",
     "ScenarioConfig",
@@ -47,42 +49,47 @@ __all__ = [
 
 log = get_logger(__name__)
 
-# Seed numpy per riproducibilità (Regola 7: nessun magic number)
-_SCENARIO_SEED: int = 42
 
-# Parametri scenari (tutti documentati)
-_SCENARIO_PARAMS: dict[str, dict[str, float]] = {
-    "recession": {
-        "drift_adj":  -0.0020,   # -0.20%/giorno aggiuntivo rispetto a storico
-        "vol_mult":    1.60,     # +60% volatilità
-        "spike_days":  0,        # nessuno spike iniziale
-        "spike_mult":  1.0,
-    },
-    "inflation_shock": {
-        "drift_adj":  -0.0008,
-        "vol_mult":    1.40,
-        "spike_days":  5,        # 5 giorni di spike all'inizio
-        "spike_mult":  2.0,
-    },
-    "credit_crisis": {
-        "drift_adj":  -0.0030,
-        "vol_mult":    1.80,
-        "spike_days":  10,
-        "spike_mult":  3.0,
-    },
-    "goldilocks": {
-        "drift_adj":  +0.0012,
-        "vol_mult":    0.80,
-        "spike_days":  0,
-        "spike_mult":  1.0,
-    },
-    "base": {
-        "drift_adj":   0.0,
-        "vol_mult":    1.0,
-        "spike_days":  0,
-        "spike_mult":  1.0,
-    },
-}
+def _build_scenario_params() -> dict[str, dict[str, float | int]]:
+    """Costruisce i parametri scenario da OP_CONFIG (config/operational_defaults.yaml)."""
+    st = OP_CONFIG.stress_test
+    return {
+        "recession": {
+            "drift_adj":  st.recession.drift_adj,
+            "vol_mult":   st.recession.vol_mult,
+            "spike_days": st.recession.spike_days,
+            "spike_mult": st.recession.spike_mult,
+        },
+        "inflation_shock": {
+            "drift_adj":  st.inflation_shock.drift_adj,
+            "vol_mult":   st.inflation_shock.vol_mult,
+            "spike_days": st.inflation_shock.spike_days,
+            "spike_mult": st.inflation_shock.spike_mult,
+        },
+        "credit_crisis": {
+            "drift_adj":  st.credit_crisis.drift_adj,
+            "vol_mult":   st.credit_crisis.vol_mult,
+            "spike_days": st.credit_crisis.spike_days,
+            "spike_mult": st.credit_crisis.spike_mult,
+        },
+        "goldilocks": {
+            "drift_adj":  st.goldilocks.drift_adj,
+            "vol_mult":   st.goldilocks.vol_mult,
+            "spike_days": st.goldilocks.spike_days,
+            "spike_mult": st.goldilocks.spike_mult,
+        },
+        "base": {
+            "drift_adj":  st.base.drift_adj,
+            "vol_mult":   st.base.vol_mult,
+            "spike_days": st.base.spike_days,
+            "spike_mult": st.base.spike_mult,
+        },
+    }
+
+
+# Seed e parametri letti da OP_CONFIG all'import (determinismo garantito dal YAML)
+_SCENARIO_SEED: int = OP_CONFIG.stress_test.seed
+_SCENARIO_PARAMS: dict[str, dict[str, float | int]] = _build_scenario_params()
 
 
 class ScenarioType(StrEnum):
@@ -131,7 +138,7 @@ class ForwardScenarioGenerator:
             Il prezzo iniziale (close[0]) è invariato — solo il percorso cambia.
         """
         if len(ohlcv) < 5:
-            raise ValueError(f"OHLCV troppo corto per stress test: {len(ohlcv)} barre")
+            raise StressTestError(f"OHLCV troppo corto per stress test: {len(ohlcv)} barre")
 
         close_col = "close" if "close" in ohlcv.columns else "Close"
         close = ohlcv[close_col].to_numpy(dtype=np.float64)

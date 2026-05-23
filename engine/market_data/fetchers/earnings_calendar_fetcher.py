@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
+from shared.exceptions import DataValidationError
 from shared.resilience.error_policy import apply_error_policy
 
 if TYPE_CHECKING:
@@ -315,11 +316,11 @@ def _validate(df: pd.DataFrame) -> None:
     required = {"ticker", "report_date"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"EarningsCalendar: colonne mancanti {missing}")
+        raise DataValidationError(f"EarningsCalendar: colonne mancanti {missing}")
     if df["ticker"].isna().any():
-        raise ValueError("EarningsCalendar: ticker non può essere null")
+        raise DataValidationError("EarningsCalendar: ticker non può essere null")
     if df["report_date"].isna().any():
-        raise ValueError("EarningsCalendar: report_date non può essere null")
+        raise DataValidationError("EarningsCalendar: report_date non può essere null")
 
 
 # ─── Type coercion helpers ────────────────────────────────────────────────────

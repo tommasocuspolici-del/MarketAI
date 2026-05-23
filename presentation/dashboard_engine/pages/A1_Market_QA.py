@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from presentation.ui.components import EmptyState
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
+from presentation.ui.session_keys import SK
 
 if TYPE_CHECKING:
     from presentation.ui.theme import DesignTokens
@@ -106,7 +107,7 @@ def _render_live_qa(st, tokens: DesignTokens) -> None:  # pragma: no cover
     render_section_header("💬 Domande frequenti")
     for item in _DEMO_QA:
         if st.button(f"❓ {item['q']}", key=f"a1_faq_{hash(item['q'])}"):
-            st.session_state["a1_question"] = item["q"]
+            st.session_state[SK.A1_QUESTION] = item["q"]
             st.rerun()
 
 

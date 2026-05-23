@@ -57,5 +57,11 @@ class _SessionKeys:
     # ── H1 — Market Health Matrix ──────────────────────────────────────────
     H1_SELECTED_CATEGORY     = "h1_selected_category"
 
+    # ── A1 — Market Q&A ───────────────────────────────────────────────────
+    A1_QUESTION              = "a1_question"
+
+    # ── P2 — Multi-delete ─────────────────────────────────────────────────
+    MULTI_DELETE_SELECT      = "multi_delete_select"
+
 
 SK = _SessionKeys()

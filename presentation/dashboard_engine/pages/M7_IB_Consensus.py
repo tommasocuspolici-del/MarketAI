@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -74,7 +75,7 @@ def body_ib_consensus(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
             except Exception as exc:
                 st.error(f"Errore aggiornamento: {exc}")
 
-    @st.cache_data(ttl=86400)
+    @st.cache_data(ttl=CACHE_TTL.INSTRUMENT_LOOKUP)
     def _load_consensus() -> dict:
         try:
             client = get_duckdb_client()
@@ -85,7 +86,7 @@ def body_ib_consensus(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
         except Exception as exc:
             return {"error": str(exc)}
 
-    @st.cache_data(ttl=86400)
+    @st.cache_data(ttl=CACHE_TTL.INSTRUMENT_LOOKUP)
     def _load_raw_forecasts() -> list:
         try:
             rows = get_duckdb_client().query(

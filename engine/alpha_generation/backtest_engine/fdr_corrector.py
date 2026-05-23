@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from shared.logger import get_logger
+from shared.exceptions import BacktestError
 
 log = get_logger(__name__)
 
@@ -47,7 +48,7 @@ def fdr_benjamini_hochberg(
     significativo dopo correzione per test multipli.
     """
     if len(strategy_ids) != len(p_values):
-        raise ValueError(
+        raise BacktestError(
             f"strategy_ids and p_values must have same length, "
             f"got {len(strategy_ids)} vs {len(p_values)}"
         )

@@ -8,6 +8,7 @@ __all__ = ["body_q2_sentiment"]
 
 def body_q2_sentiment(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
+    from presentation.ui.cache_policy import CACHE_TTL
     require_auth()
 
     st.title("🔬 Analisi — Sentiment & Breadth")
@@ -17,7 +18,7 @@ def body_q2_sentiment(st, tokens) -> None:  # pragma: no cover
             st.cache_data.clear()
             st.rerun()
 
-    @st.cache_data(ttl=900)
+    @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
     def _fetch_sentiment():
         from engine.analytics.sentiment.live_sentiment_service import (
             _DEMO_SCORES,

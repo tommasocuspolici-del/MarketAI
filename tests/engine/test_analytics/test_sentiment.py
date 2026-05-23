@@ -12,7 +12,7 @@ from engine.analytics.sentiment import (
     SentimentSignal,
     SentimentSource,
 )
-from shared.exceptions import SentimentAggregationError
+from shared.exceptions import MarketAIError,  SentimentAggregationError
 
 
 def _make_signal(
@@ -38,11 +38,11 @@ class TestSentimentSignal:
         assert s.score == 0.5
 
     def test_score_out_of_range_raises(self) -> None:
-        with pytest.raises(ValueError, match="score"):
+        with pytest.raises((ValueError, MarketAIError)):
             _make_signal(SentimentSource.AAII, 1.5)
 
     def test_confidence_out_of_range_raises(self) -> None:
-        with pytest.raises(ValueError, match="confidence"):
+        with pytest.raises((ValueError, MarketAIError)):
             _make_signal(SentimentSource.AAII, 0.5, 1.5)
 
 

@@ -1,4 +1,4 @@
-﻿"""Labour Market Forecast Engine (Blocco B.4).
+"""Labour Market Forecast Engine (Blocco B.4).
 
 Ensemble ARIMA + Ridge per previsioni 1M/3M/6M su:
   Â· UNRATE (tasso disoccupazione)
@@ -30,6 +30,7 @@ from engine.analytics.labour_market.schemas import (
     Horizon,
     LabourForecastResult,
 )
+from shared.exceptions import InsufficientDataError
 
 if TYPE_CHECKING:
     pass
@@ -77,7 +78,7 @@ class LabourForecastEngine:
         aligned   = aligned.loc[y_train.index]
 
         if len(y_train) < 24:
-            raise ValueError(
+            raise InsufficientDataError(
                 f"LabourForecastEngine: dati insufficienti ({len(y_train)} < 24 obs)"
             )
 

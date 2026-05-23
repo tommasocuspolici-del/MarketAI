@@ -15,6 +15,7 @@ from engine.news.news_signal_generator import NewsSignalGenerator
 from engine.news.rss_fetcher import RSSFetcher
 from engine.news.schemas import NewsArticle, NewsCluster, NewsSignal
 from shared.logger import get_logger
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -100,8 +101,8 @@ class NewsAggregator:
                 if row[7]:
                     try:
                         tickers = json.loads(row[7])
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        error_policy.handle(exc, level=ErrorLevel.RECOVER, context="news_aggregator", fallback=None)
                 articles.append(NewsArticle(
                     article_id=row[0],
                     url=row[1],

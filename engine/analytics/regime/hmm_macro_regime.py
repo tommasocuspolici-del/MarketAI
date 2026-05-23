@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from shared.logger import get_logger
+from shared.exceptions import AnalysisError
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -110,7 +111,7 @@ class HMMRegimeModel:
             ValueError: Se il numero di campioni è insufficiente.
         """
         if len(features) < self.MIN_SAMPLES:
-            raise ValueError(
+            raise AnalysisError(
                 f"Insufficient samples for HMM training: {len(features)} < {self.MIN_SAMPLES}"
             )
 

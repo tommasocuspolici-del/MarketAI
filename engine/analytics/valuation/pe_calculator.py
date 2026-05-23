@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from engine.analytics.valuation.schemas import PEMetrics
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -150,8 +151,8 @@ class PECalculator:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         # Fallback: cerca in vix_strategy_outputs per il price
         try:
             import yfinance as yf
@@ -159,8 +160,8 @@ class PECalculator:
             fi = t.fast_info
             p = getattr(fi, "last_price", None)
             return float(p) if p else None
-        except Exception:
-            return None
+        except Exception as exc:
+            return error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
 
     def _get_trailing_pe(self, ticker: str, as_of: date, price: float | None) -> float | None:
         """Trailing PE da fundamentals_valuation (Alpha Vantage) o calcolato."""
@@ -172,8 +173,8 @@ class PECalculator:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
 
         # Calcola da EPS trailing
         eps = self._get_eps_trailing(ticker, as_of)
@@ -191,8 +192,8 @@ class PECalculator:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
 
         eps_fwd = self._get_eps_forward(ticker, as_of)
         if eps_fwd and eps_fwd > 0 and price and price > 0:
@@ -208,8 +209,8 @@ class PECalculator:
                 "ORDER BY data_date DESC LIMIT 1", [as_of]
             )
             return float(rows[0][0]) if rows and rows[0][0] else None
-        except Exception:
-            return None
+        except Exception as exc:
+            return error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
 
     def _get_eps_trailing(self, ticker: str, as_of: date) -> float | None:
         """EPS trailing 4Q da fundamentals_edgar (somma ultimi 4 quarter)."""
@@ -225,8 +226,8 @@ class PECalculator:
             if len(rows) >= 2:
                 vals = [float(r[0]) for r in rows if r[0] is not None]
                 return sum(vals) if vals else None
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         return None
 
     def _get_eps_forward(self, ticker: str, as_of: date) -> float | None:
@@ -242,8 +243,8 @@ class PECalculator:
                 price = self._get_price(ticker, as_of)
                 if price and price > 0:
                     return price / float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         return None
 
     def _get_risk_free_rate(self, as_of: date) -> float | None:
@@ -256,8 +257,8 @@ class PECalculator:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         try:
             rows = self._client.query(
                 "SELECT bond_yield FROM shiller_cape_historical "
@@ -266,8 +267,8 @@ class PECalculator:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         return None
 
     def _compute_peg(self, forward_pe: float | None, ticker: str, as_of: date) -> float | None:
@@ -287,6 +288,6 @@ class PECalculator:
                     growth_rate = (eps_new / eps_old - 1.0) * 100
                     if growth_rate > 0:
                         return forward_pe / growth_rate
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_calculator", fallback=None)
         return None

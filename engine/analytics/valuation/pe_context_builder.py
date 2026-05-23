@@ -1,4 +1,4 @@
-﻿"""Contestualizzazione storica delle metriche PE (z-score, percentile).
+"""Contestualizzazione storica delle metriche PE (z-score, percentile).
 
 Standard investment bank: ogni metrica Ã¨ sempre presentata in contesto
 storico (z-score 20 anni, percentile, regime).
@@ -15,6 +15,7 @@ import numpy as np
 from scipy import stats
 
 from engine.analytics.valuation.schemas import PEMetrics, ValuationLabel
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -127,8 +128,8 @@ class PEContextBuilder:
                 [ticker, cutoff],
             )
             return np.array([float(r[0]) for r in rows], dtype=float)
-        except Exception:
-            return np.array([], dtype=float)
+        except Exception as exc:
+            return error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_context_builder", fallback=np.array([], dtype=float))
 
     def _get_hist_cape(self, cutoff: date) -> np.ndarray:  # type: ignore[type-arg]
         try:
@@ -138,8 +139,8 @@ class PEContextBuilder:
                 [cutoff],
             )
             return np.array([float(r[0]) for r in rows], dtype=float)
-        except Exception:
-            return np.array([], dtype=float)
+        except Exception as exc:
+            return error_policy.handle(exc, level=ErrorLevel.RECOVER, context="pe_context_builder", fallback=np.array([], dtype=float))
 
     @staticmethod
     def _compute_zp(

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -72,7 +73,7 @@ def body_news_feed(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
             except Exception as exc:
                 st.error(f"Errore fetch: {exc}")
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_articles(limit: int = 50) -> list:
         try:
             rows = get_duckdb_client().query(
@@ -86,7 +87,7 @@ def body_news_feed(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
         except Exception:
             return []
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_signal() -> dict:
         try:
             client = get_duckdb_client()

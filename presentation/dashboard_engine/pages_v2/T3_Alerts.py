@@ -8,6 +8,7 @@ __all__ = ["body_t3_alerts"]
 
 def body_t3_alerts(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
+    from presentation.ui.cache_policy import CACHE_TTL
     require_auth()
 
     st.title("⚙️ Strategie — Alerts & Notifiche")
@@ -19,7 +20,7 @@ def body_t3_alerts(st, tokens) -> None:  # pragma: no cover
             st.cache_data.clear()
             st.rerun()
 
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=CACHE_TTL.EQUITIES)
     def _load_alerts(vix_thr: float) -> list[dict]:
         import yfinance as yf
         alerts: list[dict] = []

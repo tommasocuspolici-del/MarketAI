@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -41,7 +42,7 @@ def body_news_analysis(tokens: DesignTokens) -> None:  # pragma: no cover -- Str
         st.warning("⚠️ News Engine non attivo. Abilita `news_engine_enabled` in feature_flags.yaml.")
         return
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_sentiment_by_category() -> list:
         try:
             return get_duckdb_client().query(
@@ -55,7 +56,7 @@ def body_news_analysis(tokens: DesignTokens) -> None:  # pragma: no cover -- Str
         except Exception:
             return []
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_sentiment_by_source() -> list:
         try:
             return get_duckdb_client().query(
@@ -69,7 +70,7 @@ def body_news_analysis(tokens: DesignTokens) -> None:  # pragma: no cover -- Str
         except Exception:
             return []
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_sentiment_trend(days: int = 7) -> list:
         try:
             return get_duckdb_client().query(
@@ -84,7 +85,7 @@ def body_news_analysis(tokens: DesignTokens) -> None:  # pragma: no cover -- Str
         except Exception:
             return []
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_clusters() -> list:
         try:
             return get_duckdb_client().query(

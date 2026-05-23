@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from shared.logger import get_logger
+from shared.exceptions import BacktestError
 
 log = get_logger(__name__)
 
@@ -33,7 +34,7 @@ class CapacityEstimator:
 
     def __init__(self, participation_rate: float = PARTICIPATION_RATE) -> None:
         if not (0.0 < participation_rate <= 1.0):
-            raise ValueError(
+            raise BacktestError(
                 f"participation_rate must be in (0, 1], got {participation_rate}"
             )
         self._participation_rate = participation_rate
@@ -61,9 +62,9 @@ class CapacityEstimator:
             CapacityResult con capacità stimata e flag di warning.
         """
         if adtv_usd < 0.0:
-            raise ValueError(f"adtv_usd must be non-negative, got {adtv_usd}")
+            raise BacktestError(f"adtv_usd must be non-negative, got {adtv_usd}")
         if not (0.0 <= daily_turnover <= 1.0):
-            raise ValueError(f"daily_turnover must be in [0, 1], got {daily_turnover}")
+            raise BacktestError(f"daily_turnover must be in [0, 1], got {daily_turnover}")
 
         if daily_turnover <= 0.0:
             # Turnover zero → capacità infinita

@@ -42,6 +42,7 @@ from scipy import stats
 
 from shared.db.quality import DataQualityReport
 from shared.types import TimeFrame
+from shared.exceptions import InsufficientDataError
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -120,7 +121,7 @@ class CVaRCalculator:
             timeframe=TimeFrame.D1, limit=self._lookback,
         )
         if df is None or len(df) < 30:
-            raise ValueError(f"{ticker}: dati insufficienti per CVaR (min 30 barre)")
+            raise InsufficientDataError(f"{ticker}: dati insufficienti per CVaR (min 30 barre)")
 
         closes   = df["close"].to_numpy(dtype=np.float64)
         log_rets = np.diff(np.log(np.where(closes > 0, closes, 1e-9)))

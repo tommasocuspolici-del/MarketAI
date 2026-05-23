@@ -34,6 +34,7 @@ from typing import Any
 import numpy as np
 
 from shared.logger import get_logger
+from shared.exceptions import InsufficientDataError
 
 __version__ = "1.0.0"
 __all__ = ["VixSignal", "VixSignalCalculator"]
@@ -134,7 +135,7 @@ class VixSignalCalculator:
             ticker="^VIX", timeframe=TimeFrame.D1,
         )
         if vix_df is None or vix_df.empty or len(vix_df) < 20:
-            raise ValueError("^VIX: dati insufficienti nel DB (< 20 barre)")
+            raise InsufficientDataError("^VIX: dati insufficienti nel DB (< 20 barre)")
 
         closes = vix_df["close"].dropna().to_numpy(dtype=np.float64)
         # Usa al massimo lookback_days barre

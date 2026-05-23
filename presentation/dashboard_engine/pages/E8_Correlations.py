@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 __version__ = "7.2.0"
 
-__all__ = ["body_correlations", "build_mock_correlation_matrix"]
+__all__ = ["body_correlations"]
 
 # Mapping asset label → ticker yfinance
 _ASSET_TICKERS: dict[str, str] = {
@@ -39,7 +39,7 @@ _ASSET_TICKERS: dict[str, str] = {
 
 
 def build_mock_correlation_matrix() -> pd.DataFrame:
-    """Fallback: mock correlation matrix tra 6 asset class (riproducibile)."""
+    """Fallback deterministico (seed=11) quando yfinance non disponibile."""
     rng = np.random.default_rng(11)
     assets = list(_ASSET_TICKERS.keys())
     n = len(assets)

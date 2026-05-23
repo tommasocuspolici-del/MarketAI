@@ -108,25 +108,26 @@ class TestListBackups:
 
 
 class TestCreateBackup:
+    def _run_backup(self, tmp_path: Path) -> Path:
+        """Run _create_backup with _backup_dir mocked and shutil.copy2 stubbed."""
+        def _fake_copy2(src, dst, **kw):
+            Path(dst).write_bytes(b"dummy backup")
+
+        with patch(
+            "presentation.dashboard_engine.pages.S2_Settings._backup_dir",
+            return_value=tmp_path,
+        ), patch("shutil.copy2", side_effect=_fake_copy2):
+            return _create_backup()
+
     def test_creates_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            with patch(
-                "presentation.dashboard_engine.pages.S2_Settings._backup_dir",
-                return_value=tmp_path,
-            ):
-                dest = _create_backup()
+            dest = self._run_backup(Path(tmp))
             assert dest.exists()
             assert dest.suffix == ".duckdb"
 
     def test_filename_has_timestamp(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            with patch(
-                "presentation.dashboard_engine.pages.S2_Settings._backup_dir",
-                return_value=tmp_path,
-            ):
-                dest = _create_backup()
+            dest = self._run_backup(Path(tmp))
             assert "market_data_" in dest.name
 
 

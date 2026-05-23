@@ -109,3 +109,35 @@ def test_collect_imports_handles_syntax_error(tmp_path):
     f.write_text("def broken(:\n  pass\n")
     imports = _collect_imports(f)
     assert imports == []
+
+
+def _find_engine_imports_personal() -> list[str]:
+    """Scansiona engine/ e restituisce file che importano direttamente da personal/."""
+    engine_root = pathlib.Path("engine")
+    if not engine_root.exists():
+        return []
+    violations: list[str] = []
+    for py_file in engine_root.rglob("*.py"):
+        imports = _collect_imports(py_file)
+        for imp in imports:
+            if imp == "personal" or imp.startswith("personal."):
+                violations.append(f"{py_file}: imports {imp!r}")
+    return violations
+
+
+def test_engine_does_not_import_personal():
+    """engine/ non deve importare da personal/ — il cablaggio avviene nel bridge.
+
+    Regola 28: engine/ non importa da personal/. Usa bridge/ come intermediario.
+    """
+    violations = _find_engine_imports_personal()
+    assert violations == [], (
+        "Layer boundary violations: engine/ importa direttamente da personal/:\n"
+        + "\n".join(f"  {v}" for v in violations)
+    )
+
+
+def test_bridge_factory_importable():
+    """bridge/override_store_factory.py deve essere importabile (smoke test)."""
+    from bridge.override_store_factory import get_default_override_store  # noqa: PLC0415
+    assert callable(get_default_override_store)

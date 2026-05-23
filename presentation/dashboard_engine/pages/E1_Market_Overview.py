@@ -226,7 +226,7 @@ def _render_tab_sectors(st) -> None:  # pragma: no cover
     from presentation.ui.chart_theme import get_base_layout
     from presentation.ui.design_tokens import TOKENS
 
-    @st.cache_data(ttl=3600)
+    @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION)
     def _fetch_sectors() -> dict[str, float | None]:
         try:
             import yfinance as yf

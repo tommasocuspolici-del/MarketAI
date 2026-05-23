@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from engine.analytics.labour_market.labour_forecast_engine import LabourForecastEngine
+from shared.exceptions import MarketAIError
 
 
 def _make_target_and_features(n: int = 60) -> tuple:
@@ -50,10 +51,10 @@ class TestLabourForecastEngine:
         assert b.lower_10 <= b.point_forecast <= b.upper_90
 
     def test_fit_insufficient_data_raises(self):
-        """< 24 osservazioni → ValueError."""
+        """< 24 osservazioni → InsufficientDataError."""
         engine = LabourForecastEngine()
         target, feats = _make_target_and_features(10)
-        with pytest.raises(ValueError, match="insufficienti"):
+        with pytest.raises((ValueError, MarketAIError)):
             engine.fit(target, feats)
 
     def test_forecast_before_fit_raises(self):

@@ -8,6 +8,7 @@ __all__ = ["body_q4_forecasting"]
 
 def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
+    from presentation.ui.cache_policy import CACHE_TTL
     require_auth()
 
     st.title("🔬 Analisi — Forecasting (3 scenari)")
@@ -20,7 +21,7 @@ def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
     # ── Labour Forecasts (da DB) ──────────────────────────────────────────
     st.subheader("👷 Labour Market Forecasts (ARIMA+Ridge)")
 
-    @st.cache_data(ttl=3600)
+    @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION)
     def _load_labour_forecasts():
         from shared.db.duckdb_client import get_duckdb_client
         try:
@@ -50,7 +51,7 @@ def body_q4_forecasting(st, tokens) -> None:  # pragma: no cover
     # ── FRED Growth Series ────────────────────────────────────────────────
     st.subheader("📈 Trend Macroeconomici — Dati FRED Recenti")
 
-    @st.cache_data(ttl=3600)
+    @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION)
     def _load_macro_trends():
         from engine.market_data.fred_simple_client import FredSimpleClient
         fred = FredSimpleClient()

@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import structlog
+from shared.exceptions import InsufficientDataError
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -71,9 +72,9 @@ class RealYieldAnalyzer:
         breakeven_df = self._macro.read_macro("T10YIE", limit=self._lookback)
 
         if nominal_df is None or nominal_df.empty:
-            raise ValueError("DGS10 non disponibile nel DB")
+            raise InsufficientDataError("DGS10 non disponibile nel DB")
         if breakeven_df is None or breakeven_df.empty:
-            raise ValueError("T10YIE non disponibile nel DB")
+            raise InsufficientDataError("T10YIE non disponibile nel DB")
 
         nominal   = nominal_df["value"].dropna().to_numpy(dtype=np.float64)
         breakeven = breakeven_df["value"].dropna().to_numpy(dtype=np.float64)

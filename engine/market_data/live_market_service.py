@@ -18,6 +18,8 @@ import time
 from threading import Condition, Lock
 from typing import Any
 
+from typing import Protocol
+
 from engine.market_data.delta_windows import fetch_delta_windows  # re-export
 from engine.market_data.hardening.sanity_checker import SanityChecker
 from engine.market_data.kpi_computer import (
@@ -30,9 +32,16 @@ from engine.market_data.kpi_computer import (
     download_market_data,
 )
 from engine.market_data.snapshot_disk_cache import SnapshotDiskCache
-from personal.data_entry.override_store import ManualOverrideStore
 from shared.config.operational_config import OP_CONFIG
 from shared.logger import get_logger
+
+
+class OverrideStoreProtocol(Protocol):
+    """Superficie minima del ManualOverrideStore (Regola 28: engine non importa da personal)."""
+
+    def resolve(
+        self, entity_type: str, entity_key: str, api_value: float | None
+    ) -> tuple[float | None, bool]: ...
 
 __version__ = "9.1.0"
 
@@ -58,11 +67,11 @@ class LiveMarketService:
     def __init__(
         self,
         *,
-        override_store: ManualOverrideStore | None = None,
+        override_store: OverrideStoreProtocol | None = None,
         sanity: SanityChecker | None = None,
         ttl_seconds: float = _TTL_SECONDS,
     ) -> None:
-        self._override_store = override_store or ManualOverrideStore()
+        self._override_store = override_store
         self._sanity = sanity or SanityChecker()
         self._ttl = ttl_seconds
         self._cache: MarketSnapshot = MarketSnapshot()
@@ -239,7 +248,10 @@ def get_live_market_service() -> LiveMarketService:
         return _singleton_instance
     with _singleton_lock:
         if _singleton_instance is None:
-            _singleton_instance = LiveMarketService()
+            from bridge.override_store_factory import get_default_override_store  # noqa: PLC0415
+            _singleton_instance = LiveMarketService(
+                override_store=get_default_override_store()
+            )
         return _singleton_instance
 
 

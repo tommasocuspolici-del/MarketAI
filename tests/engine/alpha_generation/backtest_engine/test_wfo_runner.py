@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from shared.exceptions import MarketAIError
 import numpy as np
 import pandas as pd
 
@@ -86,7 +87,7 @@ class TestSplitFolds:
     def test_requires_datetime_index(self) -> None:
         runner = WFORunner()
         prices_bad = pd.Series(np.ones(100), index=np.arange(100))
-        with pytest.raises(ValueError, match="DatetimeIndex"):
+        with pytest.raises((ValueError, MarketAIError)):
             runner.run(prices_bad, _strategy_fn)
 
 

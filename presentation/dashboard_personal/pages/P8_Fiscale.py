@@ -16,6 +16,7 @@ from personal.tax import (
     TaxCalculator,
     TaxRegime,
 )
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 
@@ -161,7 +162,7 @@ def body_fiscale(tokens: DesignTokens) -> None:  # pragma: no cover -- Streamlit
     st.divider()
     render_section_header("Tax-Loss Harvesting Suggestions")
 
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=CACHE_TTL.EQUITIES)
     def _tax_loss_candidates() -> list[dict]:
         from personal.data_entry.etoro_importer import get_live_price_usd
         from personal.data_entry.position_form import list_positions

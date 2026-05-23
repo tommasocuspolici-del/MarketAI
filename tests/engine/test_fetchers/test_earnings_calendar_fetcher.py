@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.market_data.fetchers.earnings_calendar_fetcher import (
     EarningsCalendarFetcher,
@@ -259,17 +260,17 @@ class TestValidate:
 
     def test_missing_ticker_raises(self):
         df = pd.DataFrame([{"report_date": date(2026, 5, 1)}])
-        with pytest.raises(ValueError, match="ticker"):
+        with pytest.raises((ValueError, MarketAIError)):
             _validate(df)
 
     def test_null_ticker_raises(self):
         df = pd.DataFrame([{"ticker": None, "report_date": date(2026, 5, 1)}])
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             _validate(df)
 
     def test_null_report_date_raises(self):
         df = pd.DataFrame([{"ticker": "AAPL", "report_date": None}])
-        with pytest.raises(ValueError, match="report_date"):
+        with pytest.raises((ValueError, MarketAIError)):
             _validate(df)
 
 

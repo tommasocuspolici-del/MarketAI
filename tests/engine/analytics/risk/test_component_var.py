@@ -4,6 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.analytics.risk.component_var import (
     ComponentVaRCalculator,
@@ -114,7 +115,7 @@ class TestComponentVaRCalculator:
         """Mismatch tra weights e tickers solleva ValueError."""
         rets, tickers = _make_returns_matrix(4, 100)
         weights = np.array([0.5, 0.5])  # solo 2 pesi per 4 tickers
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             ComponentVaRCalculator().compute(weights, rets, tickers)
 
     def test_single_asset(self) -> None:

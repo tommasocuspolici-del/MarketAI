@@ -33,6 +33,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from shared.logger import get_logger
+from shared.exceptions import ConfigurationError, InsufficientDataError
 
 __version__ = "7.1.2"
 
@@ -125,17 +126,17 @@ class SimpleForecaster:
         prices = np.asarray(close_prices, dtype=np.float64).flatten()
         prices = prices[~np.isnan(prices)]
         if len(prices) < _MIN_OBSERVATIONS:
-            raise ValueError(
+            raise InsufficientDataError(
                 f"Almeno {_MIN_OBSERVATIONS} osservazioni richieste, "
                 f"forniti {len(prices)} per {ticker}"
             )
         if (prices <= 0).any():
-            raise ValueError(
+            raise InsufficientDataError(
                 f"Prezzi non positivi rilevati per {ticker}: il forecaster GBM "
                 "richiede prezzi strettamente > 0 per calcolare log-returns."
             )
         if horizon_days <= 0:
-            raise ValueError(f"horizon_days deve essere > 0, ricevuto {horizon_days}")
+            raise InsufficientDataError(f"horizon_days deve essere > 0, ricevuto {horizon_days}")
 
         # Log-returns giornalieri
         log_returns = np.diff(np.log(prices))

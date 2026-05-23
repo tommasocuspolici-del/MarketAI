@@ -7,6 +7,7 @@ pandera 0.18/0.19 (path ``import pandera as pa``) sia con pandera 0.20+
 from __future__ import annotations
 
 import pandera
+import pytest
 
 
 def test_schemas_module_imports_successfully():
@@ -68,3 +69,127 @@ def test_pandera_version_is_supported():
     )
     # < 1.0 (vincolo pyproject)
     assert major_i < 1, f"pandera {version} non testata per major versions >= 1"
+
+
+# ─── v12.0 schemas ────────────────────────────────────────────────────────────
+
+class TestV12Schemas:
+    """7 positive + 7 negative tests for the v12.0 Pandera schemas."""
+
+    def test_signal_scorecard_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_signal_scorecard
+        df = pd.DataFrame([{
+            "signal_id": "vix_signal",
+            "snapshot_date": pd.Timestamp("2024-01-01"),
+            "horizon_days": 21,
+            "hit_rate": 0.62,
+            "is_significant": True,
+        }])
+        validate_signal_scorecard(df)
+
+    def test_signal_scorecard_missing_column_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_signal_scorecard
+        df = pd.DataFrame([{"signal_id": "vix", "snapshot_date": pd.Timestamp("2024-01-01")}])
+        with pytest.raises(DataValidationError):
+            validate_signal_scorecard(df)
+
+    def test_model_registry_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_model_registry
+        df = pd.DataFrame([{
+            "model_id": "m1",
+            "model_type": "ridge",
+            "horizon_days": 63,
+            "directional_acc": 0.65,
+        }])
+        validate_model_registry(df)
+
+    def test_model_registry_missing_column_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_model_registry
+        df = pd.DataFrame([{"model_id": "m1"}])
+        with pytest.raises(DataValidationError):
+            validate_model_registry(df)
+
+    def test_wfo_results_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_wfo_results
+        df = pd.DataFrame([{"model_id": "m1", "fold_n": 0, "sharpe_fold": 1.2, "directional_acc": 0.6}])
+        validate_wfo_results(df)
+
+    def test_wfo_results_missing_column_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_wfo_results
+        df = pd.DataFrame([{"model_id": "m1"}])
+        with pytest.raises(DataValidationError):
+            validate_wfo_results(df)
+
+    def test_macro_regime_timeline_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_macro_regime_timeline
+        df = pd.DataFrame([{
+            "regime_label": "expansion",
+            "prob_expansion": 0.7,
+            "prob_slowdown": 0.15,
+            "prob_contraction": 0.1,
+            "prob_recovery": 0.05,
+        }])
+        validate_macro_regime_timeline(df)
+
+    def test_macro_regime_timeline_bad_label_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_macro_regime_timeline
+        df = pd.DataFrame([{"regime_label": "unknown_regime"}])
+        with pytest.raises(DataValidationError):
+            validate_macro_regime_timeline(df)
+
+    def test_portfolio_risk_metrics_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_portfolio_risk_metrics
+        df = pd.DataFrame([{"var_95": -0.05, "max_drawdown_1y": -0.12}])
+        validate_portfolio_risk_metrics(df)
+
+    def test_portfolio_risk_metrics_positive_var_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_portfolio_risk_metrics
+        df = pd.DataFrame([{"var_95": 0.05, "max_drawdown_1y": -0.12}])
+        with pytest.raises(DataValidationError):
+            validate_portfolio_risk_metrics(df)
+
+    def test_position_risk_contribution_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_position_risk_contribution
+        df = pd.DataFrame([{"ticker": "AAPL", "pct_risk": 0.15}])
+        validate_position_risk_contribution(df)
+
+    def test_position_risk_contribution_missing_column_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_position_risk_contribution
+        df = pd.DataFrame([{"pct_risk": 0.15}])
+        with pytest.raises(DataValidationError):
+            validate_position_risk_contribution(df)
+
+    def test_vol_surface_snapshots_valid(self) -> None:
+        import pandas as pd
+        from shared.db.schemas import validate_vol_surface_snapshots
+        df = pd.DataFrame([{
+            "snapshot_at": pd.Timestamp("2024-01-01", tz="UTC"),
+            "vix_spot": 18.5,
+        }])
+        validate_vol_surface_snapshots(df)
+
+    def test_vol_surface_snapshots_missing_column_raises(self) -> None:
+        import pandas as pd
+        from shared.exceptions import DataValidationError
+        from shared.db.schemas import validate_vol_surface_snapshots
+        df = pd.DataFrame([{"vix_spot": 18.5}])
+        with pytest.raises(DataValidationError):
+            validate_vol_surface_snapshots(df)

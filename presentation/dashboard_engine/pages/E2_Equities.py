@@ -1,17 +1,9 @@
 # ruff: noqa: N999
-"""E2 — Equities (v7.1.2 hotfix).
+"""E2 — Equities (v7.1.2).
 
-Risolve "candele e volumi statici per ogni asset" segnalato in
-ULTERIORI_ERRORI.txt: la versione precedente usava ``build_mock_ohlcv()``
-con ``np.random.default_rng(42)`` (sempre lo stesso seed -> grafico
-identico a ogni reload).
-
-Ora la pagina:
-  - Fetcha OHLCV reale via yfinance per il ticker selezionato.
-  - Cache @st.cache_data(ttl=300) per evitare HTTP storm su rerender.
-  - Fallback graceful se yfinance non e' installato o se il fetch fallisce
-    (mostra messaggio chiaro invece di candele finte).
-  - Volume e prezzo cambiano davvero quando l'utente cambia ticker.
+Fetcha OHLCV reale via yfinance per il ticker selezionato.
+Cache @st.cache_data(ttl=CACHE_TTL.EQUITIES) per evitare HTTP storm su rerender.
+Fallback graceful se yfinance non è disponibile.
 """
 from __future__ import annotations
 

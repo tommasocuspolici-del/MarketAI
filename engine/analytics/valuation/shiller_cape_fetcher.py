@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from shared.resilience.error_policy import apply_error_policy
+from shared.resilience.error_policy import apply_error_policy, error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -242,8 +242,8 @@ class ShillerCAPEFetcher:
                 f"WHERE cape_ratio IS NOT NULL ORDER BY data_date DESC LIMIT 1"
             )
             return float(rows[0][0]) if rows and rows[0][0] is not None else None
-        except Exception:
-            return None
+        except Exception as exc:
+            return error_policy.handle(exc, level=ErrorLevel.RECOVER, context="shiller_cape_fetcher", fallback=None)
 
     def get_history(self, years: int = 20) -> list[object]:
         """Legge la serie storica CAPE come lista di ShillerCAPEPoint."""

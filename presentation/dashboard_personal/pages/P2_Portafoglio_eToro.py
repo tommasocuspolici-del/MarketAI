@@ -781,7 +781,7 @@ def _render_positions_tab(st_module) -> None:  # pragma: no cover -- Streamlit
         col_del_all, col_sel_all = st.columns([2, 2])
         with col_sel_all:
             if st.button("☑️ Seleziona tutte", key="select_all_positions"):
-                st.session_state["multi_delete_select"] = list(pos_options.keys())
+                st.session_state[SK.MULTI_DELETE_SELECT] = list(pos_options.keys())
                 st.rerun()
         with col_del_all:
             if selected_labels:
@@ -869,7 +869,7 @@ def _render_metrics_tab(tokens, st_module) -> None:  # pragma: no cover -- Strea
         "Ogni metrica ha una spiegazione dettagliata: clicca su 'ⓘ Cos'è?'.",
     )
 
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=CACHE_TTL.EQUITIES)
     def _cached_metrics() -> tuple[list, list, bool]:
         return _compute_real_portfolio_metrics()
 

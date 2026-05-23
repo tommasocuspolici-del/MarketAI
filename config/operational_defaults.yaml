@@ -46,3 +46,47 @@ analytics:
 
 etoro:
   instrument_cache_max_age_days: 7
+
+labour_market:
+  weight_jolts:             0.45   # JOLTS: strutturale, aggiornato mensilmente
+  weight_claims:            0.40   # Claims: high-frequency, aggiornato settimanalmente
+  weight_payroll:           0.15   # Payroll: placeholder, verrà aggiornato con PayrollDecomposer
+  tight_score_min:          0.35
+  deteriorating_score_max: -0.25
+  balanced_min:            -0.25
+  balanced_max:             0.35
+
+sentiment:
+  pc_bullish_thresh: 0.70   # Put/Call ratio below → bullish (+1)
+  pc_bearish_thresh: 1.25   # Put/Call ratio above → bearish (-1)
+  cot_oi_spread:     0.25   # ±25% of open interest maps to ±1
+  short_int_neutral: 0.01   # 1% shortPercentOfFloat = score 0
+  short_int_spread:  0.03   # 3pp from neutral = ±1
+
+stress_test:
+  seed: 42   # seed numpy per riproducibilità deterministica nei test
+  recession:
+    drift_adj:  -0.0020
+    vol_mult:    1.60
+    spike_days:  0
+    spike_mult:  1.0
+  inflation_shock:
+    drift_adj:  -0.0008
+    vol_mult:    1.40
+    spike_days:  5
+    spike_mult:  2.0
+  credit_crisis:
+    drift_adj:  -0.0030
+    vol_mult:    1.80
+    spike_days:  10
+    spike_mult:  3.0
+  goldilocks:
+    drift_adj:   0.0012
+    vol_mult:    0.80
+    spike_days:  0
+    spike_mult:  1.0
+  base:
+    drift_adj:   0.0
+    vol_mult:    1.0
+    spike_days:  0
+    spike_mult:  1.0

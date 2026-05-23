@@ -270,7 +270,10 @@ class KpiComputer:
         """
         ws_price = self._get_ws_price(yf_ticker)
         if ws_price is not None:
-            final_value, is_override = self._override_store.resolve("price", term, ws_price)
+            if self._override_store is not None:
+                final_value, is_override = self._override_store.resolve("price", term, ws_price)
+            else:
+                final_value, is_override = ws_price, False
             return MarketKpi(
                 term=term, yf_ticker=yf_ticker, value=final_value,
                 delta_pct=None, currency=currency, format_spec=fmt, is_override=is_override,
@@ -304,7 +307,10 @@ class KpiComputer:
             api_delta_pct: float | None = None
             if prev_close > 0:
                 api_delta_pct = (last_close - prev_close) / prev_close
-            final_value, is_override = self._override_store.resolve("price", term, last_close)
+            if self._override_store is not None:
+                final_value, is_override = self._override_store.resolve("price", term, last_close)
+            else:
+                final_value, is_override = last_close, False
             return MarketKpi(
                 term=term, yf_ticker=yf_ticker, value=final_value,
                 delta_pct=api_delta_pct, currency=currency, format_spec=fmt, is_override=is_override,

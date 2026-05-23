@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from shared.logger import get_logger
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 __version__ = "1.0.0"
 __all__ = ["NarrativeGenerator"]
@@ -71,8 +72,8 @@ class NarrativeGenerator:
                     max_tokens=256,
                 )
                 return result.text
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="narrative_generator", fallback=None)
 
         return self._portfolio_template(context)
 

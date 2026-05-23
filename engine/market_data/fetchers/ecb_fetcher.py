@@ -16,6 +16,7 @@ import pandas as pd
 
 from shared.exceptions import FetchError
 from shared.logger import get_logger
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -187,5 +188,5 @@ class ECBFetcher:
     def __del__(self) -> None:
         try:
             self._http.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="ecb_fetcher", fallback=None)

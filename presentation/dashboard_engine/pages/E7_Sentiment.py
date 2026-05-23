@@ -13,6 +13,7 @@ from engine.analytics.sentiment.live_sentiment_service import (
     get_live_sentiment_service,
 )
 from shared.glossary import get_glossary
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.components.sentiment_radar import render_sentiment_radar
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
@@ -78,7 +79,7 @@ def body_sentiment(tokens: DesignTokens) -> None:  # pragma: no cover -- Streaml
             st.cache_data.clear()
             st.rerun()
 
-    @st.cache_data(ttl=900)
+    @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
     def _cached_sentiment() -> tuple[dict[str, float], list[str], list[str], dict[str, str]]:
         svc = get_live_sentiment_service()
         result = svc.fetch_all()

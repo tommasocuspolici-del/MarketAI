@@ -36,6 +36,7 @@ import numpy as np
 import structlog
 
 from shared.types import TimeFrame
+from shared.exceptions import InsufficientDataError
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -141,7 +142,7 @@ class VolSurfaceAnalyzer:
 
         vix_1m = levels["vix_1m"]
         if vix_1m is None:
-            raise ValueError("VIX 1M non disponibile — dato critico")
+            raise InsufficientDataError("VIX 1M non disponibile — dato critico")
 
         vix_3m = levels["vix_3m"]
         vix_9d = levels["vix_9d"]

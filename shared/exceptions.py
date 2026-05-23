@@ -93,10 +93,15 @@ class DataError(MarketAIError):
 class FetchError(DataError):
     """Raised when an external data fetch fails."""
 
-    def __init__(self, source: str, detail: str) -> None:
-        super().__init__(f"Fetch from '{source}' failed: {detail}")
-        self.source = source
-        self.detail = detail
+    def __init__(self, source: str, detail: str | None = None) -> None:
+        if detail is None:
+            super().__init__(source)
+            self.source: str | None = None
+            self.detail: str | None = source
+        else:
+            super().__init__(f"Fetch from '{source}' failed: {detail}")
+            self.source = source
+            self.detail = detail
 
 
 class RateLimitExceededError(DataError):
@@ -193,12 +198,17 @@ class ForecastError(AnalysisError):
 class InsufficientDataError(AnalysisError):
     """Raised when there is not enough data to perform an analysis."""
 
-    def __init__(self, required: int, available: int) -> None:
-        super().__init__(
-            f"Insufficient data: required {required} samples, available {available}."
-        )
-        self.required = required
-        self.available = available
+    def __init__(self, required: int | str, available: int | None = None) -> None:
+        if isinstance(required, str):
+            super().__init__(required)
+            self.required: int | None = None
+            self.available: int | None = None
+        else:
+            super().__init__(
+                f"Insufficient data: required {required} samples, available {available}."
+            )
+            self.required = required
+            self.available = available
 
 
 class SentimentAggregationError(AnalysisError):

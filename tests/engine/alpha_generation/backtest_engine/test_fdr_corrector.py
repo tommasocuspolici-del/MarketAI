@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.alpha_generation.backtest_engine.fdr_corrector import (
     FDRResult,
@@ -161,7 +162,7 @@ class TestEdgeCases:
         assert result.rejected == [False]
 
     def test_mismatched_lengths_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             fdr_benjamini_hochberg(["a", "b"], [0.01], alpha=0.05)
 
     def test_strategy_ids_preserved_in_order(self) -> None:

@@ -13,6 +13,7 @@ from engine.alpha_generation.backtest_engine.psr_calculator import (
     probabilistic_sharpe_ratio,
 )
 from shared.logger import get_logger
+from shared.exceptions import BacktestError
 
 log = get_logger(__name__)
 
@@ -81,7 +82,7 @@ class WFORunner:
             WFOResult aggregato su tutti i fold.
         """
         if not isinstance(prices.index, pd.DatetimeIndex):
-            raise ValueError("prices must have a DatetimeIndex")
+            raise BacktestError("prices must have a DatetimeIndex")
 
         folds_slices = self._split_folds(prices.index)
 

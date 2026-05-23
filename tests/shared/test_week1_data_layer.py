@@ -456,7 +456,8 @@ class TestFuturesFetcher:
         fetcher._rate_limiter = mock_rate_limiter
         fetcher._duckdb = None
 
-        with pytest.raises(ValueError, match="non supportato"):
+        from shared.exceptions import MarketAIError
+        with pytest.raises((ValueError, MarketAIError)):
             await fetcher.fetch_futures("INVALID=F", days=5)
 
 

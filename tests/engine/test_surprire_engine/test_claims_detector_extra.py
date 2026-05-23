@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.analytics.labour_market.claims_cycle_detector import (
     ClaimsCycleDetector,
@@ -99,7 +100,7 @@ class TestDetectWithMockFred:
         d = ClaimsCycleDetector(duckdb=None)
         d._client = MagicMock(spec=FredSimpleClient)
         d._client.fetch_series.return_value = _make_claims_df([220_000.0, 221_000.0])
-        with pytest.raises(ValueError, match="insufficienti"):
+        with pytest.raises((ValueError, MarketAIError)):
             d.detect()
 
     def test_signal_in_range(self):

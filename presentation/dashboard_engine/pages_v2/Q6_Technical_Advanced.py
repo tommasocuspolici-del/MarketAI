@@ -8,7 +8,7 @@ Integra i quattro motori di analisi tecnica avanzata:
   4. OrderFlowAnalyzer       — pressione acquisti/vendite
 
 Regola 33: tutti i dati provengono da PricesRepo (DuckDB) o yfinance live.
-Regola 34: cache @st.cache_data(ttl=900) per ogni sezione.
+Regola 34: cache @st.cache_data(ttl=CACHE_TTL.MARKET_KPI) per ogni sezione.
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ _WATCH_TICKERS   = ["SPY", "QQQ", "GLD", "TLT", "^VIX"]
 
 def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
+    from presentation.ui.cache_policy import CACHE_TTL
     require_auth()
 
     st.title("🔬 Analisi Tecnica Avanzata")
@@ -38,7 +39,7 @@ def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
             st.rerun()
 
     # ── Caricamento dati OHLCV ─────────────────────────────────────────────
-    @st.cache_data(ttl=900)
+    @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
     def _load_ohlcv(sym: str):
         try:
             import yfinance as yf
@@ -80,7 +81,7 @@ def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
             "tutti e tre concordano. Indicatori: SMA20/50 crossover, RSI, VWAP relativo."
         )
 
-        @st.cache_data(ttl=900)
+        @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
         def _mtf_signal(sym: str, data_hash: int):
             from engine.analytics.technical.multi_timeframe_analyzer import MultiTimeframeAnalyzer
             import yfinance as yf
@@ -137,7 +138,7 @@ def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
             "Hurst < 0.5 → mean-reverting"
         )
 
-        @st.cache_data(ttl=900)
+        @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
         def _cycle_result(sym: str, data_hash: int):
             from engine.analytics.technical.cycle_analyzer import CycleAnalyzer
             import yfinance as yf
@@ -208,7 +209,7 @@ def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
             "Value Area: 70% del volume totale. VWAP: fair value volume-weighted."
         )
 
-        @st.cache_data(ttl=900)
+        @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
         def _volume_profile(sym: str, data_hash: int):
             from engine.analytics.technical.volume_profile import VolumeProfileCalculator
             import yfinance as yf
@@ -262,7 +263,7 @@ def body_q6_technical_advanced(st, tokens) -> None:  # pragma: no cover
             "Score > 0 → prevalenza acquisti · Score < 0 → prevalenza vendite."
         )
 
-        @st.cache_data(ttl=900)
+        @st.cache_data(ttl=CACHE_TTL.MARKET_KPI)
         def _order_flow(sym: str, data_hash: int):
             from engine.analytics.technical.order_flow_analyzer import OrderFlowAnalyzer
             import yfinance as yf

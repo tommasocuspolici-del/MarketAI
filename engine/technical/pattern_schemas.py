@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from shared.exceptions import DataValidationError
 
 __version__ = "9.0.0"
 __all__ = [
@@ -166,7 +167,7 @@ class PatternResult(BaseModel):
     @classmethod
     def end_after_start(cls, v: int, info: Any) -> int:
         if "start_idx" in info.data and v < info.data["start_idx"]:
-            raise ValueError("end_idx must be >= start_idx")
+            raise DataValidationError("end_idx must be >= start_idx")
         return v
 
     @field_validator("confidence")

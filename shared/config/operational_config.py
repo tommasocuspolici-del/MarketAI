@@ -17,8 +17,8 @@ from typing import Any
 
 import yaml
 
-__version__ = "1.0.0"
-__all__ = ["OP_CONFIG", "OperationalConfig", "_build_config_from_raw"]
+__version__ = "2.0.0"
+__all__ = ["OP_CONFIG", "OperationalConfig", "_build_config_from_raw", "_build_stress_test"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +66,44 @@ class _EtoroDefaults:
 
 
 @dataclass(frozen=True, slots=True)
+class _LabourMarketDefaults:
+    weight_jolts: float
+    weight_claims: float
+    weight_payroll: float
+    tight_score_min: float
+    deteriorating_score_max: float
+    balanced_min: float
+    balanced_max: float
+
+
+@dataclass(frozen=True, slots=True)
+class _SentimentDefaults:
+    pc_bullish_thresh: float
+    pc_bearish_thresh: float
+    cot_oi_spread: float
+    short_int_neutral: float
+    short_int_spread: float
+
+
+@dataclass(frozen=True, slots=True)
+class _StressScenarioParams:
+    drift_adj: float
+    vol_mult: float
+    spike_days: int
+    spike_mult: float
+
+
+@dataclass(frozen=True, slots=True)
+class _StressTestDefaults:
+    seed: int
+    recession: _StressScenarioParams
+    inflation_shock: _StressScenarioParams
+    credit_crisis: _StressScenarioParams
+    goldilocks: _StressScenarioParams
+    base: _StressScenarioParams
+
+
+@dataclass(frozen=True, slots=True)
 class OperationalConfig:
     """Configurazione operativa completa. Immutabile a runtime."""
 
@@ -75,12 +113,15 @@ class OperationalConfig:
     alerts: _AlertDefaults
     analytics: _AnalyticsDefaults
     etoro: _EtoroDefaults
+    labour_market: _LabourMarketDefaults
+    sentiment: _SentimentDefaults
+    stress_test: _StressTestDefaults
 
 
 # Valori di default — identici a config/operational_defaults.yaml.
 # Usati quando il YAML non esiste (CI/tests senza config/).
 # ⚠️ Questo è L'UNICO file .py autorizzato ad avere questi numeri.
-_DEFAULTS: dict[str, dict[str, Any]] = {
+_DEFAULTS: dict[str, Any] = {
     "fx_fallbacks": {"gbp_usd": 1.27, "eur_usd": 1.08, "chf_usd": 1.12},
     "http": {
         "default_timeout_s": 15.0,
@@ -106,7 +147,51 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
         "backtesting_train_pct": 0.60,
     },
     "etoro": {"instrument_cache_max_age_days": 7},
+    "labour_market": {
+        "weight_jolts": 0.45,
+        "weight_claims": 0.40,
+        "weight_payroll": 0.15,
+        "tight_score_min": 0.35,
+        "deteriorating_score_max": -0.25,
+        "balanced_min": -0.25,
+        "balanced_max": 0.35,
+    },
+    "sentiment": {
+        "pc_bullish_thresh": 0.70,
+        "pc_bearish_thresh": 1.25,
+        "cot_oi_spread": 0.25,
+        "short_int_neutral": 0.01,
+        "short_int_spread": 0.03,
+    },
+    "stress_test": {
+        "seed": 42,
+        "recession":       {"drift_adj": -0.0020, "vol_mult": 1.60, "spike_days": 0,  "spike_mult": 1.0},
+        "inflation_shock": {"drift_adj": -0.0008, "vol_mult": 1.40, "spike_days": 5,  "spike_mult": 2.0},
+        "credit_crisis":   {"drift_adj": -0.0030, "vol_mult": 1.80, "spike_days": 10, "spike_mult": 3.0},
+        "goldilocks":      {"drift_adj":  0.0012, "vol_mult": 0.80, "spike_days": 0,  "spike_mult": 1.0},
+        "base":            {"drift_adj":  0.0,    "vol_mult": 1.00, "spike_days": 0,  "spike_mult": 1.0},
+    },
 }
+
+
+def _build_stress_test(raw_section: dict[str, Any]) -> _StressTestDefaults:
+    """Costruisce _StressTestDefaults con merge per scenario."""
+    defaults_st = _DEFAULTS["stress_test"]
+
+    def _scenario(name: str) -> _StressScenarioParams:
+        d = defaults_st[name]
+        r = raw_section.get(name, {})
+        p = {**d, **r}
+        return _StressScenarioParams(**p)
+
+    return _StressTestDefaults(
+        seed=int(raw_section.get("seed", defaults_st["seed"])),
+        recession=_scenario("recession"),
+        inflation_shock=_scenario("inflation_shock"),
+        credit_crisis=_scenario("credit_crisis"),
+        goldilocks=_scenario("goldilocks"),
+        base=_scenario("base"),
+    )
 
 
 def _build_config_from_raw(raw: dict[str, Any]) -> OperationalConfig:
@@ -121,6 +206,9 @@ def _build_config_from_raw(raw: dict[str, Any]) -> OperationalConfig:
         alerts=_AlertDefaults(**_m("alerts")),
         analytics=_AnalyticsDefaults(**_m("analytics")),
         etoro=_EtoroDefaults(**_m("etoro")),
+        labour_market=_LabourMarketDefaults(**_m("labour_market")),
+        sentiment=_SentimentDefaults(**_m("sentiment")),
+        stress_test=_build_stress_test(raw.get("stress_test", {})),
     )
 
 

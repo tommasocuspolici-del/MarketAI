@@ -117,7 +117,7 @@ class FuturesFetcher(BaseOhlcvFetcher):
             ValueError: Se il ticker non è tra quelli supportati.
         """
         if ticker not in _SPOT_PROXIES:
-            raise ValueError(
+            raise FetchError(
                 f"Ticker futures '{ticker}' non supportato. "
                 f"Supportati: {list(_SPOT_PROXIES.keys())}"
             )

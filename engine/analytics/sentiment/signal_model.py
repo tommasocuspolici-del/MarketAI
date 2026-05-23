@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
+from shared.exceptions import SentimentAggregationError
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -46,8 +47,8 @@ class SentimentSignal:
 
     def __post_init__(self) -> None:
         if not -1.0 <= self.score <= 1.0:
-            raise ValueError(f"score must be in [-1, 1], got {self.score}")
+            raise SentimentAggregationError(f"score must be in [-1, 1], got {self.score}")
         if not 0.0 <= self.confidence <= 1.0:
-            raise ValueError(
+            raise SentimentAggregationError(
                 f"confidence must be in [0, 1], got {self.confidence}"
             )

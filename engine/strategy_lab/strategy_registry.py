@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from shared.logger import get_logger
+from shared.exceptions import ConfigurationError
 
 __version__ = "10.0.0"
 
@@ -111,7 +112,7 @@ class StrategyRegistry:
             if rec is None:
                 return False
             if not rec.is_validated:
-                raise ValueError(
+                raise ConfigurationError(
                     f"Strategy '{strategy_id}' cannot be activated without walk-forward validation. "
                     "Run WalkForwardValidator first and call mark_validated()."
                 )

@@ -25,13 +25,28 @@ from pandas.api.types import is_datetime64_any_dtype
 if TYPE_CHECKING:
     import pandas as pd
 
-__version__ = "7.1.4"
+__version__ = "8.0.0"
 
 __all__ = [
     "MACRO_SERIES_SCHEMA",
     "OHLCV_SCHEMA",
     "validate_macro_series",
     "validate_ohlcv",
+    # v12.0 schemas
+    "SIGNAL_SCORECARD_SCHEMA",
+    "MODEL_REGISTRY_SCHEMA",
+    "WFO_RESULTS_SCHEMA",
+    "MACRO_REGIME_TIMELINE_SCHEMA",
+    "PORTFOLIO_RISK_METRICS_SCHEMA",
+    "POSITION_RISK_CONTRIBUTION_SCHEMA",
+    "VOL_SURFACE_SNAPSHOTS_SCHEMA",
+    "validate_signal_scorecard",
+    "validate_model_registry",
+    "validate_wfo_results",
+    "validate_macro_regime_timeline",
+    "validate_portfolio_risk_metrics",
+    "validate_position_risk_contribution",
+    "validate_vol_surface_snapshots",
 ]
 
 
@@ -158,3 +173,149 @@ def validate_macro_series(df: pd.DataFrame) -> pd.DataFrame:
         raise DataValidationError(f"Macro schema validation failed: {exc}") from exc
     except pa.errors.SchemaError as exc:
         raise DataValidationError(f"Macro schema validation failed: {exc}") from exc
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v12.0 Schemas
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _make_validator(schema: pa.DataFrameSchema, name: str):
+    """Factory for validate_* functions."""
+    def _validate(df: pd.DataFrame) -> pd.DataFrame:
+        from shared.exceptions import DataValidationError
+        try:
+            return schema.validate(df, lazy=True)
+        except pa.errors.SchemaErrors as exc:
+            raise DataValidationError(f"{name} schema validation failed: {exc}") from exc
+        except pa.errors.SchemaError as exc:
+            raise DataValidationError(f"{name} schema validation failed: {exc}") from exc
+    _validate.__name__ = f"validate_{name.lower()}"
+    return _validate
+
+
+# signal_scorecard ─────────────────────────────────────────────────────────
+SIGNAL_SCORECARD_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "signal_id": pa.Column(str, nullable=False),
+        "snapshot_date": pa.Column(nullable=False),
+        "horizon_days": pa.Column(int, checks=pa.Check.gt(0), nullable=False),
+        "hit_rate": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=False),
+        "is_significant": pa.Column(bool, nullable=False),
+    },
+    strict=False,
+    coerce=False,
+    name="signal_scorecard_schema",
+)
+validate_signal_scorecard = _make_validator(SIGNAL_SCORECARD_SCHEMA, "signal_scorecard")
+
+
+# model_registry ───────────────────────────────────────────────────────────
+MODEL_REGISTRY_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "model_id": pa.Column(str, nullable=False),
+        "model_type": pa.Column(str, nullable=False),
+        "horizon_days": pa.Column(int, checks=pa.Check.gt(0), nullable=False),
+        "directional_acc": pa.Column(
+            float,
+            checks=[pa.Check.ge(0.0), pa.Check.le(1.0)],
+            nullable=True,
+        ),
+    },
+    strict=False,
+    coerce=False,
+    name="model_registry_schema",
+)
+validate_model_registry = _make_validator(MODEL_REGISTRY_SCHEMA, "model_registry")
+
+
+# wfo_results ──────────────────────────────────────────────────────────────
+WFO_RESULTS_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "model_id": pa.Column(str, nullable=False),
+        "fold_n": pa.Column(int, checks=pa.Check.ge(0), nullable=False),
+        "sharpe_fold": pa.Column(float, nullable=True),
+        "directional_acc": pa.Column(
+            float,
+            checks=[pa.Check.ge(0.0), pa.Check.le(1.0)],
+            nullable=True,
+        ),
+    },
+    strict=False,
+    coerce=False,
+    name="wfo_results_schema",
+)
+validate_wfo_results = _make_validator(WFO_RESULTS_SCHEMA, "wfo_results")
+
+
+# macro_regime_timeline ────────────────────────────────────────────────────
+_VALID_REGIMES = {"expansion", "slowdown", "contraction", "recovery"}
+
+MACRO_REGIME_TIMELINE_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "regime_label": pa.Column(
+            str,
+            checks=pa.Check(lambda s: s.isin(_VALID_REGIMES).all(), error="invalid regime label"),
+            nullable=False,
+        ),
+        "prob_expansion": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=True),
+        "prob_slowdown": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=True),
+        "prob_contraction": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=True),
+        "prob_recovery": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=True),
+    },
+    strict=False,
+    coerce=False,
+    name="macro_regime_timeline_schema",
+)
+validate_macro_regime_timeline = _make_validator(MACRO_REGIME_TIMELINE_SCHEMA, "macro_regime_timeline")
+
+
+# portfolio_risk_metrics ───────────────────────────────────────────────────
+PORTFOLIO_RISK_METRICS_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "var_95": pa.Column(float, checks=pa.Check.lt(0.0), nullable=False),
+        "max_drawdown_1y": pa.Column(
+            float,
+            checks=[pa.Check.ge(-1.0), pa.Check.le(0.0)],
+            nullable=True,
+        ),
+    },
+    strict=False,
+    coerce=False,
+    name="portfolio_risk_metrics_schema",
+)
+validate_portfolio_risk_metrics = _make_validator(PORTFOLIO_RISK_METRICS_SCHEMA, "portfolio_risk_metrics")
+
+
+# position_risk_contribution ───────────────────────────────────────────────
+POSITION_RISK_CONTRIBUTION_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "ticker": pa.Column(str, nullable=False),
+        "pct_risk": pa.Column(float, checks=[pa.Check.ge(0.0), pa.Check.le(1.0)], nullable=False),
+    },
+    strict=False,
+    coerce=False,
+    name="position_risk_contribution_schema",
+)
+validate_position_risk_contribution = _make_validator(
+    POSITION_RISK_CONTRIBUTION_SCHEMA, "position_risk_contribution"
+)
+
+
+# vol_surface_snapshots ────────────────────────────────────────────────────
+VOIL_SURFACE_VIX_CHECK = pa.Check(lambda s: (s > 0).all(), error="vix_* must be > 0")
+
+VOL_SURFACE_SNAPSHOTS_SCHEMA = pa.DataFrameSchema(
+    columns={
+        "snapshot_at": pa.Column(
+            dtype=None,
+            checks=_UTC_DATETIME_CHECK,
+            nullable=False,
+            description="Snapshot timestamp, UTC-aware",
+        ),
+        "vix_spot": pa.Column(float, checks=pa.Check.gt(0.0), nullable=False),
+    },
+    strict=False,
+    coerce=False,
+    name="vol_surface_snapshots_schema",
+)
+validate_vol_surface_snapshots = _make_validator(VOL_SURFACE_SNAPSHOTS_SCHEMA, "vol_surface_snapshots")

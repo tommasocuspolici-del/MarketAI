@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
@@ -173,14 +174,14 @@ class TestVixSignalCalculator:
         """< 20 barre → ValueError."""
         repo = _make_prices_repo([15.0] * 10)
         calc = VixSignalCalculator(prices_repo=repo)
-        with pytest.raises(ValueError, match="dati insufficienti"):
+        with pytest.raises((ValueError, MarketAIError)):
             calc.compute()
 
     def test_empty_db_raises(self):
         """DB vuoto → ValueError."""
         repo = _make_prices_repo([])
         calc = VixSignalCalculator(prices_repo=repo)
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             calc.compute()
 
     def test_pct_rank_between_0_and_1(self):

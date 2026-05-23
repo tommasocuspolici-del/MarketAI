@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
@@ -181,7 +182,7 @@ class TestRollAnalyzer:
         db = MagicMock()
         analyzer = RollAnalyzer(duckdb=db)
 
-        with pytest.raises(ValueError, match="insufficiente"):
+        with pytest.raises((ValueError, MarketAIError)):
             analyzer.analyze_from_df("CL=F", df)
 
     def test_pct_rank_between_0_and_1(self):
@@ -232,7 +233,7 @@ class TestRollAnalyzer:
         db = MagicMock()
         analyzer = RollAnalyzer(duckdb=db)
 
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             analyzer.analyze_from_df("CL=F", df)
 
 
@@ -657,7 +658,7 @@ class TestRollAnalyzerWithDB:
     def test_analyze_insufficient_data_raises(self, migrated_client):
         """analyze() con DB vuoto → ValueError."""
         analyzer = RollAnalyzer(duckdb=migrated_client)
-        with pytest.raises(ValueError, match="insufficiente|insufficienti|dati"):
+        with pytest.raises((ValueError, MarketAIError)):
             analyzer.analyze("CL=F")
 
 

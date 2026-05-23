@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
 
+from shared.exceptions import AnalysisError, ConfigurationError
 from shared.logger import get_logger
 
 log = get_logger(__name__)
@@ -32,7 +33,7 @@ class EnsembleCombiner:
     def combine_equal_weight(self, forecasts: dict[str, float]) -> EnsembleResult:
         """Media semplice non pesata."""
         if not forecasts:
-            raise ValueError("forecasts dict must not be empty")
+            raise ConfigurationError("forecasts dict must not be empty")
         n = len(forecasts)
         weights = {mid: 1.0 / n for mid in forecasts}
         point = float(np.mean(list(forecasts.values())))
@@ -55,7 +56,7 @@ class EnsembleCombiner:
     ) -> EnsembleResult:
         """Media pesata per Information Coefficient (IC) con softmax."""
         if not forecasts:
-            raise ValueError("forecasts dict must not be empty")
+            raise ConfigurationError("forecasts dict must not be empty")
 
         ids = list(forecasts.keys())
         ics = np.array([ic_scores.get(mid, 0.0) for mid in ids], dtype=float)
@@ -154,7 +155,7 @@ class EnsembleCombiner:
         forecast_errors = np.asarray(forecast_errors, dtype=float)
 
         if weights.shape != forecast_errors.shape:
-            raise ValueError("weights and forecast_errors must have the same shape")
+            raise AnalysisError("weights and forecast_errors must have the same shape")
 
         # Predizione: i pesi non cambiano (random walk)
         P_pred = np.eye(len(weights)) * process_noise

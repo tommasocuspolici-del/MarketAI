@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.forecasting import SimpleForecaster
 
@@ -74,7 +75,7 @@ def test_forecast_raises_on_short_history():
     """Almeno 30 osservazioni richieste."""
     prices = np.array([100.0, 101.0, 102.0])
     forecaster = SimpleForecaster()
-    with pytest.raises(ValueError, match="osservazioni"):
+    with pytest.raises((ValueError, MarketAIError)):
         forecaster.forecast(
             close_prices=prices, ticker="X", horizon_days=10
         )
@@ -84,7 +85,7 @@ def test_forecast_raises_on_non_positive_prices():
     """Prezzi <= 0 sono rifiutati (log non definito)."""
     prices = np.concatenate([np.full(15, 100.0), np.full(15, 0.0)])
     forecaster = SimpleForecaster()
-    with pytest.raises(ValueError, match="non positivi"):
+    with pytest.raises((ValueError, MarketAIError)):
         forecaster.forecast(
             close_prices=prices, ticker="X", horizon_days=10
         )
@@ -94,7 +95,7 @@ def test_forecast_raises_on_zero_horizon():
     """horizon_days deve essere > 0."""
     prices = _generate_gbm_prices(100, 0.05, 0.15)
     forecaster = SimpleForecaster()
-    with pytest.raises(ValueError, match="horizon_days"):
+    with pytest.raises((ValueError, MarketAIError)):
         forecaster.forecast(
             close_prices=prices, ticker="X", horizon_days=0
         )

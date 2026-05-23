@@ -24,9 +24,11 @@ import os
 import urllib.request
 from typing import Any
 
+from shared.config.operational_config import OP_CONFIG
+from shared.exceptions import FetchError
 from shared.logger import get_logger
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 __all__ = ["LiveSentimentService", "SentimentScores"]
 
@@ -37,9 +39,13 @@ _CNN_FG_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
 _CRYPTO_FG_URL = "https://api.alternative.me/fng/?limit=1"
 _FINNHUB_BASE = "https://finnhub.io/api/v1"
 
-# Put/Call ratio normalization bounds (based on historical CBOE data)
-_PC_BULLISH_THRESH = 0.70   # below → bullish (+1)
-_PC_BEARISH_THRESH = 1.25   # above → bearish (-1)
+# Soglie normalizzazione lette da OP_CONFIG (config/operational_defaults.yaml)
+_cfg_sent = OP_CONFIG.sentiment
+_PC_BULLISH_THRESH = _cfg_sent.pc_bullish_thresh
+_PC_BEARISH_THRESH = _cfg_sent.pc_bearish_thresh
+_COT_OI_SPREAD     = _cfg_sent.cot_oi_spread
+_SHORT_INT_NEUTRAL = _cfg_sent.short_int_neutral
+_SHORT_INT_SPREAD  = _cfg_sent.short_int_spread
 
 # AAII — HTML results page
 _AAII_URL = "https://www.aaii.com/sentimentsurvey/sent_results"
@@ -48,19 +54,11 @@ _AAII_URL = "https://www.aaii.com/sentimentsurvey/sent_results"
 _CFTC_SOCRATA_URL = "https://publicreporting.cftc.gov/resource/r4w3-av2u.json"
 _SP500_FUTURES_SUBSTR = "E-MINI S&P 500"   # substring match against market name
 
-# COT normalization: ±25% of open interest maps to ±1
-_COT_OI_SPREAD = 0.25
-
 # Insider — OpenInsider screener: last 30 days, open-market purchases + sales, value ≥ $5k
 _OPENINSIDER_URL = (
     "https://openinsider.com/screener"
     "?fd=30&xp=1&xs=1&vl=5&cnt=500&action=1"
 )
-
-# Short interest normalization (SPY shortPercentOfFloat)
-# Typical SPY range: 0.5–3 %; 1 % = neutral, drift down = bullish, up = bearish
-_SHORT_INT_NEUTRAL = 0.01   # 1 % = score 0
-_SHORT_INT_SPREAD  = 0.03   # 3 pp from neutral = ±1
 
 # Browser-like headers used for sites that block bare Python UA
 _BROWSER_HEADERS = {
@@ -201,7 +199,7 @@ class LiveSentimentService:
             if score_raw is None:
                 score_raw = data.get("score")
             if score_raw is None:
-                raise ValueError("score field missing from CNN F&G response")
+                raise FetchError("score field missing from CNN F&G response")
             return self._normalize_0_100(float(score_raw))
         except Exception as exc:
             log.warning("live_sentiment.cnn_fg_error", error=str(exc))
@@ -214,10 +212,10 @@ class LiveSentimentService:
             data = self._get_json(_CRYPTO_FG_URL)
             items = data.get("data", [])
             if not items:
-                raise ValueError("empty data array from alternative.me")
+                raise FetchError("empty data array from alternative.me")
             value_raw = items[0].get("value")
             if value_raw is None:
-                raise ValueError("value field missing")
+                raise FetchError("value field missing")
             return self._normalize_0_100(float(value_raw))
         except Exception as exc:
             log.warning("live_sentiment.crypto_fg_error", error=str(exc))
@@ -236,12 +234,12 @@ class LiveSentimentService:
             spy = yf.Ticker("SPY")
             exp_dates = spy.options
             if not exp_dates:
-                raise ValueError("no options expiry dates available for SPY")
+                raise FetchError("no options expiry dates available for SPY")
             chain = spy.option_chain(exp_dates[0])
             put_vol = float(chain.puts["volume"].fillna(0).sum())
             call_vol = float(chain.calls["volume"].fillna(0).sum())
             if call_vol == 0:
-                raise ValueError("zero call volume in SPY options chain")
+                raise FetchError("zero call volume in SPY options chain")
             ratio = put_vol / call_vol
             return self._normalize_put_call(ratio)
         except Exception as exc:
@@ -264,7 +262,7 @@ class LiveSentimentService:
                 bullish = float(sent.get("bullishPercent", 0.0))
                 bearish = float(sent.get("bearishPercent", 0.0))
                 if bullish == 0.0 and bearish == 0.0:
-                    raise ValueError("Finnhub returned zero sentiment for SPY")
+                    raise FetchError("Finnhub returned zero sentiment for SPY")
                 return float(bullish - bearish)
             except Exception as exc:
                 finnhub_exc = exc
@@ -283,13 +281,13 @@ class LiveSentimentService:
 
             hist = yf.Ticker("SPY").history(period="3mo")["Close"]
             if len(hist) < 15:
-                raise ValueError("insufficient SPY history for RSI(14)")
+                raise FetchError("insufficient SPY history for RSI(14)")
             delta = hist.diff()
             gain = delta.clip(lower=0).rolling(14).mean()
             loss = (-delta.clip(upper=0)).rolling(14).mean()
             last_loss = loss.iloc[-1]
             if last_loss == 0:
-                raise ValueError("RSI denominator is zero (all gains, no losses)")
+                raise FetchError("RSI denominator is zero (all gains, no losses)")
             rs = gain.iloc[-1] / last_loss
             rsi = 100.0 - (100.0 / (1.0 + rs))
             return self._normalize_0_100(float(rsi))
@@ -310,7 +308,7 @@ class LiveSentimentService:
             soup = BeautifulSoup(html, "html.parser")
             table = soup.find("table", {"id": "sentiment-data"}) or soup.find("table")
             if table is None:
-                raise ValueError("AAII sentiment table not found")
+                raise FetchError("AAII sentiment table not found")
             rows = table.find_all("tr")
             last_row = rows[-1].find_all("td")
             # Columns: Date, Bullish, Neutral, Bearish, ...
@@ -318,7 +316,7 @@ class LiveSentimentService:
             bearish = float(last_row[3].text.strip().replace("%", ""))
             total = bullish + bearish
             if total == 0:
-                raise ValueError("AAII zero total sentiment")
+                raise FetchError("AAII zero total sentiment")
             score = (bullish - bearish) / total
             return float(max(-1.0, min(1.0, score)))
         except Exception as exc:
@@ -336,12 +334,12 @@ class LiveSentimentService:
                 None,
             )
             if record is None:
-                raise ValueError("E-mini S&P 500 not found in CFTC response")
+                raise FetchError("E-mini S&P 500 not found in CFTC response")
             long_nc = float(record.get("noncomm_positions_long_all", 0))
             short_nc = float(record.get("noncomm_positions_short_all", 0))
             oi = float(record.get("open_interest_all", 1))
             if oi == 0:
-                raise ValueError("COT open interest is zero")
+                raise FetchError("COT open interest is zero")
             net_pct = (long_nc - short_nc) / oi
             score = net_pct / _COT_OI_SPREAD  # ±25% OI → ±1
             return float(max(-1.0, min(1.0, score)))
@@ -361,7 +359,7 @@ class LiveSentimentService:
             soup = BeautifulSoup(html, "html.parser")
             table = soup.find("table", {"class": "tinytable"})
             if table is None:
-                raise ValueError("OpenInsider tinytable not found")
+                raise FetchError("OpenInsider tinytable not found")
             buys = sells = 0
             for row in table.find_all("tr")[1:]:  # skip header
                 cells = row.find_all("td")
@@ -374,7 +372,7 @@ class LiveSentimentService:
                     sells += 1
             total = buys + sells
             if total == 0:
-                raise ValueError("OpenInsider: no trades found")
+                raise FetchError("OpenInsider: no trades found")
             score = (buys - sells) / total
             return float(max(-1.0, min(1.0, score)))
         except Exception as exc:
@@ -390,7 +388,7 @@ class LiveSentimentService:
             info = yf.Ticker("SPY").info
             pct = info.get("shortPercentOfFloat")
             if pct is None:
-                raise ValueError("shortPercentOfFloat not available for SPY")
+                raise FetchError("shortPercentOfFloat not available for SPY")
             # Invert: high short interest → bearish (-1); low → bullish (+1)
             score = -(pct - _SHORT_INT_NEUTRAL) / _SHORT_INT_SPREAD
             return float(max(-1.0, min(1.0, score)))

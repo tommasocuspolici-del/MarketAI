@@ -22,6 +22,7 @@ from shared.constants import CONFIG_DIR
 from shared.logger import get_logger
 
 import yaml
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 __version__ = "10.0.0"
 
@@ -75,8 +76,8 @@ class SourceCredibilityTracker:
             with self._lock:
                 for source, weight in source_weights.items():
                     self._weights[source.lower()] = float(weight)
-        except Exception:
-            pass    # Use defaults if YAML not found
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="source_credibility_tracker", fallback=None)  # Use defaults if YAML not found
 
     def get_weight(self, source: str) -> float:
         """Return credibility weight [0, 1] for *source*."""

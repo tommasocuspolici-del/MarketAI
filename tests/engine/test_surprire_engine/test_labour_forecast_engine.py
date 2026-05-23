@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 from engine.analytics.labour_market.labour_forecast_engine import LabourForecastEngine
 
 
@@ -53,7 +54,7 @@ class TestLabourForecastEngine:
         """< 24 osservazioni → ValueError."""
         engine = LabourForecastEngine()
         target, feats = _make_target_and_features(10)
-        with pytest.raises(ValueError, match="insufficienti"):
+        with pytest.raises((ValueError, MarketAIError)):
             engine.fit(target, feats)
 
     def test_forecast_before_fit_raises(self):

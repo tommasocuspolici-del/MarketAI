@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import pytest
+from shared.exceptions import MarketAIError
 import numpy as np
 import pandas as pd
 
@@ -57,7 +58,7 @@ class TestCombineEqualWeight:
         assert result.ensemble_method == "equal"
 
     def test_empty_forecasts_raises(self, combiner: EnsembleCombiner) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             combiner.combine_equal_weight({})
 
     def test_single_model(self, combiner: EnsembleCombiner) -> None:
@@ -109,7 +110,7 @@ class TestCombineICWeighted:
         assert math.isclose(result.point_forecast, 1.25, rel_tol=1e-6)
 
     def test_empty_forecasts_raises(self, combiner: EnsembleCombiner) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             combiner.combine_ic_weighted({}, {})
 
 
@@ -183,7 +184,7 @@ class TestUpdateKalmanWeights:
     def test_shape_mismatch_raises(self, combiner: EnsembleCombiner) -> None:
         weights = np.array([0.5, 0.5])
         errors = np.array([0.1, 0.2, 0.3])
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             combiner.update_kalman_weights(weights, errors)
 
     def test_three_models(self, combiner: EnsembleCombiner) -> None:

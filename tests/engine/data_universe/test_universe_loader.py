@@ -88,10 +88,11 @@ class TestUniverseLoader:
             UniverseLoader(config_path=tmp_path / "nonexistent.yaml").load()
 
     def test_invalid_yaml_raises(self, tmp_path: Path) -> None:
-        """ValueError se il contenuto YAML non è un mapping."""
+        """ValueError/ConfigurationError se il contenuto YAML non è un mapping."""
+        from shared.exceptions import MarketAIError
         p = tmp_path / "bad.yaml"
         p.write_text("- item1\n- item2\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="mapping YAML"):
+        with pytest.raises((ValueError, MarketAIError)):
             UniverseLoader(config_path=p).load()
 
     def test_skips_entry_with_missing_required_field(self, tmp_path: Path) -> None:

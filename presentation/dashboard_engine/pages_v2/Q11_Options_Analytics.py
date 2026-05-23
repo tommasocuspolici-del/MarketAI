@@ -84,6 +84,7 @@ def _render_greeks_tab(st) -> None:  # pragma: no cover
         st.subheader("Catena Mock (spot ±20%, 5 scadenze)")
         st.caption("Prezzi generati con Black-Scholes a volatilità piatta (semplificazione).")
 
+        # INTENTIONAL_MOCK: usato solo quando feature flag 'options_analytics' è OFF
         from engine.options.mock_chain import MockOptionsChain
         import pandas as pd
 

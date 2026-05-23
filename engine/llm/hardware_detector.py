@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from enum import Enum
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 __version__ = "1.0.0"
 __all__ = ["HardwareDetector", "HardwareReport", "LLMErrorCode", "detect_hardware"]
@@ -132,8 +133,8 @@ class HardwareDetector:
             if result.returncode == 0:
                 mb = float(result.stdout.strip().split("\n")[0])
                 return mb / 1024.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="hardware_detector", fallback=None)
         return None
 
 

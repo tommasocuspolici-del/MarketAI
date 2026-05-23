@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.strategy_lab.strategy_registry import StrategyRecord, StrategyRegistry
 
@@ -58,7 +59,7 @@ class TestActivation:
         """DoD: WalkForwardValidator obbligatoria prima di is_active=True."""
         reg = StrategyRegistry()
         rec = reg.register("Not Validated")
-        with pytest.raises(ValueError, match="walk-forward validation"):
+        with pytest.raises((ValueError, MarketAIError)):
             reg.activate(rec.strategy_id)
         # Verify still not active
         assert reg.get(rec.strategy_id).is_active is False

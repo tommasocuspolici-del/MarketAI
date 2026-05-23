@@ -1,4 +1,4 @@
-﻿"""
+"""
 ClaimsCycleDetector: rileva il ciclo del mercato del lavoro dai Claims settimanali.
 
 Initial Jobless Claims (ICSA) Ã¨ uno dei leading indicators piÃ¹ tempestivi:
@@ -34,6 +34,7 @@ from engine.market_data.fred_simple_client import (
     FredSimpleClient,
     FredSimpleError,
 )
+from shared.exceptions import InsufficientDataError
 
 __version__ = "1.0.0"
 log = structlog.get_logger(__name__)
@@ -91,7 +92,7 @@ class ClaimsCycleDetector:
             raise
 
         if df_initial.empty or len(df_initial) < _MA_WINDOW + 1:
-            raise ValueError("Claims: dati insufficienti per rilevazione ciclo")
+            raise InsufficientDataError("Claims: dati insufficienti per rilevazione ciclo")
 
         signal = self._compute_signal(df_initial)
 

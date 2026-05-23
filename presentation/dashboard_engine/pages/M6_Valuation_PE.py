@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from presentation.ui.cache_policy import CACHE_TTL
 from presentation.ui.layout import render_section_header
 from presentation.ui.page_factory import render_page
 from presentation.ui.components import EmptyState  # v8.2 standardization
@@ -74,7 +75,7 @@ def body_valuation_pe(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
         st.warning("⚠️ Modulo valutazione non attivo. Abilita `valuation_pe_engine` in feature_flags.yaml.")
         return
 
-    @st.cache_data(ttl=3600)
+    @st.cache_data(ttl=CACHE_TTL.MACRO_CONVICTION)
     def _load_valuation(ticker: str) -> dict:
         try:
             client = get_duckdb_client()
@@ -88,7 +89,7 @@ def body_valuation_pe(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
         except Exception as exc:
             return {"error": str(exc)}
 
-    @st.cache_data(ttl=1800)
+    @st.cache_data(ttl=CACHE_TTL.FOREX_COMMODITY)
     def _load_signal(ticker: str) -> dict:
         try:
             from shared.db.duckdb_client import get_duckdb_client as _gdc
@@ -99,7 +100,7 @@ def body_valuation_pe(tokens: DesignTokens) -> None:  # pragma: no cover -- Stre
         except Exception as exc:
             return {"error": str(exc)}
 
-    @st.cache_data(ttl=86400)
+    @st.cache_data(ttl=CACHE_TTL.INSTRUMENT_LOOKUP)
     def _load_cape_history(n: int = 240) -> list:
         try:
             from shared.db.duckdb_client import get_duckdb_client as _gdc

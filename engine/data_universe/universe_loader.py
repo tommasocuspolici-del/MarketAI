@@ -21,6 +21,7 @@ from typing import Any
 import yaml
 
 from shared.logger import get_logger
+from shared.exceptions import ConfigurationError
 
 __version__ = "1.0.0"
 __all__ = ["DataUniverse", "SeriesDefinition", "UniverseLoader"]
@@ -138,7 +139,7 @@ class UniverseLoader:
 
         raw: dict[str, Any] = yaml.safe_load(self._path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
-            raise ValueError("data_universe.yaml deve essere un mapping YAML valido")
+            raise ConfigurationError("data_universe.yaml deve essere un mapping YAML valido")
 
         universe = DataUniverse()
         fred_sections: dict[str, Any] = raw.get("fred_series", {})

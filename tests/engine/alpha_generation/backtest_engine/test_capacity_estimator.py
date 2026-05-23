@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import pytest
+from shared.exceptions import MarketAIError
 import numpy as np
 import pandas as pd
 
@@ -27,11 +28,11 @@ class TestInstantiation:
         assert est._participation_rate == 0.10
 
     def test_invalid_participation_rate_zero(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             CapacityEstimator(participation_rate=0.0)
 
     def test_invalid_participation_rate_negative(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             CapacityEstimator(participation_rate=-0.1)
 
     def test_participation_rate_one_is_valid(self) -> None:
@@ -88,12 +89,12 @@ class TestEstimate:
 
     def test_negative_adtv_raises(self) -> None:
         est = CapacityEstimator()
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             est.estimate("SPY", adtv_usd=-100, daily_turnover=0.05)
 
     def test_invalid_turnover_raises(self) -> None:
         est = CapacityEstimator()
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, MarketAIError)):
             est.estimate("SPY", adtv_usd=100_000, daily_turnover=1.5)
 
     def test_zero_turnover_returns_infinite_capacity(self) -> None:

@@ -11,6 +11,7 @@ _LOOKBACKS = [5, 21, 63]  # giorni: 1w, 1m, 3m
 
 def body_q5_delta(st, tokens) -> None:  # pragma: no cover
     from presentation.ui.auth import require_auth
+    from presentation.ui.cache_policy import CACHE_TTL
     require_auth()
 
     st.title("🔬 Analisi — Delta & Momentum")
@@ -20,7 +21,7 @@ def body_q5_delta(st, tokens) -> None:  # pragma: no cover
             st.cache_data.clear()
             st.rerun()
 
-    @st.cache_data(ttl=600)
+    @st.cache_data(ttl=CACHE_TTL.DELTA_TRACKER)
     def _load_delta_table():
         import yfinance as yf
         import pandas as pd
@@ -45,7 +46,7 @@ def body_q5_delta(st, tokens) -> None:  # pragma: no cover
 
         return pd.DataFrame(records) if records else None
 
-    @st.cache_data(ttl=600)
+    @st.cache_data(ttl=CACHE_TTL.DELTA_TRACKER)
     def _load_momentum():
         import yfinance as yf
         import pandas as pd

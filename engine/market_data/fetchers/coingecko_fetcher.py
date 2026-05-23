@@ -17,6 +17,7 @@ import pandas as pd
 from shared.config.operational_config import OP_CONFIG
 from shared.exceptions import FetchError
 from shared.logger import get_logger
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -224,5 +225,5 @@ class CoinGeckoFetcher:
     def __del__(self) -> None:
         try:
             self._http.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="coingecko_fetcher", fallback=None)

@@ -34,6 +34,7 @@ import pandas as pd
 
 from engine.futures_analysis.schemas import RollYieldResult, TermStructure
 from shared.logger import get_logger
+from shared.exceptions import DataValidationError, InsufficientDataError
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -84,7 +85,7 @@ class RollAnalyzer:
         df = self._load_futures_data(ticker)
 
         if df is None or len(df) < _ROLL_WINDOW_DAYS + 2:
-            raise ValueError(
+            raise InsufficientDataError(
                 f"{ticker}: dati insufficienti in futures_ohlcv "
                 f"(trovati {len(df) if df is not None else 0}, "
                 f"richiesti {_ROLL_WINDOW_DAYS + 2})"
@@ -96,7 +97,7 @@ class RollAnalyzer:
 
         # Roll yield
         if second_proxy <= 0:
-            raise ValueError(f"{ticker}: prezzo proxy negativo o zero ({second_proxy})")
+            raise InsufficientDataError(f"{ticker}: prezzo proxy negativo o zero ({second_proxy})")
 
         roll_22d   = float(np.float64(front_close) / np.float64(second_proxy) - 1.0)
         roll_annual = float(roll_22d * (np.float64(252) / np.float64(_ROLL_WINDOW_DAYS)))
@@ -150,14 +151,14 @@ class RollAnalyzer:
             RollYieldResult.
         """
         if df is None or len(df) < _ROLL_WINDOW_DAYS + 2:
-            raise ValueError(f"{ticker}: DataFrame insufficiente ({len(df) if df is not None else 0} righe)")
+            raise InsufficientDataError(f"{ticker}: DataFrame insufficiente ({len(df) if df is not None else 0} righe)")
 
         closes        = df["close"].to_numpy(dtype=np.float64)
         front_close   = float(closes[-1])
         second_proxy  = float(closes[-(_ROLL_WINDOW_DAYS + 1)])
 
         if second_proxy <= 0:
-            raise ValueError(f"{ticker}: proxy negativo ({second_proxy})")
+            raise InsufficientDataError(f"{ticker}: proxy negativo ({second_proxy})")
 
         roll_22d   = float(np.float64(front_close) / np.float64(second_proxy) - 1.0)
         roll_annual = float(roll_22d * (252.0 / _ROLL_WINDOW_DAYS))

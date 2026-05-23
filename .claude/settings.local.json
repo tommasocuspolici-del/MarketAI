@@ -307,7 +307,19 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/engine/analytics/regime/test_regime_change_detector.py tests/engine/alpha_generation/backtest_engine/test_wfo_runner.py tests/engine/alpha_generation/backtest_engine/test_capacity_estimator.py tests/engine/analytics/forecasting/test_var_vecm_engine.py tests/engine/analytics/forecasting/test_ensemble_combiner.py tests/engine/analytics/forecasting/test_scenario_tree_builder.py tests/engine/analytics/risk/test_factor_risk_attribution.py tests/engine/analytics/derivatives/test_vol_surface_svi.py tests/engine/analytics/derivatives/test_gex_calculator.py tests/engine/analytics/risk/test_tail_hedge_advisor.py tests/engine/data_universe/test_cross_source_validator_v2.py -q)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/engine/analytics/risk/test_factor_risk_attribution.py::TestCompute::test_pct_systematic_in_unit_interval tests/engine/analytics/risk/test_tail_hedge_advisor.py::TestContractionRegime::test_contraction_triggers_sh_recommendation -v)",
       "Bash(.venv/Scripts/python.exe -m pytest --ignore=tests/integration --tb=no -q)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\presentation\\\\dashboard_personal\\\\pages\" -Filter \"*.py\")",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(grep -Hm1 ^description: 'C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0/.claude/skills/*/SKILL.md')",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8501/healthz)",
+      "Bash(Start-Process *)",
+      "PowerShell(Start-Process \"http://localhost:8502\")",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\src\\\\presentation\\\\\" -Directory | Select-Object FullName)",
+      "Bash(xargs grep -n \"= 42\\\\|= \\\\\"42\\\\\"\\\\|seed.*42\")",
+      "Bash(python -m pytest tests/architecture/test_layer_boundaries.py -v)",
+      "Bash(xargs grep -l \"^def \")",
+      "Bash(grep -r \"def [a-zA-Z_].*\\([^\\)]*\\)[^:]*$\\\\|def [a-zA-Z_].*\\([^\\)]*\\) -> None:\\\\|def [a-zA-Z_].*\\([^\\)]*\\) ->\" \"C:\\\\Users\\\\Q256254\\\\Documents\\\\market-ai\\\\MarketAI 1.0\\\\engine\")"
     ]
   },
   "prefersReducedMotion": false

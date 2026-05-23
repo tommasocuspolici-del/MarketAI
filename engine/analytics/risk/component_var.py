@@ -15,6 +15,7 @@ import pandas as pd
 from scipy import stats
 
 from shared.logger import get_logger
+from shared.exceptions import ConfigurationError
 
 __version__ = "11.0.0"
 
@@ -70,11 +71,11 @@ class ComponentVaRCalculator:
         n = len(tickers)
 
         if len(weights) != n:
-            raise ValueError(
+            raise ConfigurationError(
                 f"weights length {len(weights)} != tickers length {n}"
             )
         if returns_matrix.shape[1] != n:
-            raise ValueError(
+            raise ConfigurationError(
                 f"returns_matrix has {returns_matrix.shape[1]} cols != {n} tickers"
             )
         if len(returns_matrix) < MIN_OBS:

@@ -49,6 +49,9 @@ class _CacheTTL:
     # Segnali engine (composite signal, regime) — letti da DuckDB al riavvio
     SIGNALS           = OP_CONFIG.cache.signals_disk_ttl_s           # 3600s
 
+    # Delta Tracker (Q5) — aggiornamento frequente
+    DELTA_TRACKER     = 600     # 10min
+
     # Senza cache: dati che cambiano ad ogni load
     STATIC            = 0
 

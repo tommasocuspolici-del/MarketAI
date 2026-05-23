@@ -39,7 +39,7 @@ import numpy as np
 import yaml
 
 from shared.db.duckdb_client import DuckDBClient, get_duckdb_client
-from shared.exceptions import DatabaseError
+from shared.exceptions import DataValidationError,  DatabaseError
 from shared.logger import get_logger
 
 __version__ = "9.0.0"
@@ -338,7 +338,7 @@ class CrossSourceValidator:
                         ),
                     }
             if not result:
-                raise ValueError("Config vuota o nessuna metrica trovata")
+                raise DataValidationError("Config vuota o nessuna metrica trovata")
             return result
         except Exception as exc:
             log.warning(

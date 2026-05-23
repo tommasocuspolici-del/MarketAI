@@ -24,6 +24,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -210,8 +211,8 @@ class EquityRiskPremium:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         # 2. fundamentals_valuation (Alpha Vantage)
         try:
@@ -223,8 +224,8 @@ class EquityRiskPremium:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0])
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         return None
 
@@ -240,8 +241,8 @@ class EquityRiskPremium:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         # 2. macro_series DGS10
         try:
@@ -253,8 +254,8 @@ class EquityRiskPremium:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         # 3. shiller_cape_historical.bond_yield (serie storica lunga)
         try:
@@ -266,8 +267,8 @@ class EquityRiskPremium:
             )
             if rows and rows[0][0]:
                 return float(rows[0][0]) / 100.0
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         return None
 
@@ -313,8 +314,8 @@ class EquityRiskPremium:
                 from scipy import stats
                 p = float(stats.percentileofscore(hist, erp))
                 return z, float(np.clip(p, 0, 100))
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="equity_risk_premium", fallback=None)
 
         # Fallback z-score con parametri storici
         z = float(np.clip((erp - _ERP_HIST_MEAN) / _ERP_HIST_STD, -5, 5))

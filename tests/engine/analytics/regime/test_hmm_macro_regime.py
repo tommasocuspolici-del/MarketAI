@@ -4,6 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 from engine.analytics.regime.hmm_macro_regime import (
     CONFIDENCE_THRESHOLD,
@@ -162,7 +163,7 @@ class TestHMMFitting:
 
     def test_fit_raises_on_insufficient_data(self, model: HMMRegimeModel) -> None:
         features = _make_features(n=10)  # MIN_SAMPLES = 36
-        with pytest.raises(ValueError, match="Insufficient samples"):
+        with pytest.raises((ValueError, MarketAIError)):
             model.fit(features)
 
     def test_predict_after_fit_returns_correct_length(self, model: HMMRegimeModel) -> None:

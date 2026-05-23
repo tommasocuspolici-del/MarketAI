@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from engine.ib_forecast.schemas import IBConsensus, IBSignal
 from shared.logger import get_logger
+from shared.resilience.error_policy import error_policy, ErrorLevel
 
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
@@ -179,8 +180,8 @@ class ConsensusBuilder:
             if target and current > 0:
                 upside = (target - current) / current
                 return max(-1.0, min(1.0, upside * 5))  # Scale
-        except Exception:
-            pass
+        except Exception as exc:
+            error_policy.handle(exc, level=ErrorLevel.RECOVER, context="consensus_builder", fallback=None)
         return None
 
     def _persist_consensus(self, c: IBConsensus) -> None:

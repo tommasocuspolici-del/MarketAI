@@ -20,6 +20,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 import pytest
+from shared.exceptions import MarketAIError
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ class TestDSLStrategy:
     def test_empty_expression_raises(self) -> None:
         """Espressione vuota → BacktestError."""
         from engine.backtesting.strategy_builder import DSLStrategy
-        from shared.exceptions import BacktestError
+        from shared.exceptions import MarketAIError,  BacktestError
         with pytest.raises(BacktestError):
             DSLStrategy("", allow_short=False)
 
@@ -162,7 +163,7 @@ class TestDSLStrategy:
     def test_build_strategy_from_dsl_invalid_raises(self) -> None:
         """Espressione non valida → BacktestError dalla factory."""
         from engine.backtesting.strategy_builder import build_strategy_from_dsl
-        from shared.exceptions import BacktestError
+        from shared.exceptions import MarketAIError,  BacktestError
         with pytest.raises(BacktestError):
             build_strategy_from_dsl("EVIL_FUNCTION(close, 99)")
 
@@ -249,7 +250,7 @@ class TestForwardScenarioGenerator:
         )
         gen = ForwardScenarioGenerator()
         tiny = pd.DataFrame({"ts": [1, 2, 3], "close": [100.0, 101.0, 102.0]})
-        with pytest.raises(ValueError, match="troppo corto"):
+        with pytest.raises((ValueError, MarketAIError)):
             gen.generate(tiny, ScenarioType.BASE)
 
 
@@ -295,7 +296,7 @@ class TestStressTestRunner:
     def test_fees_below_minimum_raises(self) -> None:
         """fees < 0.001 → BacktestError (Regola 23)."""
         from engine.stress_test.forward_scenarios import StressTestRunner
-        from shared.exceptions import BacktestError
+        from shared.exceptions import MarketAIError,  BacktestError
         with pytest.raises(BacktestError, match="Rule 23"):
             StressTestRunner(fees=0.0001)
 

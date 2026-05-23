@@ -31,21 +31,22 @@ if TYPE_CHECKING:
     from engine.analytics.labour_market.jolts_analyzer import JOLTSSignal
     from engine.analytics.labour_market.claims_cycle_detector import ClaimsCycleSignal
 
-__version__ = "1.0.0"
+from shared.config.operational_config import OP_CONFIG
+
+__version__ = "1.1.0"
 log = structlog.get_logger(__name__)
 
 LabourRegime = Literal["tight", "balanced", "slack", "deteriorating"]
 
-# Pesi per il composite score (somma = 1.0)
-_WEIGHT_JOLTS   = 0.45   # JOLTS: strutturale, aggiornato mensilmente
-_WEIGHT_CLAIMS  = 0.40   # Claims: high-frequency, aggiornato settimanalmente
-_WEIGHT_PAYROLL = 0.15   # Payroll: placeholder, verrà aggiornato con PayrollDecomposer
-
-# Soglie composite per regime
-_TIGHT_SCORE_MIN        =  0.35
-_DETERIORATING_SCORE_MAX= -0.25
-_BALANCED_MIN           = -0.25
-_BALANCED_MAX           =  0.35
+# Pesi e soglie lette da OP_CONFIG (config/operational_defaults.yaml)
+_cfg_lm = OP_CONFIG.labour_market
+_WEIGHT_JOLTS            = _cfg_lm.weight_jolts
+_WEIGHT_CLAIMS           = _cfg_lm.weight_claims
+_WEIGHT_PAYROLL          = _cfg_lm.weight_payroll
+_TIGHT_SCORE_MIN         = _cfg_lm.tight_score_min
+_DETERIORATING_SCORE_MAX = _cfg_lm.deteriorating_score_max
+_BALANCED_MIN            = _cfg_lm.balanced_min
+_BALANCED_MAX            = _cfg_lm.balanced_max
 
 
 @dataclass(frozen=True)
