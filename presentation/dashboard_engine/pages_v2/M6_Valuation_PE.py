@@ -278,55 +278,92 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
     # ── Tab 4: Segnale composito ────────────────────────────────────────────
     with tab_signal:
         st.subheader("Contributo Valuation al Composite Signal v2.1")
+
+        # KPI: score corrente da valuation_signal
         try:
-            rows = db.query(
-                "SELECT signal_date, valuation_score, trailing_pe_signal, "
-                "forward_pe_signal, cape_signal, erp_signal, label "
-                "FROM valuation_signal ORDER BY signal_date DESC LIMIT 90"
+            sig_rows = db.query(
+                "SELECT valuation_score, label, signal_date "
+                "FROM valuation_signal ORDER BY signal_date DESC LIMIT 1"
             )
-            if not rows:
-                st.info("Storico segnali non disponibile.")
+            if sig_rows:
+                score = sig_rows[0][0] or 0.0
+                label = sig_rows[0][1] or "unknown"
+                color = (tokens.colors.positive if score > 0.1
+                         else tokens.colors.negative if score < -0.1
+                         else tokens.colors.neutral)
+                st.markdown(
+                    f"<h2 style='color:{color};text-align:center'>"
+                    f"{label.replace('_',' ').title()}&nbsp;&nbsp;{score:+.3f}</h2>",
+                    unsafe_allow_html=True,
+                )
+                st.caption(f"Calcolato il: {sig_rows[0][2]}")
             else:
-                import pandas as pd
-                import plotly.graph_objects as go
-                df = pd.DataFrame(rows, columns=[
-                    "date", "score", "t_pe", "f_pe", "cape", "erp", "label"
-                ])
-                df["date"] = pd.to_datetime(df["date"])
+                st.info("Segnale corrente non disponibile. Premere 📥 Carica valuation.")
+        except Exception as exc:
+            st.caption(f"Score non disponibile: {exc}")
+
+        st.divider()
+
+        # Storico CAPE signal da shiller_cape_historical (z-score rolling 20Y)
+        st.subheader("CAPE Signal Storico (z-score 20Y rolling)")
+        try:
+            import pandas as pd
+            import numpy as np
+            import plotly.graph_objects as go
+
+            hist_rows = db.query(
+                "SELECT data_date, cape_ratio, erp_implied "
+                "FROM shiller_cape_historical "
+                "WHERE cape_ratio IS NOT NULL "
+                "ORDER BY data_date ASC"
+            )
+            if not hist_rows:
+                st.info("Nessun dato storico CAPE. Premere 📥 Carica valuation.")
+            else:
+                df_h = pd.DataFrame(hist_rows, columns=["date", "cape", "erp"])
+                df_h["date"] = pd.to_datetime(df_h["date"])
+
+                roll_mean = df_h["cape"].rolling(240, min_periods=60).mean()
+                roll_std  = df_h["cape"].rolling(240, min_periods=60).std()
+                df_h["cape_z"]      = (df_h["cape"] - roll_mean) / roll_std.replace(0, np.nan)
+                df_h["cape_signal"] = df_h["cape_z"].apply(
+                    lambda z: float(np.clip(-z / 2.0, -1, 1)) if pd.notna(z) else None
+                )
+                df_h["erp_signal"] = df_h["erp"].apply(
+                    lambda e: float(np.clip((e - 0.02) / 0.02, -1, 1))
+                    if pd.notna(e) and e is not None else None
+                )
 
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
-                    x=df["date"], y=df["score"],
-                    name="Valuation Score", mode="lines+markers",
-                    line=dict(color=tokens.colors.primary, width=2),
-                    marker=dict(size=4),
+                    x=df_h["date"], y=df_h["cape_signal"],
+                    name="CAPE Signal", mode="lines",
+                    line=dict(color=tokens.colors.warning, width=2),
                 ))
-                for col, label, color in [
-                    ("t_pe",  "Trailing PE",  tokens.colors.positive),
-                    ("f_pe",  "Forward PE",   tokens.colors.info),
-                    ("cape",  "CAPE",         tokens.colors.warning),
-                    ("erp",   "ERP",          tokens.colors.neutral),
-                ]:
+                if df_h["erp_signal"].notna().any():
                     fig.add_trace(go.Scatter(
-                        x=df["date"], y=df[col],
-                        name=label, mode="lines",
-                        line=dict(color=color, width=1, dash="dot"),
-                        opacity=0.7,
+                        x=df_h["date"], y=df_h["erp_signal"],
+                        name="ERP Signal (Shiller)", mode="lines",
+                        line=dict(color=tokens.colors.positive, width=1.5, dash="dot"),
+                        opacity=0.8,
                     ))
                 fig.add_hline(y=0, line_color="gray", line_dash="dot", opacity=0.3)
+                fig.add_hline(y=0.5,  line_color="green", line_dash="dash", opacity=0.3)
+                fig.add_hline(y=-0.5, line_color="red",   line_dash="dash", opacity=0.3)
                 fig.update_layout(
-                    height=400, title="Segnale Valuation [-1, +1]",
+                    height=400,
+                    title="CAPE Signal [-1, +1] — z-score rolling 20Y",
                     yaxis=dict(range=[-1.1, 1.1]),
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                     legend=dict(orientation="h", y=1.1),
                     margin=dict(l=0, r=0, t=40, b=0),
                 )
                 st.plotly_chart(fig, use_container_width=True)
-
                 st.caption(
                     "**Peso nel Composite v2.1:** 12% · "
-                    "Score > 0 = mercato economico rispetto alla storia · "
-                    "Score < 0 = mercato costoso"
+                    "Score > 0 = mercato economico rispetto alla storia 20Y · "
+                    "Score < 0 = mercato costoso · "
+                    "Linee tratteggiate: ±0.5 (soglie segnale)"
                 )
         except Exception as exc:
-            st.warning(f"Storico segnali non disponibile: {exc}")
+            st.warning(f"Storico segnale non disponibile: {exc}")
