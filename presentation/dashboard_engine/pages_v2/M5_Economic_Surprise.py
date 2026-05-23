@@ -145,7 +145,7 @@ def _run_surprise_pipeline(db, st_module) -> dict:
     Ritorna dict con campi: yaml_rows, macro_rows, calc_rows, sector_count, signal_value.
     """
     st = st_module
-    result = {"yaml_rows": 0, "macro_rows": 0, "calc_rows": 0, "sector_count": 0, "signal_value": None}
+    result = {"yaml_rows": 0, "macro_rows": 0, "calc_rows": 0, "sector_count": 0, "signal_value": None, "extended_window": False}
 
     try:
         from shared.db.duckdb_migrator import run_pending_migrations
@@ -162,6 +162,15 @@ def _run_surprise_pipeline(db, st_module) -> dict:
     except Exception as exc:
         st.error(f"Errore ConsensusLoader: {type(exc).__name__}: {exc}")
         return result
+
+    # Fallback consensus FRED-derived per dati storici (non sostituisce yaml_manual)
+    try:
+        fred_batch = loader.load_fred_derived()
+        if not fred_batch.df.empty:
+            loader.save(fred_batch)
+            result["yaml_rows"] += fred_batch.row_count
+    except Exception:
+        pass
 
     macro_rows = _populate_actuals_from_macro_series(db)
     result["macro_rows"] = macro_rows
@@ -195,6 +204,10 @@ def _run_surprise_pipeline(db, st_module) -> dict:
         indicator_weights = _load_indicator_weights_from_yaml()
         agg = SectorSurpriseAggregator(indicator_weights=indicator_weights, duckdb=raw_conn)
         sector_indices = agg.aggregate(df_computed)
+        if not sector_indices and not df_computed.empty:
+            sector_indices = agg.aggregate(df_computed, months_back=12)
+            if sector_indices:
+                result["extended_window"] = True
         result["sector_count"] = len(sector_indices)
     except Exception as exc:
         st.error(f"Errore SectorSurpriseAggregator: {exc}")
@@ -238,6 +251,8 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
                     st.success(" · ".join(parts))
                     if r["macro_rows"] == 0:
                         st.info("Per popolare i dati reali vai su M3 Labour Market → Carica da FRED.")
+                    if r.get("extended_window"):
+                        st.warning("⚠️ Dati FRED > 3 mesi: finestra estesa a 12M. Aggiorna da M3 per i dati recenti.")
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as exc:
@@ -356,23 +371,25 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
 
     # ── Tab 3: Momentum ──────────────────────────────────────────────────────
     with tab_momentum:
-        st.subheader("Momentum ESI — Score Ultimi 90 Giorni")
+        st.subheader("Momentum ESI — Score Ultimi 12 Mesi")
         try:
             import pandas as pd
             rows = db.query(
                 "SELECT snapshot_date, sector, surprise_index, momentum_1m "
                 "FROM sector_surprise_index "
-                "WHERE snapshot_date >= CURRENT_DATE - INTERVAL 90 DAY "
+                "WHERE snapshot_date >= CURRENT_DATE - INTERVAL 365 DAY "
                 "ORDER BY snapshot_date, sector"
             )
             if not rows:
-                st.info("Nessun dato momentum disponibile.")
+                st.info("Nessun dato momentum disponibile. Premi 'Carica consensus' per eseguire la pipeline.")
             else:
-                df = pd.DataFrame(rows, columns=["Data", "Settore", "EMA", "Momentum"])
+                df = pd.DataFrame(rows, columns=["Data", "Settore", "Score", "Momentum"])
+                latest = pd.Timestamp(max(r[0] for r in rows)).date()
+                st.caption(f"Dati al {latest} · {len(rows)} osservazioni")
                 for sector in sectors:
                     sub = df[df["Settore"] == sector]
                     if not sub.empty:
-                        st.line_chart(sub.set_index("Data")["EMA"], height=150)
+                        st.line_chart(sub.set_index("Data")["Score"], height=150)
                         st.caption(f"{sector_icons.get(sector, '')} {sector.capitalize()}")
         except Exception as exc:
             st.warning(f"Momentum non disponibile: {exc}")
@@ -388,10 +405,17 @@ def body_m5_economic_surprise(st, tokens) -> None:  # pragma: no cover
                 "ORDER BY generated_at DESC LIMIT 52"
             )
             if not rows:
-                st.info("Nessun dato segnale disponibile.")
+                st.info("Nessun dato segnale disponibile. Premi 'Carica consensus' per eseguire la pipeline.")
             else:
+                import datetime as _dt
                 df = pd.DataFrame(rows, columns=["Data", "Segnale"])
                 df = df.sort_values("Data")
+                latest_sig = df["Data"].max()
+                days_stale = (_dt.date.today() - latest_sig).days if hasattr(latest_sig, "days") else (
+                    (_dt.date.today() - pd.Timestamp(latest_sig).date()).days
+                )
+                if days_stale > 30:
+                    st.warning(f"⚠️ Segnale aggiornato {days_stale}g fa — premi 'Carica consensus' per aggiornare.")
                 st.line_chart(df.set_index("Data")["Segnale"], height=300)
                 st.caption(
                     "**Segnale** = ESI normalizzato [-1,+1] per Composite Signal v2. "

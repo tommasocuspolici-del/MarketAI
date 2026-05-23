@@ -238,6 +238,7 @@ class SectorSurpriseAggregator:
         self,
         surprises: pd.DataFrame,
         reference_date: date | None = None,
+        months_back: int | None = None,
     ) -> list[SectorSurpriseIndex]:
         """Calcola l'indice di sorpresa per ogni settore.
 
@@ -245,9 +246,10 @@ class SectorSurpriseAggregator:
             surprises:      DataFrame con colonne [release_date, indicator_code,
                             sector, surprise_z]. Output di SurpriseCalculator.
             reference_date: Data di riferimento (default: oggi).
+            months_back:    Finestra di lookback in mesi (default: _AGGREGATION_MONTHS=3).
         """
         ref_ts  = pd.Timestamp(reference_date or date.today())
-        cutoff  = ref_ts - pd.DateOffset(months=_AGGREGATION_MONTHS)
+        cutoff  = ref_ts - pd.DateOffset(months=months_back or _AGGREGATION_MONTHS)
         recent  = surprises[
             pd.to_datetime(surprises["release_date"]) >= cutoff
         ].copy()
