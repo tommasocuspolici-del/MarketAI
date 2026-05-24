@@ -6,6 +6,7 @@ Regola 34: cache-first (TTL: ib_forecast = 86400s).
 """
 from __future__ import annotations
 
+import os
 import time
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -19,7 +20,7 @@ from shared.resilience.error_policy import error_policy, ErrorLevel
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["FedProjectionsParser"]
 
 log = get_logger(__name__)
@@ -27,13 +28,19 @@ log = get_logger(__name__)
 _TIMEOUT = 20.0
 _DELAY_S = 1.5
 
-# Endpoint API FRED per proiezioni FOMC (gratuito, no API key per URL pubblici)
+# FRED SEP (Summary of Economic Projections) — serie mediane FOMC.
+# Convenzione FRED: <INDICATOR>MD per la mediana annuale (una osservazione per
+# anno target), <INDICATOR>MDLR per "Longer Run". Tutte richiedono FRED_API_KEY.
 _FRED_SERIES: dict[str, dict[str, str]] = {
-    # Mediana proiezioni FOMC
-    "FEDTARMD":  {"indicator": "FEDFUNDS", "horizon": "year_end", "unit": "percent"},
-    "GDPC1MD":   {"indicator": "GDP",       "horizon": "year_end", "unit": "percent"},
-    "PCECTPICTMD": {"indicator": "CPI",     "horizon": "year_end", "unit": "percent"},
-    "UNRATEMED": {"indicator": "UNEMPLOYMENT", "horizon": "year_end", "unit": "percent"},
+    "FEDTARMD":    {"indicator": "FEDFUNDS",     "horizon": "year_end", "unit": "percent"},
+    "FEDTARMDLR":  {"indicator": "FEDFUNDS",     "horizon": "longer_run", "unit": "percent"},
+    "GDPC1MD":     {"indicator": "GDP",          "horizon": "year_end", "unit": "percent"},
+    "GDPC1MDLR":   {"indicator": "GDP",          "horizon": "longer_run", "unit": "percent"},
+    "PCECTPIMD":   {"indicator": "CPI",          "horizon": "year_end", "unit": "percent"},
+    "PCECTPIMDLR": {"indicator": "CPI",          "horizon": "longer_run", "unit": "percent"},
+    "UNRATEMD":    {"indicator": "UNEMPLOYMENT", "horizon": "year_end", "unit": "percent"},
+    "UNRATEMDLR":  {"indicator": "UNEMPLOYMENT", "horizon": "longer_run", "unit": "percent"},
+    "JCXFEMD":     {"indicator": "COREPCE",      "horizon": "year_end", "unit": "percent"},
 }
 
 _FRED_BASE = "https://api.stlouisfed.org/fred/series/observations"
@@ -52,11 +59,20 @@ class FedProjectionsParser:
 
     def __init__(self, client: DuckDBClient, fred_api_key: str = "") -> None:
         self._client = client
-        self._api_key = fred_api_key
+        # FRED richiede sempre api_key per le serie SEP; usa env se non passata.
+        self._api_key = fred_api_key or os.getenv("FRED_API_KEY", "")
+        if not self._api_key:
+            log.warning("fed_sep.no_api_key",
+                        msg="FRED_API_KEY mancante; tutte le richieste falliranno con 400")
         self._http = httpx.Client(timeout=_TIMEOUT, headers={"Accept": "application/json"})
 
     def fetch_latest_projections(self) -> list[ExtractedForecast]:
         """Scarica le ultime proiezioni FOMC disponibili.
+
+        Per le serie annuali (es. ``GDPC1MD``) FRED espone una osservazione per
+        ogni anno target del SEP corrente (es. 2026, 2027, 2028). Ricava un
+        ExtractedForecast per ogni anno futuro disponibile. Per le serie
+        ``Longer Run`` l'horizon viene impostato a ``"longer_run"``.
 
         Returns:
             Lista di ExtractedForecast con indicatori macro FOMC.
@@ -68,9 +84,7 @@ class FedProjectionsParser:
         results: list[ExtractedForecast] = []
         for series_id, meta in _FRED_SERIES.items():
             try:
-                forecast = self._fetch_series(series_id, meta)
-                if forecast:
-                    results.append(forecast)
+                results.extend(self._fetch_series(series_id, meta))
                 time.sleep(_DELAY_S)
             except Exception as exc:
                 log.warning("fed_sep.series_failed", series=series_id, error=str(exc)[:100])
@@ -80,12 +94,15 @@ class FedProjectionsParser:
         log.info("fed_sep.done", count=len(results))
         return results
 
-    def _fetch_series(self, series_id: str, meta: dict[str, str]) -> ExtractedForecast | None:
-        """Scarica singola serie FRED e la converte in ExtractedForecast."""
+    def _fetch_series(self, series_id: str, meta: dict[str, str]) -> list[ExtractedForecast]:
+        """Scarica singola serie FRED e ritorna una forecast per ogni anno target.
+
+        Per ``longer_run`` ritorna una singola forecast (osservazione più recente).
+        Per ``year_end`` ritorna una forecast per ogni anno >= anno corrente.
+        """
         params: dict[str, Any] = {
             "series_id": series_id,
-            "sort_order": "desc",
-            "limit": "1",
+            "sort_order": "asc",
             "file_type": "json",
         }
         if self._api_key:
@@ -97,33 +114,52 @@ class FedProjectionsParser:
             data = resp.json()
         except Exception as exc:
             log.warning("fed_sep.http_failed", series=series_id, error=str(exc)[:80])
-            return None
+            return []
 
         observations = data.get("observations", [])
         if not observations:
-            return None
+            return []
 
-        obs = observations[0]
-        raw_val = obs.get("value", ".")
-        if raw_val == "." or not raw_val:
-            return None
+        is_longer_run = meta["horizon"] == "longer_run"
+        current_year = datetime.now(UTC).year
+        forecasts: list[ExtractedForecast] = []
 
+        # Per Longer Run: prendi l'osservazione più recente.
+        # Per year_end: prendi tutte le osservazioni con anno >= current_year.
+        relevant = ([observations[-1]] if is_longer_run else
+                    [o for o in observations
+                     if self._obs_year(o) is not None
+                     and self._obs_year(o) >= current_year])
+
+        for obs in relevant:
+            raw_val = obs.get("value", ".")
+            if raw_val == "." or not raw_val:
+                continue
+            try:
+                value = float(raw_val)
+            except (ValueError, TypeError):
+                continue
+            obs_date = str(obs.get("date", "unknown"))
+            horizon = "longer_run" if is_longer_run else obs_date[:4]
+            forecasts.append(ExtractedForecast(
+                report_id=f"fed_sep_{series_id}_{obs_date}",
+                source="fed_sep",
+                indicator=meta["indicator"],
+                horizon=horizon,
+                value=value,
+                unit=meta["unit"],
+                extraction_method="api",
+                confidence=0.95,
+                fetched_at=datetime.now(UTC),
+            ))
+        return forecasts
+
+    @staticmethod
+    def _obs_year(obs: dict[str, Any]) -> int | None:
         try:
-            value = float(raw_val)
+            return int(str(obs.get("date", ""))[:4])
         except (ValueError, TypeError):
             return None
-
-        return ExtractedForecast(
-            report_id=f"fed_sep_{series_id}_{obs.get('date', 'unknown')}",
-            source="fed_sep",
-            indicator=meta["indicator"],
-            horizon=meta["horizon"],
-            value=value,
-            unit=meta["unit"],
-            extraction_method="api",
-            confidence=0.95,
-            fetched_at=datetime.now(UTC),
-        )
 
     def _is_fresh(self, ttl_s: int = 86400) -> bool:
         """Regola 34: controlla TTL prima di fetch."""
