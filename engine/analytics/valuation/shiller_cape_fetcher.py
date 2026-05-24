@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from shared.logger import get_logger
 import io
+import re
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+import httpx
 import numpy as np
 import pandas as pd
 
@@ -24,11 +26,21 @@ from shared.resilience.error_policy import apply_error_policy, error_policy, Err
 if TYPE_CHECKING:
     from shared.db.duckdb_client import DuckDBClient
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 log = get_logger(__name__)
 
-# Yale URL dataset Shiller (aggiornamento mensile)
-_SHILLER_URL = "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+# Source URLs in ordine di preferenza:
+#   1. Homepage shillerdata.com (scrape link aggiornato, file ospitato su wsimg.com)
+#   2. URL diretto wsimg.com noto (fallback con token che potrebbe ruotare)
+#   3. Vecchio URL Yale (stale al 2023-09 ma sempre raggiungibile)
+_SHILLER_HOMEPAGE = "https://shillerdata.com/"
+_SHILLER_URL_FALLBACK_WSIMG = (
+    "https://img1.wsimg.com/blobby/go/e5e77e0b-59d1-44d9-ab25-4763ac982e53/"
+    "downloads/441f0d2c-37e4-4803-b4e2-8fe10407fbf6/ie_data.xls"
+)
+_SHILLER_URL_YALE_LEGACY = "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+_HTTP_TIMEOUT_S = 30.0
+_USER_AGENT = "MarketAI/12.1.0 (+research)"
 
 # FRED series per proxy CAPE quando Shiller non disponibile
 _FRED_SERIES = {
@@ -80,13 +92,68 @@ class ShillerCAPEFetcher:
         log.info("shiller_cape_fetcher.done rows=%d lookback_years=%d", n, lookback_years)
         return n
 
+    @staticmethod
+    def _resolve_shiller_url(http: httpx.Client) -> str | None:
+        """Scrape shillerdata.com per il link corrente del file ``ie_data.xls``.
+
+        Il file e' ospitato su ``img1.wsimg.com`` con un token nel path che la
+        homepage di Shiller aggiorna ad ogni rilascio. Scraping HTML e' la
+        strada ufficiale documentata sulla homepage.
+        """
+        try:
+            r = http.get(_SHILLER_HOMEPAGE)
+            r.raise_for_status()
+            # I link sono protocol-relative: '//img1.wsimg.com/...'
+            matches = re.findall(
+                r'href="(//img1\.wsimg\.com/[^"]*ie_data\.xls[^"]*)"',
+                r.text, re.IGNORECASE,
+            )
+            if matches:
+                return "https:" + matches[0]
+        except Exception as exc:
+            log.warning("shiller_cape_fetcher.scrape_homepage_failed",
+                        error=str(exc)[:100])
+        return None
+
     @apply_error_policy(level="RECOVER", fallback=None, context="ShillerCAPEFetcher._fetch_shiller_xls")
     def _fetch_shiller_xls(self) -> pd.DataFrame | None:
-        """Download e parsing XLS da Shiller Yale."""
-        import urllib.request
-        log.info("shiller_cape_fetcher.downloading_xls url=%s", _SHILLER_URL)
-        with urllib.request.urlopen(_SHILLER_URL, timeout=30) as resp:
-            content = resp.read()
+        """Download e parsing XLS Shiller.
+
+        Tenta in sequenza: scrape shillerdata.com -> URL wsimg conosciuto
+        -> URL Yale legacy (stale a 2023-09 ma sempre disponibile).
+        """
+        http = httpx.Client(timeout=_HTTP_TIMEOUT_S, follow_redirects=True,
+                            headers={"User-Agent": _USER_AGENT})
+        try:
+            scraped = self._resolve_shiller_url(http)
+            urls_to_try: list[str] = [
+                u for u in (scraped, _SHILLER_URL_FALLBACK_WSIMG, _SHILLER_URL_YALE_LEGACY)
+                if u is not None
+            ]
+            content: bytes | None = None
+            chosen_url: str | None = None
+            for url in urls_to_try:
+                try:
+                    log.info("shiller_cape_fetcher.downloading_xls", url=url[:80])
+                    resp = http.get(url)
+                    if resp.status_code == 200 and len(resp.content) > 100_000:
+                        content = resp.content
+                        chosen_url = url
+                        break
+                    log.warning("shiller_cape_fetcher.url_rejected",
+                                url=url[:80], status=resp.status_code,
+                                size=len(resp.content))
+                except Exception as exc:
+                    log.warning("shiller_cape_fetcher.url_failed",
+                                url=url[:80], error=str(exc)[:100])
+        finally:
+            http.close()
+
+        if content is None:
+            log.error("shiller_cape_fetcher.all_sources_failed")
+            return None
+        log.info("shiller_cape_fetcher.xls_downloaded",
+                 bytes=len(content), source=chosen_url[:80] if chosen_url else "?")
 
         xls = pd.ExcelFile(io.BytesIO(content), engine="xlrd")
         # Foglio "Data" con skiprows per header multi-riga Shiller
