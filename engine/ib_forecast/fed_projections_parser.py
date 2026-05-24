@@ -168,17 +168,23 @@ class FedProjectionsParser:
             return []
 
     def _persist(self, forecasts: list[ExtractedForecast]) -> None:
-        """Salva previsioni in ib_forecasts (Regola 34)."""
+        """Salva previsioni in ib_forecasts (Regola 34).
+
+        Pattern delete-then-insert: la PK è ``forecast_id`` (UUID auto), quindi
+        ``ON CONFLICT (report_id)`` non è applicabile.
+        """
         for f in forecasts:
             try:
+                self._client.execute(
+                    "DELETE FROM ib_forecasts WHERE report_id = ?",
+                    [f.report_id],
+                )
                 self._client.execute(
                     """
                     INSERT INTO ib_forecasts
                         (report_id, source, indicator, horizon, value, unit,
                          extraction_method, confidence, fetched_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT (report_id) DO UPDATE SET
-                        value=excluded.value, fetched_at=excluded.fetched_at
                     """,
                     [
                         f.report_id, f.source, f.indicator, f.horizon,
@@ -187,7 +193,8 @@ class FedProjectionsParser:
                     ],
                 )
             except Exception as exc:
-                log.debug("fed_sep.persist_skip", error=str(exc)[:80])
+                log.warning("fed_sep.persist_failed",
+                            report_id=f.report_id, error=str(exc)[:120])
 
     def __del__(self) -> None:
         try:
