@@ -26,7 +26,8 @@ def body_m7_ib_consensus(st, tokens) -> None:  # pragma: no cover
                 from engine.ib_forecast.ib_rss_fetcher import IBRSSFetcher
                 from engine.ib_forecast.fed_projections_parser import FedProjectionsParser
                 from engine.ib_forecast.imf_wb_outlook_fetcher import IMFWBOutlookFetcher
-                from engine.ib_forecast.forecast_extractor import ForecastExtractor
+                from engine.ib_forecast.cbo_projections_fetcher import CBOProjectionsFetcher
+                from engine.ib_forecast.inflation_expectations_fetcher import InflationExpectationsFetcher
                 from engine.ib_forecast.consensus_builder import ConsensusBuilder
                 from engine.ib_forecast.ib_signal_generator import IBSignalGenerator
 
@@ -35,8 +36,12 @@ def body_m7_ib_consensus(st, tokens) -> None:  # pragma: no cover
                     IBRSSFetcher(client=db).fetch_all()
                 with st.spinner("Fetching Fed SEP…"):
                     FedProjectionsParser(client=db).fetch_latest_projections()
+                with st.spinner("Fetching CBO projections…"):
+                    CBOProjectionsFetcher(client=db).fetch_latest_projections()
                 with st.spinner("Fetching IMF/WB…"):
                     IMFWBOutlookFetcher(client=db).fetch_all()
+                with st.spinner("Fetching inflation expectations…"):
+                    InflationExpectationsFetcher(client=db).fetch_latest_projections()
 
                 consensus_list = ConsensusBuilder(client=db).build()
                 signal = IBSignalGenerator(client=db).generate(consensus_list)
@@ -160,9 +165,13 @@ def body_m7_ib_consensus(st, tokens) -> None:  # pragma: no cover
                 for source in df["Sorgente"].unique():
                     sub = df[df["Sorgente"] == source]
                     src_icon = {
-                        "fed_sep": "🏛️ Fed SEP",
-                        "imf_weo": "🌐 IMF WEO",
-                        "world_bank": "🌍 World Bank",
+                        "fed_sep":        "🏛️ Fed SEP",
+                        "cbo":            "📊 CBO Projections",
+                        "imf_weo":        "🌐 IMF WEO",
+                        "world_bank":     "🌍 World Bank",
+                        "umich_consumer": "👥 Univ Michigan (consumer)",
+                        "cleveland_fed":  "🏦 Cleveland Fed (model)",
+                        "tips_market":    "📈 TIPS Breakeven (market)",
                     }.get(source, f"📄 {source}")
                     with st.expander(f"{src_icon} — {len(sub)} previsioni"):
                         st.dataframe(
