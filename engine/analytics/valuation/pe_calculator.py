@@ -92,6 +92,9 @@ class PECalculator:
         erp = None
         if forward_pe and forward_pe > 0 and risk_free is not None:
             erp = (1.0 / forward_pe) - risk_free
+        # Fallback indici senza forward_pe: ERP precomputato Shiller
+        if erp is None:
+            erp = self._get_shiller_erp_latest(as_of)
 
         return PEMetrics(
             metric_date=as_of,
@@ -180,6 +183,11 @@ class PECalculator:
         eps = self._get_eps_trailing(ticker, as_of)
         if eps and eps > 0 and price and price > 0:
             return price / eps
+
+        # Fallback indice → proxy SPY (yfinance.info.trailingPE)
+        proxy = self._get_index_proxy_pe(ticker, "trailingPE")
+        if proxy is not None:
+            return proxy
         return None
 
     def _get_forward_pe(self, ticker: str, as_of: date, price: float | None) -> float | None:
@@ -198,7 +206,53 @@ class PECalculator:
         eps_fwd = self._get_eps_forward(ticker, as_of)
         if eps_fwd and eps_fwd > 0 and price and price > 0:
             return price / eps_fwd
+
+        # Fallback indice → proxy SPY (yfinance.info.forwardPE)
+        proxy = self._get_index_proxy_pe(ticker, "forwardPE")
+        if proxy is not None:
+            return proxy
         return None
+
+    def _get_index_proxy_pe(self, ticker: str, field: str) -> float | None:
+        """Proxy P/E per indici via ETF tracker.
+
+        ^GSPC/SPX → SPY · ^NDX → QQQ · ^DJI → DIA · ^RUT → IWM.
+        Usa ``yfinance.Ticker(proxy).info[field]``.
+        """
+        proxy_map = {
+            "^GSPC": "SPY", "^SPX": "SPY",
+            "^NDX": "QQQ", "^IXIC": "QQQ",
+            "^DJI": "DIA",
+            "^RUT": "IWM",
+        }
+        proxy = proxy_map.get(ticker.upper())
+        if proxy is None:
+            return None
+        try:
+            import yfinance as yf
+            info = yf.Ticker(proxy).info or {}
+            val = info.get(field)
+            return float(val) if val and val > 0 else None
+        except Exception as exc:
+            return error_policy.handle(
+                exc, level=ErrorLevel.RECOVER,
+                context=f"pe_calculator.proxy_{field}", fallback=None,
+            )
+
+    def _get_shiller_erp_latest(self, as_of: date) -> float | None:
+        """ERP più recente da shiller_cape_historical (fallback quando forward_pe assente)."""
+        try:
+            rows = self._client.query(
+                "SELECT erp_implied FROM shiller_cape_historical "
+                "WHERE data_date <= ? AND erp_implied IS NOT NULL "
+                "ORDER BY data_date DESC LIMIT 1", [as_of]
+            )
+            return float(rows[0][0]) if rows and rows[0][0] is not None else None
+        except Exception as exc:
+            return error_policy.handle(
+                exc, level=ErrorLevel.RECOVER,
+                context="pe_calculator.shiller_erp_fallback", fallback=None,
+            )
 
     def _get_shiller_cape(self, as_of: date) -> float | None:
         """CAPE più recente da shiller_cape_historical."""

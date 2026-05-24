@@ -1,13 +1,15 @@
 # ruff: noqa: N999
-"""M6 — Valuation & PE Analysis ★ NUOVO (v8.4 — Blocco 3).
+"""M6 — Valuation & PE Analysis ★ NUOVO (v8.5 — Blocco 3).
 
 Dashboard valuation: P/E trailing, P/E forward, Shiller CAPE, ERP.
 Storia CAPE e ERP da shiller_cape_historical (Yale dataset, 1996+).
 Tab Storia/ERP/Segnale leggono dallo storico (non da pe_metrics che è snapshot).
+v8.5: Overview con fallback ERP da shiller_cape_historical; chart CAPE Signal
+ridisegnato con subplot CAPE/ERP, area fill conditional verde/rosso e KPI.
 """
 from __future__ import annotations
 
-__version__ = "8.4.0"
+__version__ = "8.5.0"
 __all__ = ["body_m6_valuation_pe"]
 
 
@@ -88,25 +90,65 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
                 "SELECT trailing_pe, forward_pe, shiller_cape, erp_implied, metric_date "
                 "FROM pe_metrics ORDER BY metric_date DESC LIMIT 1"
             )
-            if not rows:
-                st.info("Nessun dato PE disponibile. Eseguire il ValuationSignalGenerator.")
+            # Fallback: pe_metrics ha CAPE ma quasi sempre NULL su trailing/forward/erp
+            # (no fundamentals provider per ^GSPC). Riempi da shiller_cape_historical.
+            cape_val = rows[0][2] if rows else None
+            erp_val  = rows[0][3] if rows else None
+            metric_dt = rows[0][4] if rows else None
+            shiller_fallback_dt = None
+            if cape_val is None or erp_val is None:
+                try:
+                    hist = db.query(
+                        "SELECT data_date, cape_ratio, erp_implied "
+                        "FROM shiller_cape_historical "
+                        "WHERE cape_ratio IS NOT NULL "
+                        "ORDER BY data_date DESC LIMIT 1"
+                    )
+                    if hist:
+                        h = hist[0]
+                        if cape_val is None:
+                            cape_val = h[1]
+                        if erp_val is None:
+                            erp_val = h[2]
+                        shiller_fallback_dt = h[0]
+                except Exception:
+                    pass
+
+            if not rows and cape_val is None:
+                st.info("Nessun dato PE disponibile. Premere 📥 Carica valuation.")
             else:
-                r = rows[0]
+                trailing = rows[0][0] if rows else None
+                forward  = rows[0][1] if rows else None
                 c1, c2, c3, c4 = st.columns(4)
                 with c1:
-                    val = f"{r[0]:.1f}x" if r[0] else "N/A"
-                    st.metric("Trailing P/E", val)
+                    val = f"{trailing:.1f}x" if trailing else "N/A"
+                    st.metric("Trailing P/E", val,
+                              help="Richiede fundamentals provider (EDGAR/Alpha Vantage)")
                 with c2:
-                    val = f"{r[1]:.1f}x" if r[1] else "N/A"
-                    st.metric("Forward P/E", val)
+                    val = f"{forward:.1f}x" if forward else "N/A"
+                    st.metric("Forward P/E", val,
+                              help="Richiede Alpha Vantage o IBES")
                 with c3:
-                    val = f"{r[2]:.1f}x" if r[2] else "N/A"
-                    st.metric("Shiller CAPE", val)
+                    val = f"{cape_val:.1f}x" if cape_val else "N/A"
+                    st.metric("Shiller CAPE", val,
+                              help="Yale Shiller dataset (snapshot pe_metrics + storico)")
                 with c4:
-                    val = f"{r[3]*100:.2f}%" if r[3] else "N/A"
-                    st.metric("ERP Implicito", val)
-                if r[4]:
-                    st.caption(f"Dati al: {r[4]}")
+                    val = f"{erp_val*100:+.2f}%" if erp_val is not None else "N/A"
+                    st.metric("ERP Implicito", val,
+                              help="Earnings Yield (1/CAPE) − Bond Yield TY10")
+                # Caption con source
+                caption_parts = []
+                if metric_dt:
+                    caption_parts.append(f"Snapshot pe_metrics: {metric_dt}")
+                if shiller_fallback_dt and (rows is None or rows[0][3] is None):
+                    caption_parts.append(f"ERP da Shiller storico: {shiller_fallback_dt}")
+                if caption_parts:
+                    st.caption(" · ".join(caption_parts))
+                if trailing is None and forward is None:
+                    st.info(
+                        "ℹ️ Trailing/Forward P/E richiedono fundamentals provider attivo "
+                        "(EDGAR + Alpha Vantage). CAPE e ERP usano lo storico Shiller Yale."
+                    )
         except Exception as exc:
             st.warning(f"PE metrics non disponibili: {exc}")
 
@@ -319,6 +361,7 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
             import pandas as pd
             import numpy as np
             import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
 
             hist_rows = db.query(
                 "SELECT data_date, cape_ratio, erp_implied "
@@ -343,36 +386,124 @@ def body_m6_valuation_pe(st, tokens) -> None:  # pragma: no cover
                     if pd.notna(e) and e is not None else None
                 )
 
-                fig = go.Figure()
+                has_erp = df_h["erp_signal"].notna().any()
+                rows_n = 2 if has_erp else 1
+                row_heights = [0.58, 0.42] if has_erp else [1.0]
+                titles: tuple[str, ...] = (
+                    "CAPE Signal — z-score 20Y rolling",
+                    "ERP Signal — Shiller earnings yield − bond yield",
+                ) if has_erp else ("CAPE Signal — z-score 20Y rolling",)
+
+                fig = make_subplots(
+                    rows=rows_n, cols=1, shared_xaxes=True,
+                    row_heights=row_heights, vertical_spacing=0.10,
+                    subplot_titles=titles,
+                )
+
+                # CAPE: split positive (verde, economico) e negative (rosso, costoso)
+                # per ottenere conditional fill verso lo zero.
+                green_line  = "rgba(34,197,94,1)"
+                green_fill  = "rgba(34,197,94,0.28)"
+                red_line    = "rgba(239,68,68,1)"
+                red_fill    = "rgba(239,68,68,0.28)"
+
+                cape_pos = df_h["cape_signal"].where(df_h["cape_signal"] >= 0)
+                cape_neg = df_h["cape_signal"].where(df_h["cape_signal"] < 0)
                 fig.add_trace(go.Scatter(
-                    x=df_h["date"], y=df_h["cape_signal"],
-                    name="CAPE Signal", mode="lines",
-                    line=dict(color=tokens.colors.warning, width=2),
-                ))
-                if df_h["erp_signal"].notna().any():
+                    x=df_h["date"], y=cape_pos,
+                    name="CAPE economico (signal > 0)", mode="lines",
+                    line=dict(color=green_line, width=1.6),
+                    fill="tozeroy", fillcolor=green_fill,
+                    hovertemplate="%{x|%b %Y}<br>signal: %{y:+.2f}<extra></extra>",
+                ), row=1, col=1)
+                fig.add_trace(go.Scatter(
+                    x=df_h["date"], y=cape_neg,
+                    name="CAPE costoso (signal < 0)", mode="lines",
+                    line=dict(color=red_line, width=1.6),
+                    fill="tozeroy", fillcolor=red_fill,
+                    hovertemplate="%{x|%b %Y}<br>signal: %{y:+.2f}<extra></extra>",
+                ), row=1, col=1)
+
+                # Soglie ±0.5 e ±1.0 sul subplot CAPE
+                for y_val, color, label in [
+                    (1.0,  "rgba(34,197,94,0.45)",  "+1 max economico"),
+                    (0.5,  "rgba(34,197,94,0.30)",  "+0.5 soglia"),
+                    (-0.5, "rgba(239,68,68,0.30)",  "-0.5 soglia"),
+                    (-1.0, "rgba(239,68,68,0.45)",  "-1 max costoso"),
+                ]:
+                    fig.add_hline(
+                        y=y_val, line_color=color, line_dash="dash",
+                        annotation_text=label, annotation_position="right",
+                        annotation_font_size=10, opacity=0.7, row=1, col=1,
+                    )
+                fig.add_hline(y=0, line_color="gray", line_dash="dot",
+                              opacity=0.5, row=1, col=1)
+
+                # ERP subplot (se disponibile)
+                if has_erp:
+                    erp_pos = df_h["erp_signal"].where(df_h["erp_signal"] >= 0)
+                    erp_neg = df_h["erp_signal"].where(df_h["erp_signal"] < 0)
                     fig.add_trace(go.Scatter(
-                        x=df_h["date"], y=df_h["erp_signal"],
-                        name="ERP Signal (Shiller)", mode="lines",
-                        line=dict(color=tokens.colors.positive, width=1.5, dash="dot"),
-                        opacity=0.8,
-                    ))
-                fig.add_hline(y=0, line_color="gray", line_dash="dot", opacity=0.3)
-                fig.add_hline(y=0.5,  line_color="green", line_dash="dash", opacity=0.3)
-                fig.add_hline(y=-0.5, line_color="red",   line_dash="dash", opacity=0.3)
+                        x=df_h["date"], y=erp_pos,
+                        name="ERP attraente (premio > 2%)", mode="lines",
+                        line=dict(color=green_line, width=1.4),
+                        fill="tozeroy", fillcolor=green_fill,
+                        hovertemplate="%{x|%b %Y}<br>signal: %{y:+.2f}<extra></extra>",
+                        showlegend=True,
+                    ), row=2, col=1)
+                    fig.add_trace(go.Scatter(
+                        x=df_h["date"], y=erp_neg,
+                        name="ERP debole (bond preferiti)", mode="lines",
+                        line=dict(color=red_line, width=1.4),
+                        fill="tozeroy", fillcolor=red_fill,
+                        hovertemplate="%{x|%b %Y}<br>signal: %{y:+.2f}<extra></extra>",
+                        showlegend=True,
+                    ), row=2, col=1)
+                    fig.add_hline(y=0, line_color="gray", line_dash="dot",
+                                  opacity=0.5, row=2, col=1)
+                    fig.update_yaxes(range=[-1.15, 1.15], row=2, col=1,
+                                     gridcolor="rgba(128,128,128,0.15)",
+                                     zeroline=False, title_text="signal")
+
+                fig.update_yaxes(range=[-1.15, 1.15], row=1, col=1,
+                                 gridcolor="rgba(128,128,128,0.15)",
+                                 zeroline=False, title_text="signal")
+                fig.update_xaxes(gridcolor="rgba(128,128,128,0.15)", zeroline=False)
                 fig.update_layout(
-                    height=400,
-                    title="CAPE Signal [-1, +1] — z-score rolling 20Y",
-                    yaxis=dict(range=[-1.1, 1.1]),
+                    height=560 if has_erp else 380,
                     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    legend=dict(orientation="h", y=1.1),
-                    margin=dict(l=0, r=0, t=40, b=0),
+                    legend=dict(orientation="h", y=1.10, x=0,
+                                bgcolor="rgba(0,0,0,0)"),
+                    margin=dict(l=10, r=70, t=70, b=10),
+                    hovermode="x unified",
                 )
                 st.plotly_chart(fig, use_container_width=True)
+
+                # KPI riassuntivi sotto al chart
+                last_cape_sig = df_h["cape_signal"].dropna()
+                last_erp_sig  = df_h["erp_signal"].dropna()
+                k1, k2, k3 = st.columns(3)
+                with k1:
+                    if not last_cape_sig.empty:
+                        v = float(last_cape_sig.iloc[-1])
+                        st.metric("CAPE Signal corrente", f"{v:+.2f}",
+                                  help="Ultimo valore nello storico Shiller "
+                                       "(z-score rolling 20Y)")
+                with k2:
+                    if not last_erp_sig.empty:
+                        v = float(last_erp_sig.iloc[-1])
+                        st.metric("ERP Signal corrente", f"{v:+.2f}")
+                with k3:
+                    if not last_cape_sig.empty:
+                        pct_neg = float((last_cape_sig < 0).mean() * 100)
+                        st.metric("% storico costoso", f"{pct_neg:.0f}%",
+                                  help="Quota di mesi in cui CAPE signal < 0")
+
                 st.caption(
                     "**Peso nel Composite v2.1:** 12% · "
-                    "Score > 0 = mercato economico rispetto alla storia 20Y · "
-                    "Score < 0 = mercato costoso · "
-                    "Linee tratteggiate: ±0.5 (soglie segnale)"
+                    "🟢 signal > 0 = mercato economico vs 20Y · "
+                    "🔴 signal < 0 = mercato costoso · "
+                    "Soglie operative ±0.5 (linee tratteggiate)."
                 )
         except Exception as exc:
             st.warning(f"Storico segnale non disponibile: {exc}")
