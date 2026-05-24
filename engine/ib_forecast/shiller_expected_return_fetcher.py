@@ -79,7 +79,10 @@ class ShillerExpectedReturnFetcher:
         bond_yield_pct = float(bond_yield) if bond_yield is not None else 0.0
         expected_nominal_10y = round(earnings_yield_pct + bond_yield_pct * 0.5, 3)
 
-        report_id = f"shiller_model_SP500_{data_date}"
+        # report_id stabile (senza data_date) per evitare di accumulare
+        # snapshot storici quando il dataset Shiller viene aggiornato.
+        # La data della fonte sta in ``fetched_at``.
+        report_id = "shiller_model_SP500_10Y"
         fetched_at = datetime.now(UTC)
         forecast = ExtractedForecast(
             report_id=report_id,
