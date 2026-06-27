@@ -1,0 +1,234 @@
+# 08 — Protocollo Bugfix e Correzione Errori
+
+## REGOLA FONDAMENTALE
+
+**Test-first sempre.** Scrivere il test che FALLISCE riproducendo il bug PRIMA di toccare il codice di produzione. Un fix senza test di riproduzione non è un fix — è un tiro alla cieca.
+
+---
+
+## Step 1 — Input errore strutturato
+
+Quando l'utente riporta un errore, raccogliere le seguenti informazioni prima di aprire qualsiasi file:
+
+```
+ERRORE:         [testo completo del traceback o messaggio di errore — copiare integralmente]
+CONTESTO:       [pagina Streamlit o funzione dove si manifesta — es. "P2 eToro, dopo upload XLSX"]
+RIPETIBILE:     [sempre | a volte | solo con certi dati | dopo certo numero di operazioni]
+ULTIMA MODIFICA:[file modificato nell'ultima sessione prima che comparisse l'errore]
+GATE INIZIALE:  [esito di `pytest -m regression -q` alla scoperta del bug]
+```
+
+**Se l'utente non fornisce il traceback completo:** chiedere esplicitamente. Un errore parziale porta a un fix sbagliato.
+
+---
+
+## Step 2 — Localizzazione area di codice
+
+### Tabella di routing per tipo di errore
+
+| Pattern nel traceback / messaggio | Modulo responsabile | File da investigare prima |
+|---|---|---|
+| `DuckDBError` / `OperationalError` / `CatalogException` | `shared/db/` | `duckdb_client.py`, `duckdb_migrator.py` |
+| `Migration` / `apply_pending` fallita | `shared/db/migrations/duckdb/` | Migration SQL specifica, `duckdb_migrator.py` |
+| `DataProviderError` / `ProviderRegistry` | `engine/market_data/providers/` | `registry.py`, il `<provider>_provider.py` specifico |
+| `SchemaError` / `PanderaError` / `SchemaErrors` | `shared/db/` + fetcher | `schemas.py`, il fetcher coinvolto |
+| `DataQualityError` / `quality_score` / `quality < 0.5` | `engine/market_data/cleaning/` | `data_cleaner.py`, `quality_report.py` |
+| `BridgeError` / contratto violato | `bridge/` | `api_contracts.py` |
+| `FeatureDisabledError` | `shared/` | `feature_flags.py`, `config/feature_flags.yaml` |
+| `InsufficientMemoryError` / RAM | `engine/analytics/forecasting/nbeats/` | `ram_check.py`, `nbeats_model.py` |
+| `InvestorProfile` / `suitability` / `can_hold` | `personal/investor_profile/` | `suitability_checker.py`, `profile_model.py` |
+| `RateLimitError` / `budget giornaliero esaurito` | `shared/resilience/` | `rate_limit_manager.py`, `config/rate_limits.yaml` |
+| `SignalBus` / `subscribe` / `publish` | `shared/` | `signal_bus.py`, il modulo che pubblica/sottoscrive |
+| `CurrencyConverter` / GBX / FX | `engine/market_data/` | `currency_converter.py` |
+| `InstrumentRegistry` / `#XXXX` / ticker non trovato | `engine/market_data/` | `instrument_registry.py` |
+| Errore in `presentation/pages/` | `presentation/dashboard_*` | La pagina specifica (pagine non sono testate direttamente) |
+| `websockets` / `asyncio.client` / yfinance crash | ⚠️ DIPENDENZA PINNATA | NON aggiornare. Vedere `05_dependencies.md`. |
+| `alembic` / SQLite migration | `shared/db/migrations/sqlite/` | Migration Alembic specifica |
+| `CircularImportError` / import circolare | Layer boundary violata | Il file che importa da layer sbagliato |
+| `SessionState` / `KeyError` in Streamlit | `presentation/ui/` | `session_keys.py`, la pagina specifica |
+
+### Keyword errore → regola violata (fix diretto)
+
+| Keyword nell'errore | Regola violata | Fix immediato |
+|---|---|---|
+| `datetime naive` / `no timezone info` / `tz=None` | R19 | Aggiungere `tz="UTC"` o `pd.Timestamp(..., tz="UTC")` |
+| `float` in calcolo finanziario / `decimal` | R8 | Convertire in `np.float64` o `Decimal` |
+| Importazione circolare / `ImportError` da layer sbagliato | R4/R21 | Spostare import in `bridge/api_contracts.py` |
+| Magic number senza nome | R7 | Spostare in `OP_CONFIG` o costante nominata |
+| `print()` trovato in produzione | R6 | Sostituire con `get_logger(__name__)` |
+| `Currency` assente su importo | R18 | Aggiungere `Currency` enum esplicito |
+| `look-ahead bias` / segnale non shiftato | R23 | Aggiungere `.shift(1)` al segnale |
+| `quality_score < 0.5` in calcolo critico | R26 | Aggiungere guard con `DataQualityReport` |
+| Schema DuckDB modificato senza migration | R27 | Creare script SQL in `migrations/duckdb/` |
+| Fetch API senza `RateLimitManager.acquire()` | R28 | Aggiungere `await rate_mgr.acquire(source)` |
+| Feature costosa abilitata di default | R29 | Impostare `false` in `feature_flags.yaml` |
+
+---
+
+## Step 3 — Test di riproduzione (OBBLIGATORIO prima del fix)
+
+### Dove mettere il test
+
+```
+Bug in engine/market_data/     → tests/engine/test_bug_BXXX.py
+Bug in engine/analytics/       → tests/engine/test_bug_BXXX.py
+Bug in personal/               → tests/personal/test_bug_BXXX.py
+Bug in shared/                 → tests/shared/test_bug_BXXX.py
+Bug in bridge/                 → tests/bridge/test_bug_BXXX.py
+Bug critico (sempre 0 failed)  → tests/regression/test_bug_BXXX.py + @pytest.mark.regression
+```
+
+### Template test di riproduzione
+
+```python
+# tests/<layer>/test_bug_BXXX.py
+"""
+Bug BXXX: <descrizione concisa del problema>
+
+Manifestazione: <dove si manifesta, con quale input>
+Causa: <causa identificata dopo analisi>
+Fix: <cosa fa il fix>
+"""
+import pytest
+import pandas as pd
+import numpy as np
+from <modulo_coinvolto> import <ClasseOFunzione>
+
+
+@pytest.mark.regression   # aggiungere SOLO se il bug è critico/ricorrente
+def test_bug_bXXX_<descrizione_breve>():
+    """Riproduce il bug BXXX: <descrizione>. Deve FALLIRE prima del fix."""
+    # --- ARRANGE: dato sintetico che riproduce il caso buggy ---
+    # Usare dati minimi: il test deve essere veloce (< 1s)
+    df_problematico = pd.DataFrame({
+        "Close": [100.0, 101.0, np.nan, 103.0],  # es: NaN che causava crash
+        "Volume": [1000, 1100, 900, 1200],
+    }, index=pd.date_range("2024-01-01", periods=4, freq="D", tz="UTC"))
+
+    # --- ACT ---
+    from engine.market_data.cleaning.data_cleaner import DataCleaner
+    cleaner = DataCleaner()
+    result = cleaner.clean(df_problematico)
+
+    # --- ASSERT: comportamento ATTESO post-fix (non quello buggy) ---
+    assert result["Close"].isna().sum() == 0, "DataCleaner deve rimuovere NaN"
+    assert len(result) > 0, "Il DataFrame non deve essere vuoto dopo pulizia"
+```
+
+### Eseguire il test — deve FALLIRE prima del fix
+
+```bash
+poetry run pytest tests/<layer>/test_bug_BXXX.py -v
+# OUTPUT ATTESO PRIMA DEL FIX:
+# FAILED tests/<layer>/test_bug_BXXX.py::test_bug_bXXX_...
+# Se il test PASSA subito → il test non riproduce il bug reale. Rivedere.
+```
+
+---
+
+## Step 4 — Fix e verifica a cascata
+
+### Ordine obbligatorio
+
+```bash
+# 1. Applicare il fix minimo nel file identificato
+#    (NON riscrivere codice non direttamente coinvolto)
+
+# 2. Verifica import immediata
+poetry run python -c "from <modulo> import <Classe>; print('OK')"
+
+# 3. Test di riproduzione DEVE passare ora
+poetry run pytest tests/<layer>/test_bug_BXXX.py -v
+# OUTPUT ATTESO: PASSED
+
+# 4. Test del modulo coinvolto (non solo il bug)
+poetry run pytest tests/<layer>/ -v --tb=short
+
+# 5. Gate di regressione — INVIOLABILE
+poetry run pytest -m regression -q --tb=short
+# OUTPUT ATTESO: 0 failed
+
+# 6. Type check sul file modificato
+poetry run mypy --strict <path/file_modificato.py>
+
+# 7. Lint
+poetry run ruff check <path/file_modificato.py>
+```
+
+### Se il gate di regressione fallisce dopo il fix
+
+```bash
+# Isolare la regressione introdotta dal fix:
+git stash                   # nascondere il fix temporaneamente
+pytest -m regression -q     # verificare che fosse già rotto PRIMA del fix
+git stash pop               # ripristinare il fix
+
+# Se era rotto già prima: il fix non ha causato la regressione → indagare separatamente
+# Se si è rotto con il fix: il fix ha effetti collaterali → ridurre la portata del fix
+```
+
+---
+
+## Step 5 — Classificazione e storicizzazione
+
+### Aggiornare CLAUDE.md — sezione "Bug Noti e Fix Applicati"
+
+Aggiungere sempre una riga alla tabella in `CLAUDE.md`:
+
+```markdown
+| B10 | engine/market_data/ | `#3040` prezzo NaN su weekend | Aggiunto fill-forward in DataCleaner per weekend gap |
+```
+
+Convenzione ID: incrementale partendo dall'ultimo in CLAUDE.md (attualmente B9 → prossimo B10).
+
+### Aggiornare il file Modules/ corrispondente (se il bug ha rivelato gap di documentazione)
+
+Se il bug era causato da un comportamento del modulo non documentato nel vault:
+- Aprire `Modules/<ModuloCoinvolto>.md`
+- Aggiungere sezione "Bug noti e workaround" o aggiornare la documentazione
+
+### Commit
+
+```bash
+git add -A
+git commit -m "fix: descrizione concisa del bug (#BXXX)
+
+- Causa: <causa radice>
+- Fix: <modifica applicata>
+- Test: tests/<layer>/test_bug_BXXX.py aggiunto
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+## Tabella Bug Classificati per Severità
+
+| Severità | Criteri | Azione priorità |
+|---|---|---|
+| 🔴 CRITICO | Dashboard non avviabile / DB corrotto / dati sbagliati silenziosamente | Fix immediato, @pytest.mark.regression obbligatorio |
+| 🟡 GRAVE | Funzione centrale non funziona / pagina crasha con dati reali | Fix nella sessione corrente |
+| 🟢 MINORE | UI glitch / warning non critico / comportamento sub-ottimale | Fix pianificabile, documentare in CLAUDE.md |
+
+### Template triage rapido
+
+```
+Il bug causa perdita di dati reali?           → CRITICO
+Il bug causa calcoli finanziari errati?        → CRITICO
+Il bug crasha la dashboard?                   → GRAVE
+Il bug impedisce una feature specifica?       → GRAVE
+Il bug è solo visivo o di UX?                 → MINORE
+```
+
+---
+
+## File .claude/ pertinenti per tipo di bug
+
+```
+Bug in architettura/layer   → @.claude/02_architecture.md
+Bug in pipeline dati        → @.claude/07_data_pipeline.md
+Bug in dipendenze           → @.claude/05_dependencies.md
+Bug in logica di sessione   → @.claude/04_session_guide.md
+Bug in convenzioni          → @.claude/03_conventions.md
+Bug in ambiente/installer   → @.claude/01_environment.md
+```

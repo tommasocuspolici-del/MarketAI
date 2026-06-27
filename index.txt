@@ -1,0 +1,185 @@
+# MarketAI — Claude Code Context
+**v11.0.0-pre** · Python **3.12.10** (venv) · 3.14.5 (sistema, **MAI usare**) · 3080+ test · Coverage ≥ 89.1%
+Progetto: `%APPDATA%\MarketAI\` · Entry: `app_unified.py` · Launcher: `launcher.py → MarketAI.exe`
+
+---
+
+## ⚡ SESSION STARTUP — ESEGUIRE IN ORDINE (obbligatorio prima di qualsiasi codice)
+
+```
+1. poetry run pytest -m regression -q --tb=short   → 0 FAILED OBBLIGATORIO — se fallisce, STOP e leggere @.claude/08_bugfix_protocol.md
+2. poetry env info                                  → verificare Python 3.12.x (NON 3.14.x)
+3. Leggere questo file fino in fondo
+4. Aprire il file roadmap della sessione corrente
+```
+
+---
+
+## 🐍 Ambiente
+
+| Parametro | Valore |
+|---|---|
+| **Python venv** | **3.12.10** via Poetry — SEMPRE questo |
+| **Python sistema** | 3.14.5 — ❌ NON USARE MAI per il progetto |
+| **Path Python 3.12** | `C:\Users\Q256254\AppData\Local\Programs\Python\Python312\python.exe` |
+| **Progetto** | `C:\Users\Q256254\AppData\Roaming\MarketAI\` |
+| **Backup** | `C:\Users\Q256254\AppData\Local\MarketAI\backups\` |
+| **Poetry** | v2.4.1 |
+| **GitHub** | `https://github.com/tommasocuspolici-del/MarketAI` (PAT auth) |
+
+**Fix Poetry che usa Python 3.14:**
+```bash
+poetry env use "C:\Users\Q256254\AppData\Local\Programs\Python\Python312\python.exe"
+```
+
+---
+
+## 🏛️ Architettura Layers
+
+```
+presentation/    → Streamlit UI  (pragma: no cover — non testare UI direttamente)
+bridge/          → api_contracts.py (UNICO canale engine ↔ personal)
+engine/          → Calcolo quantitativo puro, market data, modelli
+personal/        → Finanze utente (portfolio, goals, cashflow, tax)
+shared/          → DB, logging, config, resilience, types, signal_bus
+```
+
+**Boundary critica** (enforced da `tests/architecture/test_layer_boundaries.py`):
+- `personal/` NON importa da `engine/analytics`, `engine/risk`, `engine/alpha_generation`, `engine/backtesting`
+- `engine/` NON importa da `personal/`
+- `management_ui.py` → **ZERO import** da engine/personal/shared/bridge (solo stdlib + pystray + Pillow)
+
+---
+
+## 🔑 Regole Invariabili — Riepilogo
+
+```
+R1:   Type hints Python ovunque. Nessuna funzione senza annotazione completa.
+R8:   Sempre numpy/scipy per calcoli finanziari. Mai float nativo.
+R9:   Ogni DataFrame validato con Pandera prima della scrittura su DB.
+R12:  Pipeline dati INVARIABILE: fetch → clean → validate → duckdb_write → cache → return
+R13:  DuckDB = dati storici massicci (OLAP) | SQLite = dati relazionali/transazionali (OLTP)
+R18:  Ogni importo porta Currency esplicita (from shared.types import Currency).
+R19:  Tutti i datetime UTC-aware. Nessun datetime naive.
+R22:  Ogni suggerimento filtrato da InvestorProfile. Zero eccezioni.
+R23:  Backtest: fees ≥ 0.001, slippage ≥ 0.001, segnali shift(1) — SEMPRE.
+R27:  Schema DuckDB: modifiche SOLO via migration SQL in shared/db/migrations/duckdb/
+R28:  Rate limit: SOLO via RateLimitManager (shared/resilience/rate_limit_manager.py)
+R29:  Feature sperimentali/costose → feature_flags.yaml (default: false)
+```
+
+Elenco completo → @.claude/03_conventions.md
+
+---
+
+## 📦 Dipendenze Pinnate — NON MODIFICARE MAI
+
+```
+yfinance   == 0.2.54      ← 0.2.55+ → crash websockets.asyncio.client
+websockets >= 12.0,<13.0  ← 13.x incompatibile con yfinance 0.2.54
+pandera    >= 0.18,<1.0   ← namespace split in 1.x; schemas.py ha fallback
+```
+
+Stack completo → @.claude/05_dependencies.md
+
+---
+
+## 🛠️ Import Rapidi Moduli Chiave
+
+```python
+from shared.config.operational_config import OP_CONFIG          # mai magic numbers hardcoded
+from shared.types import Currency, Money, TimeFrame, AssetClass, MarketRegime
+from shared.exceptions import DataError, DatabaseError, BridgeError
+from shared.logger import get_logger                            # mai print() in produzione
+from shared.db.duckdb_client import DuckDBClient               # singleton OLAP
+from shared.db.sqlite_client import SQLiteClient               # singleton OLTP
+from shared.resilience.error_policy import apply_error_policy
+from shared.signal_bus import SignalBus
+from engine.market_data.providers.registry import ProviderRegistry
+from engine.market_data.currency_converter import CurrencyConverter
+from engine.market_data.instrument_registry import InstrumentRegistry
+```
+
+Moduli completi → @.claude/02_architecture.md
+
+---
+
+## 🧪 Comandi Test
+
+```bash
+pytest -m regression -q --tb=short          # ← GATE OBBLIGATORIO (prima di ogni modifica)
+pytest                                       # suite completa con coverage auto
+pytest --cov --cov-fail-under=89            # verifica coverage ≥ 89%
+pytest -m integration                        # richiede rete e API reali
+```
+
+---
+
+## 📝 Convenzione Commit
+
+```
+tipo: descrizione breve (≤ 72 char)
+Tipi: feat · fix · refactor · test · docs · chore · perf
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
+---
+
+## 🔧 Fix Errori Comuni
+
+| Errore | Soluzione |
+|---|---|
+| `No module named X` | `poetry install` (non modificare pyproject.toml) |
+| `DB migration failed` | `poetry run python scripts/init_database.py --force` (solo DB vuoto/corrotto) |
+| `Port 8501 in use` | Management UI → [⏹ Ferma] oppure `taskkill /F /IM python.exe` |
+| Poetry usa Python 3.14 | `poetry env use "...\Python312\python.exe"` |
+| Test falliti dopo modifica | `git diff` → `git checkout HEAD -- <file>` per rollback selettivo |
+
+---
+
+## 📚 Reference Dettagliato (caricare con @ quando necessario)
+
+- @.claude/01_environment.md   — Ambiente, installer, percorsi, setup
+- @.claude/02_architecture.md  — Layer, moduli chiave, FX, InstrumentRegistry, cache policy
+- @.claude/03_conventions.md   — 32 regole invariabili + anti-pattern completi
+- @.claude/04_session_guide.md — Template prompt Opus, Definition of Done, workflow sessione
+- @.claude/05_dependencies.md  — Stack completo, dipendenze pinnate, cosa non toccare
+- @.claude/06_pages_map.md     — Mappa 40+ pagine dashboard (E/K/M/N/Q/S/A/C/P)
+- @.claude/07_data_pipeline.md — Pipeline dati, DuckDB schema, migrations, quality checks
+
+---
+
+## 🔴 Protocollo Bugfix — Quick Reference
+
+Quando l'utente riporta un errore:
+
+**1. Raccogliere:** testo completo traceback · pagina/funzione · ripetibile sempre/a volte · ultima modifica fatta
+
+**2. Localizzare** dall'errore al modulo (vedere `@.claude/08_bugfix_protocol.md` tabella completa):
+
+| Pattern traceback | Modulo | File |
+|---|---|---|
+| `DuckDBError` | `shared/db/` | `duckdb_client.py` |
+| `DataProviderError` | `engine/market_data/providers/` | `registry.py` |
+| `SchemaError` / `PanderaError` | `shared/db/schemas.py` | + fetcher |
+| `BridgeError` | `bridge/` | `api_contracts.py` |
+| `FeatureDisabledError` | `shared/` | `feature_flags.py` |
+| `InsufficientMemoryError` | `engine/analytics/forecasting/nbeats/` | `ram_check.py` |
+
+**3. Test di riproduzione PRIMA del fix:**
+```bash
+poetry run pytest tests/<layer>/test_bug_BXXX.py -v   # → deve FALLIRE
+```
+
+**4. Fix → verifica cascata:**
+```bash
+poetry run pytest tests/<layer>/test_bug_BXXX.py -v   # → deve PASSARE
+poetry run pytest -m regression -q --tb=short          # → 0 failed
+poetry run mypy --strict <file_modificato>
+```
+
+**5. Commit + aggiornare tabella Bug Noti:**
+```bash
+git commit -m "fix: descrizione (#BXXX)"
+```
+Protocollo completo: `@.claude/08_bugfix_protocol.md`

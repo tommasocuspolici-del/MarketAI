@@ -1,0 +1,270 @@
+# 07 — Pipeline Dati, DuckDB, Migrations e Quality
+
+## Pipeline Dati — Sequenza INVARIABILE (Regola 12)
+
+```
+fetch → clean → validate → duckdb_write → cache → return
+```
+
+**Non derogare MAI da questo ordine.** Ogni stage ha uno scopo preciso:
+
+| Stage | Responsabile | Cosa fa |
+|---|---|---|
+| `fetch` | `DataProvider` / `BaseFetcher` | Scarica dati grezzi da API esterna |
+| `clean` | `DataCleaner` | Gap filling, outlier detection, stale check |
+| `validate` | `Pandera schema` | Verifica tipi, range, business rules |
+| `duckdb_write` | `DuckDBClient` | Persiste su DB colonnare |
+| `cache` | `diskcache` | Mette in cache L1 con TTL |
+| `return` | — | Ritorna DataFrame validato al chiamante |
+
+### Anti-pattern pipeline
+```
+❌ Dati grezzi scritti direttamente in DuckDB (senza clean+validate)
+❌ Dati letti da API nelle funzioni di lettura (solo dal DB/cache)
+❌ DataCleaner dopo Pandera (ordine sbagliato)
+❌ Cache prima della scrittura su DB (dato perso su restart)
+```
+
+---
+
+## DuckDB vs SQLite — Quando Usare Quale
+
+| Tipo di dato | Database | Motivazione |
+|---|---|---|
+| Prezzi OHLCV storici | **DuckDB** | Query analitiche su milioni di righe |
+| Dati macro (FRED 600+) | **DuckDB** | Aggregazioni temporali pesanti |
+| Fondamentali SEC | **DuckDB** | Join su molti ticker |
+| Risultati backtest | **DuckDB** | Analisi batch |
+| Sentiment time series | **DuckDB** | Rolling stats efficienti |
+| DataQualityReport | **DuckDB** | Colonnare, query per quality_score |
+| Profili investitore | **SQLite** | Relazionale, accessi frequenti singoli |
+| Posizioni eToro | **SQLite** | Transazionale, aggiornamenti frequenti |
+| Cash flow entries | **SQLite** | CRUD individuale |
+| Goals/obiettivi | **SQLite** | Entità relazionali |
+| Alert history | **SQLite** | Insert/query per periodo |
+| Sessioni utente (v15) | **SQLite** | `db/user_sessions.db` (separato!) |
+
+---
+
+## Schema DuckDB — Tabelle Principali
+
+```sql
+-- Prezzi storici OHLCV
+CREATE TABLE IF NOT EXISTS prices_ohlcv (
+    ticker      VARCHAR NOT NULL,
+    date        TIMESTAMPTZ NOT NULL,
+    open        DOUBLE,
+    high        DOUBLE,
+    low         DOUBLE,
+    close       DOUBLE NOT NULL,
+    volume      BIGINT,
+    adjusted    DOUBLE,
+    currency    VARCHAR NOT NULL DEFAULT 'USD',
+    source      VARCHAR NOT NULL,
+    quality_score DOUBLE,
+    PRIMARY KEY (ticker, date, source)
+);
+
+-- Dati macro (FRED e altri)
+CREATE TABLE IF NOT EXISTS macro_series (
+    series_id   VARCHAR NOT NULL,
+    date        TIMESTAMPTZ NOT NULL,
+    value       DOUBLE,
+    source      VARCHAR NOT NULL DEFAULT 'FRED',
+    unit        VARCHAR,
+    frequency   VARCHAR,
+    PRIMARY KEY (series_id, date)
+);
+
+-- Quality reports per serie
+CREATE TABLE IF NOT EXISTS data_quality_reports (
+    series_id       VARCHAR NOT NULL,
+    generated_at    TIMESTAMPTZ NOT NULL,
+    quality_score   DOUBLE NOT NULL,  -- [0,1] — sotto 0.5: non usare
+    n_gaps          INTEGER,
+    n_outliers      INTEGER,
+    n_stale         INTEGER,
+    coverage_pct    DOUBLE,
+    notes           VARCHAR,
+    PRIMARY KEY (series_id, generated_at)
+);
+
+-- Risultati backtest
+CREATE TABLE IF NOT EXISTS backtest_results (
+    run_id          VARCHAR PRIMARY KEY,
+    strategy_name   VARCHAR,
+    ticker          VARCHAR,
+    start_date      DATE,
+    end_date        DATE,
+    sharpe_ratio    DOUBLE,
+    sharpe_net      DOUBLE,
+    max_drawdown    DOUBLE,
+    total_return    DOUBLE,
+    n_trades        INTEGER,
+    total_cost      DOUBLE,
+    run_at          TIMESTAMPTZ
+);
+
+-- Versioni schema (tracking migrations)
+CREATE TABLE IF NOT EXISTS duckdb_schema_version (
+    version      VARCHAR PRIMARY KEY,
+    applied_at   TIMESTAMPTZ DEFAULT NOW(),
+    description  VARCHAR
+);
+```
+
+---
+
+## Migrations DuckDB — Come Aggiungere (Regola 27)
+
+### Regola assoluta
+**MAI modificare lo schema DuckDB direttamente.** Sempre via script SQL.
+
+### Formato filename
+```
+YYYYMMDD_NNN_descrizione_breve.sql
+```
+Esempio: `20260901_007_add_futures_table.sql`
+
+### Procedura
+```bash
+# 1. Creare il file migration
+echo "ALTER TABLE prices_ohlcv ADD COLUMN adj_factor DOUBLE DEFAULT 1.0;" \
+  > shared/db/migrations/duckdb/20260901_007_add_adj_factor.sql
+
+# 2. La migration viene applicata automaticamente all'avvio tramite:
+#    DuckDBMigrator(conn).apply_pending()
+#    (chiamato in shared/db/duckdb_client.py durante l'init)
+
+# 3. Verificare che sia stata applicata:
+poetry run python -c "
+from shared.db.duckdb_client import DuckDBClient
+import duckdb
+conn = duckdb.connect('db/market_data.duckdb', read_only=True)
+rows = conn.execute('SELECT * FROM duckdb_schema_version ORDER BY version').fetchall()
+for r in rows: print(r)
+"
+```
+
+### Idempotenza
+Ogni migration deve essere sicura da applicare una sola volta. Il migrator traccia le versioni applicate — non riesegue mai la stessa.
+
+### Migration esistenti
+```
+shared/db/migrations/duckdb/
+├── 20260401_001_initial_schema.sql        ← tabelle base
+├── 20260415_002_add_correlations_table.sql ← tabella correlazioni
+└── README.md                              ← istruzioni per aggiungere migrations
+```
+
+---
+
+## DataQualityReport — Workflow
+
+```python
+from engine.market_data.cleaning.data_cleaner import DataCleaner
+from engine.market_data.cleaning.quality_report import DataQualityReport, save_quality_report
+
+# 1. Pulizia (obbligatoria PRIMA di Pandera)
+cleaner = DataCleaner()
+df_clean = cleaner.clean(df_raw)
+
+# 2. Quality check
+report = DataQualityReport.generate(df_clean, series_id="AAPL_1d")
+# report.quality_score: float [0,1]
+# report.n_gaps, report.n_outliers, report.n_stale, report.coverage_pct
+
+# 3. Decisione
+if report.quality_score < 0.5:
+    log.warning("data_quality.low", series=series_id, score=report.quality_score)
+    # NON entrare in calcoli critici senza approvazione
+    return None  # o raise DataError
+
+# 4. Persistenza quality report su DuckDB
+save_quality_report(report)
+
+# 5. Solo ora: validazione Pandera + scrittura DuckDB
+validated = OHLCVSchema.validate(df_clean)
+DuckDBClient.get().write_prices(validated)
+```
+
+---
+
+## Rate Limit Manager — Uso Corretto (Regola 28)
+
+```python
+from shared.resilience.rate_limit_manager import RateLimitManager
+
+# Singleton caricato da config/rate_limits.yaml
+rate_mgr = RateLimitManager()
+
+# In ogni fetcher, PRIMA di qualsiasi chiamata API:
+async def fetch_price(symbol: str) -> pd.DataFrame:
+    await rate_mgr.acquire("alpha_vantage")  # attende se necessario
+    response = await session.get(f"...{symbol}")
+    ...
+```
+
+**Sorgenti configurate in `config/rate_limits.yaml`:**
+```yaml
+yfinance:
+  requests_per_minute: 60
+  requests_per_day: unlimited
+alpha_vantage:
+  requests_per_minute: 5        # FREE TIER: max 5/min
+  requests_per_day: 500
+finnhub:
+  requests_per_minute: 60
+  requests_per_day: 5000
+fred:
+  requests_per_minute: 120
+  requests_per_day: unlimited
+sec_edgar:
+  requests_per_minute: 10       # SEC richiede throttling esplicito
+  requests_per_day: unlimited
+```
+
+---
+
+## Feature Flags — Uso Corretto (Regola 29)
+
+```python
+from shared.feature_flags import is_enabled, require_enabled
+
+# Check permissivo (non lancia eccezioni):
+if is_enabled("realtime_websocket"):
+    start_websocket_connection()
+
+# Check bloccante (lancia FeatureDisabledError se off):
+def train_nbeats(data: pd.DataFrame) -> NBeatsModel:
+    require_enabled("nbeats_model")   # guard obbligatorio
+    require_ram(min_gb=4.0, context="N-BEATS training")
+    ...
+```
+
+**Flags correnti in `config/feature_flags.yaml`:**
+```yaml
+# Funzionalità costose — default: false
+nbeats_model: false              # N-BEATS PyTorch: richiede 4GB RAM libera
+pytorch_forecasting: false       # Modelli DL generici
+edgar_bulk_download: false       # Download bulk SEC: lento (~1h)
+ollama_narrative: false          # LLM locale: richiede Ollama
+
+# Funzionalità stabili — default: true
+realtime_websocket: true         # WebSocket Finnhub prezzi live
+advanced_correlation: true       # DCC-GARCH + HMM
+personal_tax_report: true        # Calcolo fiscale IT
+auto_rebalancing_alerts: true    # Alert ribilanciamento
+ensemble_predictor: false        # Ensemble: abilitare dopo v13
+realistic_backtester: true       # Backtesting con costi reali
+fastapi_backend: false           # FastAPI: utente avvia manualmente (v14)
+```
+
+---
+
+## Riferimenti vault correlati
+
+- [[Data Flow]] — diagramma end-to-end del flusso dati
+- [[FRED Data Universe]] — mapping delle 600+ serie FRED e ID critici
+- [[Data Provider System]] — ProviderRegistry e fallback chain
+- [[Market Analysis Engine]] — come i dati alimentano l'analisi
