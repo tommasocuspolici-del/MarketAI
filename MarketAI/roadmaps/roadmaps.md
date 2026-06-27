@@ -1,5 +1,0 @@
-[[1 - roadmap preliminare]]
-[[2 - consolidamento]]
-[[3 - fase modellistica]]
-[[4 - fase avanzata]]
-[[5 - refactoring UI]]
